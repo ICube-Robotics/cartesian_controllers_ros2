@@ -8,5 +8,3 @@ std_msgs/Header header
 
 cartesian_control_msgs/CartesianTrajectoryPoint[] cartesian_trajectory_points
 cartesian_control_msgs/CartesianCompliance[] compliance_at_points
-
-

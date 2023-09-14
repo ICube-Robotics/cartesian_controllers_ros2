@@ -7,5 +7,3 @@ std_msgs/Header header
 # accelerations and/or efforts of the Cartesian frame at each time point.
 
 cartesian_control_msgs/CartesianTrajectoryPoint[] points
-
-
