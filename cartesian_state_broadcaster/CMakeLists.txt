@@ -14,7 +14,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(controller_interface REQUIRED)
-find_package(cartesian_msgs REQUIRED)
+find_package(cartesian_control_msgs REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -37,7 +37,7 @@ target_include_directories(
 ament_target_dependencies(
   cartesian_state_broadcaster
   Eigen3
-  cartesian_msgs
+  cartesian_control_msgs
   controller_interface
   hardware_interface
   pluginlib
@@ -79,7 +79,7 @@ ament_export_dependencies(
   pluginlib
   rclcpp
   rclcpp_lifecycle
-  cartesian_msgs
+  cartesian_control_msgs
   hardware_interface
   kinematics_interface
   Eigen3
