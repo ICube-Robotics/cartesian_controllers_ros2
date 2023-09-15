@@ -113,7 +113,7 @@ cartesian_admittance_controller:
           fixed_size<>: 6
         }
       }
-    mass: {
+    inertia: {
       type: double_array,
       description: "Specifies the mass values for x, y, z, rx, ry, and rz used in the admittance calculation.",
       validation: {

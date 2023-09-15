@@ -40,7 +40,8 @@ generate_parameter_library(cartesian_admittance_controller_parameters
 )
 
 add_library(cartesian_admittance_controller SHARED
-  src/cartesian_admittance_controller.cpp
+  #src/cartesian_admittance_controller.cpp
+  src/cartesian_admittance_solver.cpp
 )
 target_compile_features(cartesian_admittance_controller PUBLIC cxx_std_17)
 target_include_directories(cartesian_admittance_controller PUBLIC
