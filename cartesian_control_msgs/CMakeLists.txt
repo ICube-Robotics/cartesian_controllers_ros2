@@ -19,6 +19,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
 set(msg_files
+  msg/CartesianState.msg
   msg/CartesianTrajectoryPoint.msg
   msg/CartesianTrajectory.msg
   msg/CartesianCompliance.msg
