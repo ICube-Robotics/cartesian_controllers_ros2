@@ -163,26 +163,24 @@ protected:
     input_cartesian_reference_;
   std::unique_ptr<realtime_tools::RealtimePublisher<ControllerStateMsg>> state_publisher_;
 
-  geometry_msgs::msg::Twist last_commanded_twist_;
-  cartesian_control_msgs::msg::CartesianTrajectoryPoint last_cartesian_reference_;
-
   // Control loop data
   // cartesian_reference_: reference cartesian frame read by the controller
   // cartesian_state_: current robot cartesian pose (from joint states and kinematics)
-  cartesian_control_msgs::msg::CartesianTrajectoryPoint cartesian_reference_, cartesian_state_;
+  cartesian_control_msgs::msg::CartesianTrajectoryPoint cartesian_state_;
+  cartesian_control_msgs::msg::CartesianTrajectoryPoint cartesian_reference_, last_cartesian_reference_;
   // joint_state_: current joint readings from the hardware
+  // joint_command_: joint reference value computed by the controller
   trajectory_msgs::msg::JointTrajectoryPoint joint_state_;
-  // cartesian_velocity_command_: twist reference value computed by the controller
-  geometry_msgs::msg::Twist cartesian_velocity_command_;
+  trajectory_msgs::msg::JointTrajectoryPoint joint_command_, last_commanded_joint_state_;
   // ft_values_: values read from the force torque sensor
   geometry_msgs::msg::Wrench ft_values_;
 
   /**
-   * @brief Read values from hardware interfaces and set corresponding fields of joint_state_ and
+   * @brief Read values from hardware interfaces and set corresponding fields of joint_state and
    * ft_values
    */
   void read_state_from_hardware(
-    trajectory_msgs::msg::JointTrajectoryPoint & state_current,
+    trajectory_msgs::msg::JointTrajectoryPoint & joint_state,
     geometry_msgs::msg::Wrench & ft_values);
 
   /**
@@ -192,9 +190,9 @@ protected:
   //void read_state_reference_interfaces(cartesian_control_msgs::msg::CartesianTrajectoryPoint & cartesian_reference);
 
   /**
-   * @brief Write values from cartesian_velocity_command to claimed hardware interfaces
+   * @brief Write values from joint_state_command to claimed hardware interfaces
    */
-  void write_state_to_hardware(const geometry_msgs::msg::Twist & cartesian_velocity_command);
+  void write_state_to_hardware(trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command);
 };
 
 }  // namespace cartesian_admittance_controller

@@ -56,6 +56,9 @@ controller_interface::CallbackReturn AdmittanceController::on_init()
   joint_state_.velocities.assign(num_joints_, 0.0);
   joint_state_.accelerations.assign(num_joints_, 0.0);
 
+  joint_command_ = joint_state_;
+  last_commanded_joint_state_ = joint_state_;
+
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -107,40 +110,10 @@ AdmittanceController::on_export_reference_interfaces()
   {
     return {};
   }
+  // TODO?
+  // std::vector<hardware_interface::CommandInterface> chainable_command_interfaces;
 
-  std::vector<hardware_interface::CommandInterface> chainable_command_interfaces;
-  /*
-  const auto num_chainable_interfaces =
-    admittance_->parameters_.chainable_command_interfaces.size() *
-    admittance_->parameters_.joints.size();
-
-  // allocate dynamic memory
-  chainable_command_interfaces.reserve(num_chainable_interfaces);
-  reference_interfaces_.resize(num_chainable_interfaces, std::numeric_limits<double>::quiet_NaN());
-  position_reference_ = {};
-  velocity_reference_ = {};
-
-  // assign reference interfaces
-  auto index = 0ul;
-  for (const auto & interface : allowed_reference_interfaces_types_)
-  {
-    for (const auto & joint : admittance_->parameters_.joints)
-    {
-      if (hardware_interface::HW_IF_POSITION == interface)
-        position_reference_.emplace_back(reference_interfaces_[index]);
-      else if (hardware_interface::HW_IF_VELOCITY == interface)
-      {
-        velocity_reference_.emplace_back(reference_interfaces_[index]);
-      }
-      const auto full_name = joint + "/" + interface;
-      chainable_command_interfaces.emplace_back(hardware_interface::CommandInterface(
-        std::string(get_node()->get_name()), full_name, reference_interfaces_.data() + index));
-
-      index++;
-    }
-  }
-  */
-  return chainable_command_interfaces;
+  return {};
 }
 
 controller_interface::CallbackReturn AdmittanceController::on_configure(
@@ -159,6 +132,7 @@ controller_interface::CallbackReturn AdmittanceController::on_configure(
   }
 
   command_joint_names_ = admittance_->parameters_.command_joints;
+  //TODO: new parameter like "velocity_cmd_interface_names"
   if (command_joint_names_.empty())
   {
     command_joint_names_ = admittance_->parameters_.joints;
@@ -345,10 +319,11 @@ controller_interface::CallbackReturn AdmittanceController::on_activate(
   // number of joints in controllers is fixed after initialization
   num_joints_ = admittance_->parameters_.joints.size();
 
-  // allocate dynamic memory
-  joint_state_.positions.assign(num_joints_, 0.0);
-  joint_state_.velocities.assign(num_joints_, 0.0);
-  joint_state_.accelerations.assign(num_joints_, 0.0);
+  // Use current joint_state as a default reference
+  joint_command_ = joint_state_;
+  last_commanded_joint_state_ = joint_state_;
+
+  // TODO: set cartesian_reference_ from "joint_state_" using kinematics
 
   return controller_interface::CallbackReturn::SUCCESS;
 }
@@ -365,20 +340,7 @@ controller_interface::return_type AdmittanceController::update_reference_from_su
 
   // if message exists, load values into references
 
-  /*
-  //TODO(tpoignonec)
-  if (joint_command_msg_.get())
-  {
-    for (size_t i = 0; i < joint_command_msg_->positions.size(); ++i)
-    {
-      position_reference_[i].get() = joint_command_msg_->positions[i];
-    }
-    for (size_t i = 0; i < joint_command_msg_->velocities.size(); ++i)
-    {
-      velocity_reference_[i].get() = joint_command_msg_->velocities[i];
-    }
-  }
-  */
+  //TODO(tpoignonec): fill cartesian_reference_
 
   return controller_interface::return_type::OK;
 }
@@ -399,10 +361,16 @@ controller_interface::return_type AdmittanceController::update_and_write_command
   read_state_from_hardware(joint_state_, ft_values_);
 
   // apply admittance control to reference to determine desired state
-  admittance_->update(joint_state_, ft_values_, cartesian_reference_, period, cartesian_velocity_command_);
+  admittance_->update(
+    joint_state_,
+    ft_values_,
+    cartesian_reference_,
+    period,
+    joint_command_
+  );
 
   // write calculated values to joint interfaces
-  write_state_to_hardware(cartesian_velocity_command_);
+  write_state_to_hardware(joint_command_);
 
   // Publish controller state
   state_publisher_->lock();
@@ -424,7 +392,6 @@ controller_interface::CallbackReturn AdmittanceController::on_deactivate(
   force_torque_sensor_->release_interfaces();
 
   // reset to prevent stale references
-
   for (size_t index = 0; index < allowed_interface_types_.size(); ++index)
   {
     joint_command_interface_[index].clear();
@@ -487,7 +454,18 @@ void AdmittanceController::read_state_from_hardware(
     }
   }
 
-  // TODO(tpoignonec): error if nan_position or nan_velocity --> set commanded twist to zero and start error recovery
+  if (nan_position)
+  {
+    state_current.positions = last_commanded_joint_state_.positions;
+  }
+  if (nan_velocity)
+  {
+    state_current.velocities = last_commanded_joint_state_.velocities;
+  }
+  if (nan_acceleration)
+  {
+    state_current.accelerations = last_commanded_joint_state_.accelerations;
+  }
 
   // if any ft_values are nan, assume values are zero
   force_torque_sensor_->get_values_as_message(ft_values);
@@ -501,17 +479,31 @@ void AdmittanceController::read_state_from_hardware(
 }
 
 void AdmittanceController::write_state_to_hardware(
-  const geometry_msgs::msg::Twist & cartesian_velocity_command)
+  trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
 {
-  command_interfaces_[0].set_value(cartesian_velocity_command.linear.x);
-  command_interfaces_[1].set_value(cartesian_velocity_command.linear.y);
-  command_interfaces_[2].set_value(cartesian_velocity_command.linear.z);
-
-  command_interfaces_[3].set_value(cartesian_velocity_command.angular.x);
-  command_interfaces_[4].set_value(cartesian_velocity_command.angular.y);
-  command_interfaces_[5].set_value(cartesian_velocity_command.angular.z);
-
-  last_commanded_twist_ = cartesian_velocity_command;
+  // if any interface has nan values, assume state_commanded is the last command state
+  size_t pos_ind = 0;
+  size_t vel_ind = pos_ind + has_velocity_command_interface_;
+  size_t acc_ind = vel_ind + has_acceleration_state_interface_;
+  for (size_t joint_ind = 0; joint_ind < num_joints_; ++joint_ind)
+  {
+    if (has_position_command_interface_)
+    {
+      command_interfaces_[pos_ind * num_joints_ + joint_ind].set_value(
+        joint_state_command.positions[joint_ind]);
+    }
+    else if (has_velocity_command_interface_)
+    {
+      command_interfaces_[vel_ind * num_joints_ + joint_ind].set_value(
+        joint_state_command.positions[joint_ind]);
+    }
+    else if (has_acceleration_command_interface_)
+    {
+      command_interfaces_[acc_ind * num_joints_ + joint_ind].set_value(
+        joint_state_command.positions[joint_ind]);
+    }
+  }
+  last_commanded_joint_state_ = joint_state_command;
 }
 
 }  // namespace cartesian_admittance_controller

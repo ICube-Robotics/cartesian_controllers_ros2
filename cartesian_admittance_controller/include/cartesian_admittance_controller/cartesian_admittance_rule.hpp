@@ -151,7 +151,7 @@ public:
     const geometry_msgs::msg::Wrench & measured_wrench,
     const cartesian_control_msgs::msg::CartesianTrajectoryPoint & cartesian_reference_,
     const rclcpp::Duration & period,
-    geometry_msgs::msg::Twist & cartesian_velocity_command);
+    trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command);
 
   /**
    * Set fields of `state_message` from current admittance controller state.

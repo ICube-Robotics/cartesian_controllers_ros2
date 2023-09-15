@@ -168,7 +168,7 @@ controller_interface::return_type AdmittanceRule::update(
   const geometry_msgs::msg::Wrench & measured_wrench,
   const cartesian_control_msgs::msg::CartesianTrajectoryPoint & cartesian_reference,
   const rclcpp::Duration & period,
-  geometry_msgs::msg::Twist & cartesian_velocity_command
+  trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command
 )
 {
   const double dt = period.seconds();
@@ -204,15 +204,10 @@ controller_interface::return_type AdmittanceRule::update(
   // modify the desired reference
   if (!success)
   {
-    cartesian_velocity_command.linear.x = 0.0;
-    cartesian_velocity_command.linear.y = 0.0;
-    cartesian_velocity_command.linear.z = 0.0;
-    cartesian_velocity_command.angular.x = 0.0;
-    cartesian_velocity_command.angular.y = 0.0;
-    cartesian_velocity_command.angular.z = 0.0;
     return controller_interface::return_type::ERROR;
   }
-  //TODO(tpoignonec): export twist command (and acc.)
+  //TODO
+  // joint_state_command = 
   return controller_interface::return_type::OK;
 }
 
