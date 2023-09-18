@@ -24,7 +24,6 @@
 #include <string>
 #include <vector>
 
-#include "cartesian_admittance_controller/cartesian_admittance_rule_impl.hpp"
 #include "geometry_msgs/msg/wrench.hpp"
 #include "rcutils/logging_macros.h"
 #include "tf2_ros/buffer.h"
@@ -39,7 +38,7 @@ controller_interface::CallbackReturn AdmittanceController::on_init()
   try
   {
     parameter_handler_ = std::make_shared<cartesian_admittance_controller::ParamListener>(get_node());
-    admittance_ = std::make_unique<cartesian_admittance_controller::AdmittanceRule>(parameter_handler_);
+    admittance_ = std::make_unique<cartesian_admittance_controller::CartesianAdmittanceRule>(parameter_handler_);
   }
   catch (const std::exception & e)
   {
@@ -122,7 +121,7 @@ controller_interface::CallbackReturn AdmittanceController::on_configure(
   try
   {
     parameter_handler_ = std::make_shared<cartesian_admittance_controller::ParamListener>(get_node());
-    admittance_ = std::make_unique<cartesian_admittance_controller::AdmittanceRule>(parameter_handler_);
+    admittance_ = std::make_unique<cartesian_admittance_controller::CartesianAdmittanceRule>(parameter_handler_);
   }
   catch (const std::exception & e)
   {
@@ -243,7 +242,7 @@ controller_interface::CallbackReturn AdmittanceController::on_configure(
 
   // Initialize state message
   state_publisher_->lock();
-  state_publisher_->msg_ = admittance_->get_controller_state();
+  //state_publisher_->msg_ = admittance_->get_controller_state();
   state_publisher_->unlock();
 
   // Initialize FTS semantic semantic_component
@@ -374,7 +373,7 @@ controller_interface::return_type AdmittanceController::update_and_write_command
 
   // Publish controller state
   state_publisher_->lock();
-  state_publisher_->msg_ = admittance_->get_controller_state();
+  // state_publisher_->msg_ = admittance_->get_controller_state();
   state_publisher_->unlockAndPublish();
 
   return controller_interface::return_type::OK;

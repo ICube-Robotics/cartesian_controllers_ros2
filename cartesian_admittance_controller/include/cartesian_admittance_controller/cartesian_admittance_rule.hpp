@@ -25,6 +25,7 @@
 #include <Eigen/Geometry>
 
 #include "controller_interface/controller_interface.hpp"
+
 #include "kinematics_interface/kinematics_interface.hpp"
 #include "pluginlib/class_loader.hpp"
 #include "tf2_eigen/tf2_eigen.hpp"
@@ -42,6 +43,7 @@
 
 // include generated parameter library
 #include "cartesian_admittance_controller_parameters.hpp"
+
 
 namespace cartesian_admittance_controller
 {
@@ -62,7 +64,6 @@ struct AdmittanceState
     // Reset pre-computed values
     pose_tracking_error.setZero();
     velocity_tracking_error.setZero();
-
   }
     bool is_configured = false;
     // General parameters
@@ -108,10 +109,10 @@ struct AdmittanceState
 
 };
 
-class CartesianAdmittanceSolver
+class CartesianAdmittanceRule
 {
 public:
-    explicit CartesianAdmittanceSolver(
+    explicit CartesianAdmittanceRule(
         const std::shared_ptr<cartesian_admittance_controller::ParamListener> & parameter_handler);
 
     /// Configure admittance solver

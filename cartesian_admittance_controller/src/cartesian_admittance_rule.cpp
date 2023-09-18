@@ -14,7 +14,8 @@
 //
 /// \authors: Thibault Poignonec, Maciej Bednarczyk
 
-#include "cartesian_admittance_controller/cartesian_admittance_solver.hpp"
+#include "cartesian_admittance_controller/cartesian_admittance_rule.hpp"
+#include "kinematics_interface/kinematics_interface.hpp"
 
 #include "rclcpp/duration.hpp"
 //#include "rclcpp/utilities.hpp"
@@ -22,7 +23,7 @@
 
 namespace cartesian_admittance_controller
 {
-CartesianAdmittanceSolver::CartesianAdmittanceSolver(
+CartesianAdmittanceRule::CartesianAdmittanceRule(
     const std::shared_ptr<cartesian_admittance_controller::ParamListener> & parameter_handler)
 {
     parameter_handler_ = parameter_handler;
@@ -34,7 +35,7 @@ CartesianAdmittanceSolver::CartesianAdmittanceSolver(
 }
 
 controller_interface::return_type
-CartesianAdmittanceSolver::configure(
+CartesianAdmittanceRule::configure(
     const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
     const size_t num_joints)
 {
@@ -61,7 +62,7 @@ CartesianAdmittanceSolver::configure(
     catch (pluginlib::PluginlibException & ex)
     {
         RCLCPP_ERROR(
-            rclcpp::get_logger("CartesianAdmittanceSolver"),
+            rclcpp::get_logger("CartesianAdmittanceRule"),
             "Exception while loading the IK plugin '%s': '%s'",
             parameters_.kinematics.plugin_name.c_str(), ex.what()
         );
@@ -71,7 +72,7 @@ CartesianAdmittanceSolver::configure(
     else
     {
         RCLCPP_ERROR(
-            rclcpp::get_logger("CartesianAdmittanceSolver"),
+            rclcpp::get_logger("CartesianAdmittanceRule"),
             "A differential IK plugin name was not specified in the config file.");
             return controller_interface::return_type::ERROR;
     }
@@ -81,7 +82,7 @@ CartesianAdmittanceSolver::configure(
 
 
 controller_interface::return_type
-CartesianAdmittanceSolver::reset(const size_t num_joints)
+CartesianAdmittanceRule::reset(const size_t num_joints)
 {
   // Reset admittance state
   admittance_state_ = AdmittanceState(num_joints);
@@ -93,7 +94,7 @@ CartesianAdmittanceSolver::reset(const size_t num_joints)
 }
 
 
-void CartesianAdmittanceSolver::apply_parameters_update()
+void CartesianAdmittanceRule::apply_parameters_update()
 {
     if (parameter_handler_->is_old(parameters_))
     {
@@ -119,7 +120,7 @@ void CartesianAdmittanceSolver::apply_parameters_update()
     }
 }
 
-void CartesianAdmittanceSolver::set_interaction_parameters(
+void CartesianAdmittanceRule::set_interaction_parameters(
     const Eigen::Matrix<double, 6, 6> & desired_inertia,
     const Eigen::Matrix<double, 6, 6> & desired_stiffness,
     const Eigen::Matrix<double, 6, 6> & desired_damping)
@@ -131,7 +132,7 @@ void CartesianAdmittanceSolver::set_interaction_parameters(
 }
 
 controller_interface::return_type
-CartesianAdmittanceSolver::update(
+CartesianAdmittanceRule::update(
     const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
     const geometry_msgs::msg::Wrench & measured_wrench,
     const cartesian_control_msgs::msg::CartesianTrajectoryPoint & cartesian_reference,
@@ -184,7 +185,7 @@ CartesianAdmittanceSolver::update(
     return controller_interface::return_type::OK;
 }
 
-bool CartesianAdmittanceSolver::update_internal_state(
+bool CartesianAdmittanceRule::update_internal_state(
     const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
     const geometry_msgs::msg::Wrench & measured_wrench,
     const cartesian_control_msgs::msg::CartesianTrajectoryPoint & cartesian_reference)
@@ -200,7 +201,7 @@ bool CartesianAdmittanceSolver::update_internal_state(
     return true;
 }
 
-bool CartesianAdmittanceSolver::process_wrench_measurements(
+bool CartesianAdmittanceRule::process_wrench_measurements(
     const geometry_msgs::msg::Wrench & measured_wrench,
     const Eigen::Matrix<double, 3, 3> & ft_sensor_world_rot,
     const Eigen::Matrix<double, 3, 3> & com_world_rot)

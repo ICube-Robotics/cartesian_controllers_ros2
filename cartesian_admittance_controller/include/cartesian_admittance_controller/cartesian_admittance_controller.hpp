@@ -24,11 +24,12 @@
 #include <string>
 #include <vector>
 
+
+#include "cartesian_admittance_controller/visibility_control.h"
+#include "cartesian_admittance_controller/cartesian_admittance_rule.hpp"
+
 // include generated parameter library
 #include "cartesian_admittance_controller_parameters.hpp"
-
-#include "cartesian_admittance_controller/cartesian_admittance_rule.hpp"
-#include "cartesian_admittance_controller/visibility_control.h"
 
 #include "controller_interface/chainable_controller_interface.hpp"
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
@@ -55,7 +56,7 @@
 
 namespace cartesian_admittance_controller
 {
-using CartesianFrameMsg = cartesian_control_msgs::msg::CartesianTrajectoryPoint;
+//using CartesianFrameMsg = cartesian_control_msgs::msg::CartesianTrajectoryPoint;
 using ControllerStateMsg = control_msgs::msg::AdmittanceControllerState;
 
 class AdmittanceController : public controller_interface::ChainableControllerInterface
@@ -142,7 +143,7 @@ protected:
   std::vector<std::reference_wrapper<double>> velocity_reference_;
 
   // Admittance rule and dependent variables;
-  std::unique_ptr<cartesian_admittance_controller::AdmittanceRule> admittance_;
+  std::unique_ptr<cartesian_admittance_controller::CartesianAdmittanceRule> admittance_;
 
   // force torque sensor
   std::unique_ptr<semantic_components::ForceTorqueSensor> force_torque_sensor_;
