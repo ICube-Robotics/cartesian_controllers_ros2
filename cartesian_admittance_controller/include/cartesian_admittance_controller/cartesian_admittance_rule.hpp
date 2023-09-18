@@ -14,6 +14,8 @@
 //
 /// \authors: Thibault Poignonec, Maciej Bednarczyk
 
+// Based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
+
 #ifndef CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_SOLVER_HPP_
 #define CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_SOLVER_HPP_
 
@@ -29,7 +31,6 @@
 #include "kinematics_interface/kinematics_interface.hpp"
 #include "pluginlib/class_loader.hpp"
 #include "tf2_eigen/tf2_eigen.hpp"
-#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "tf2_kdl/tf2_kdl.hpp"
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_listener.h"
@@ -38,6 +39,7 @@
 #include "control_msgs/msg/admittance_controller_state.hpp"
 #include "geometry_msgs/msg/wrench_stamped.hpp"
 #include "trajectory_msgs/msg/joint_trajectory_point.hpp"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 // Custom msgs
 #include "cartesian_control_msgs/msg/cartesian_trajectory.hpp"
 
@@ -60,117 +62,123 @@ struct AdmittanceState
     joint_command_position = Eigen::VectorXd::Zero(num_joints);
     joint_command_velocity = Eigen::VectorXd::Zero(num_joints);
     joint_command_acceleration = Eigen::VectorXd::Zero(num_joints);
-
-    // Reset pre-computed values
-    pose_tracking_error.setZero();
-    velocity_tracking_error.setZero();
   }
-    bool is_configured = false;
-    // General parameters
-    //------------------------
-    //std::string base_frame;
-    //std::string control_frame;
-    std::string ft_sensor_frame;
+  bool is_configured = false;
 
-    // Interaction parameters
-    //------------------------
-    Eigen::Matrix<double, 6, 6> inertia;
-    Eigen::Matrix<double, 6, 6> stiffness;
-    Eigen::Matrix<double, 6, 6> damping;
+  // General parameters
+  //------------------------
+  std::string control_frame;
+  std::string ft_sensor_frame;
 
-    // Measured state
-    //------------------------
-    Eigen::VectorXd joint_state_position;
-    Eigen::VectorXd joint_state_velocity;
+  // Interaction parameters
+  //------------------------
+  Eigen::Matrix<double, 6, 1> inertia;
+  Eigen::Matrix<double, 6, 1> stiffness;
+  Eigen::Matrix<double, 6, 1> damping;
 
-    // Cartesian measurements w.r.t. world frame
-    Eigen::Isometry3d robot_current_pose;
-    Eigen::Matrix<double, 6, 1> robot_current_velocity;
-    Eigen::Matrix<double, 6, 1> robot_current_wrench;
+  // Reference robot state
+  //-----------------------
+  // (control frame w.r.t. robot base frame)
+  Eigen::Isometry3d robot_desired_pose;
+  Eigen::Matrix<double, 6, 1> robot_desired_velocity;
+  Eigen::Matrix<double, 6, 1> robot_desired_acceleration;
+  Eigen::Matrix<double, 6, 1> robot_desired_wrench;
 
-    // Computed errors
-    //------------------------
-    /// Pose tracking error e = p_desired - p_measured
-    Eigen::Matrix<double, 6, 1> pose_tracking_error;
-    /// Velocity tracking error e_dot = p_dot_desired - p_dot_measured
-    Eigen::Matrix<double, 6, 1> velocity_tracking_error;
+  // Measured robot state
+  //-----------------------
+  Eigen::VectorXd joint_state_position;
+  Eigen::VectorXd joint_state_velocity;
+  // Cartesian state (control frame w.r.t. robot base frame)
+  Eigen::Isometry3d robot_current_pose;
+  Eigen::Matrix<double, 6, 1> robot_current_velocity;
+  Eigen::Matrix<double, 6, 1> robot_current_wrench_at_ft_frame; // ft_frame w.r.t. base
 
-    // Computed command
-    //------------------------
-    Eigen::Matrix<double, 6, 1> robot_command_twist;
-    Eigen::VectorXd joint_command_position;
-    Eigen::VectorXd joint_command_velocity;
-    Eigen::VectorXd joint_command_acceleration;
+  // Computed command
+  //------------------------
+  // Commanded twist (control frame w.r.t. robot base frame)
+  Eigen::Matrix<double, 6, 1> robot_command_twist;
+  // Commanded joint state computed from "robot_command_twist"
+  Eigen::VectorXd joint_command_position;
+  Eigen::VectorXd joint_command_velocity;
+  Eigen::VectorXd joint_command_acceleration;
+};
 
-    // Pre-computed frames
-    //------------------------
-
-    //TODO(tpoignonec): as needed...
-
+struct AdmittanceTransforms
+{
+  // transformation from force torque sensor frame to base link frame at reference joint angles
+  Eigen::Isometry3d ref_base_ft_;
+  // transformation from force torque sensor frame to base link frame at reference + admittance
+  // offset joint angles
+  Eigen::Isometry3d base_ft_;
+  // transformation from control frame to base link frame at reference + admittance offset joint
+  // angles
+  Eigen::Isometry3d base_control_;
+  // transformation from end effector frame to base link frame at reference + admittance offset
+  // joint angles
+  Eigen::Isometry3d base_tip_;
+  // transformation from center of gravity frame to base link frame at reference + admittance offset
+  // joint angles
+  Eigen::Isometry3d base_cog_;
+  // transformation from world frame to base link frame
+  Eigen::Isometry3d world_base_;
 };
 
 class CartesianAdmittanceRule
 {
 public:
-    explicit CartesianAdmittanceRule(
-        const std::shared_ptr<cartesian_admittance_controller::ParamListener> & parameter_handler);
+  explicit CartesianAdmittanceRule(
+    const std::shared_ptr<cartesian_admittance_controller::ParamListener> & parameter_handler);
 
-    /// Configure admittance solver
-    controller_interface::return_type configure(
-        const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
-        const size_t num_joint
-    );
+  /// Configure admittance solver
+  virtual controller_interface::return_type configure(
+    const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
+    const size_t num_joint
+  );
 
-    /// Reset all values back to default
-    controller_interface::return_type reset(const size_t num_joints);
+  /// Reset all values back to default
+  virtual controller_interface::return_type reset(const size_t num_joints);
 
-    /// Retrieve parameters and update if applicable
-    void apply_parameters_update();
+  /// Retrieve parameters and update if applicable
+  void apply_parameters_update();
 
-    /// Manual setting of inertia, damping, and stiffness
-    void set_interaction_parameters(
-        const Eigen::Matrix<double, 6, 6> & desired_inertia,
-        const Eigen::Matrix<double, 6, 6> & desired_stiffness,
-        const Eigen::Matrix<double, 6, 6> & desired_damping
-    );
+  /// Manual setting of inertia, damping, and stiffness (diagonal matrices)
+  void set_interaction_parameters(
+    const Eigen::Matrix<double, 6, 1> & desired_inertia,
+    const Eigen::Matrix<double, 6, 1> & desired_stiffness,
+    const Eigen::Matrix<double, 6, 1> & desired_damping
+  );
 
-    /**
-    * Compute joint (velocity) command from the current cartesian tracking errors
-    * and the desired interaction parameters (M, K, D).
-    *
-    * \param[in] current_joint_state current joint state of the robot
-    * \param[in] measured_wrench most recent measured wrench from force torque sensor
-    * \param[in] cartesian_reference cartesian reference (pose, twist, and acc.)
-    * \param[in] period time in seconds since last controller update
-    * \param[out] joint_state_command computed joint state command
-    */
-    controller_interface::return_type update(
-        const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
-        const geometry_msgs::msg::Wrench & measured_wrench,
-        const cartesian_control_msgs::msg::CartesianTrajectoryPoint & cartesian_reference,
-        const rclcpp::Duration & period,
-        trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command
-    );
+  /**
+  * Compute joint (velocity) command from the current cartesian tracking errors
+  * and the desired interaction parameters (M, K, D).
+  *
+  * \param[in] current_joint_state current joint state of the robot
+  * \param[in] measured_wrench most recent measured wrench from force torque sensor
+  * \param[in] cartesian_reference cartesian reference (pose, twist, and acc.)
+  * \param[in] period time in seconds since last controller update
+  * \param[out] joint_state_command computed joint state command
+  */
+  controller_interface::return_type update(
+    const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
+    const geometry_msgs::msg::Wrench & measured_wrench,
+    const cartesian_control_msgs::msg::CartesianTrajectoryPoint & cartesian_reference,
+    const rclcpp::Duration & period,
+    trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command
+  );
 
 protected:
-    bool update_internal_state(
-        const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
-        const geometry_msgs::msg::Wrench & measured_wrench,
-        const cartesian_control_msgs::msg::CartesianTrajectoryPoint & cartesian_reference);
+  bool update_internal_state(
+    const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
+    const geometry_msgs::msg::Wrench & measured_wrench,
+    const cartesian_control_msgs::msg::CartesianTrajectoryPoint & cartesian_reference);
 
-    bool process_wrench_measurements(
-        const geometry_msgs::msg::Wrench & measured_wrench,
-        const Eigen::Matrix<double, 3, 3> & ft_sensor_world_rot,
-        const Eigen::Matrix<double, 3, 3> & com_world_rot);
+  bool process_wrench_measurements(
+    const geometry_msgs::msg::Wrench & measured_wrench);
 
-    /// Actual admittance control logic
-    bool compute_controls(
-        AdmittanceState & amittance_state,
-        double dt/*period in seconds*/)
-    {
-        // TODO: make method virtual
-        return true;
-    };
+  /// Actual admittance control logic
+  virtual bool compute_controls(
+    AdmittanceState & admittance_state,
+    double dt /*period in seconds*/);
 
 public:
   // Parameters management
@@ -180,6 +188,7 @@ public:
   // Admittance controllers internal state
   AdmittanceState admittance_state_{0};
 
+protected:
   /// Number of robot joints
   size_t num_joints_;
 
@@ -188,9 +197,13 @@ public:
 
   // Kinematics interface plugin loader
   std::shared_ptr<pluginlib::ClassLoader<kinematics_interface::KinematicsInterface>>
-    kinematics_loader_;
+  kinematics_loader_;
+
   /// Kinematics interface
   std::unique_ptr<kinematics_interface::KinematicsInterface> kinematics_;
+
+  // transforms needed for admittance update
+  AdmittanceTransforms admittance_transforms_;
 
   /// Filtered wrench expressed in world frame
   Eigen::Matrix<double, 6, 1> wrench_world_;

@@ -41,6 +41,7 @@ generate_parameter_library(cartesian_admittance_controller_parameters
 
 add_library(cartesian_admittance_controller SHARED
   src/cartesian_admittance_rule.cpp
+  src/cartesian_admittance_default_rule.cpp # To be removed once plugified...
   src/cartesian_admittance_controller.cpp
 )
 target_compile_features(cartesian_admittance_controller PUBLIC cxx_std_17)

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: Thibault Poignonec (thibault.poignonec@gmail.com)
+/// \authors: Thibault Poignonec, Maciej Bednarczyk
 
-// Heavily based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
+// Based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
 
 #ifndef ADMITTANCE_CONTROLLER__ADMITTANCE_CONTROLLER_HPP_
 #define ADMITTANCE_CONTROLLER__ADMITTANCE_CONTROLLER_HPP_
@@ -59,7 +59,7 @@ namespace cartesian_admittance_controller
 //using CartesianFrameMsg = cartesian_control_msgs::msg::CartesianTrajectoryPoint;
 using ControllerStateMsg = control_msgs::msg::AdmittanceControllerState;
 
-class AdmittanceController : public controller_interface::ChainableControllerInterface
+class CartesianAdmittanceController : public controller_interface::ChainableControllerInterface
 {
 public:
   CARTESIAN_ADMITTANCE_CONTROLLER_PUBLIC
@@ -116,7 +116,7 @@ protected:
   // The interfaces are defined as the types in 'allowed_interface_types_' member.
   // For convenience, for each type the interfaces are ordered so that i-th position
   // matches i-th index in joint_names_
-  template <typename T>
+  template<typename T>
   using InterfaceReferences = std::vector<std::vector<std::reference_wrapper<T>>>;
 
   InterfaceReferences<hardware_interface::LoanedCommandInterface> joint_command_interface_;
@@ -161,14 +161,15 @@ protected:
 
   // real-time buffer
   realtime_tools::RealtimeBuffer<std::shared_ptr<cartesian_control_msgs::msg::CartesianTrajectoryPoint>>
-    input_cartesian_reference_;
+  input_cartesian_reference_;
   std::unique_ptr<realtime_tools::RealtimePublisher<ControllerStateMsg>> state_publisher_;
 
   // Control loop data
   // cartesian_reference_: reference cartesian frame read by the controller
   // cartesian_state_: current robot cartesian pose (from joint states and kinematics)
   cartesian_control_msgs::msg::CartesianTrajectoryPoint cartesian_state_;
-  cartesian_control_msgs::msg::CartesianTrajectoryPoint cartesian_reference_, last_cartesian_reference_;
+  cartesian_control_msgs::msg::CartesianTrajectoryPoint cartesian_reference_,
+    last_cartesian_reference_;
   // joint_state_: current joint readings from the hardware
   // joint_command_: joint reference value computed by the controller
   trajectory_msgs::msg::JointTrajectoryPoint joint_state_;

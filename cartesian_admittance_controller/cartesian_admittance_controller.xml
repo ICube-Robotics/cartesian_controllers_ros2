@@ -1,6 +1,6 @@
 <library path="cartesian_admittance_controller">
-  <class name="cartesian_admittance_controller/AdmittanceController"
-         type="cartesian_admittance_controller::AdmittanceController"
+  <class name="cartesian_admittance_controller/CartesianAdmittanceController"
+         type="cartesian_admittance_controller::CartesianAdmittanceController"
          base_class_type="controller_interface::ChainableControllerInterface">
     <description>
       CartesianAdmittanceController ros2_control controller.
