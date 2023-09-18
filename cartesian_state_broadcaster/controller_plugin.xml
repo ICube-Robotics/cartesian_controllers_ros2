@@ -1,0 +1,8 @@
+<library path="cartesian_state_broadcaster">
+  <class name="cartesian_state_broadcaster/CartesianStateBroadcaster"
+         type="cartesian_state_broadcaster::CartesianStateBroadcaster" base_class_type="controller_interface::ControllerInterface">
+  <description>
+    This controller publishes the Cartesian state of the robot end-effector as sensor_msgs/JointState.msg message (new message type TBD).
+  </description>
+  </class>
+</library>
