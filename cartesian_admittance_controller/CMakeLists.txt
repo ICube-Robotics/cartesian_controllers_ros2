@@ -43,7 +43,7 @@ add_library(cartesian_admittance_controller SHARED
   src/cartesian_admittance_controller.cpp
   src/compliance_frame_trajectory.cpp
   src/cartesian_admittance_rule.cpp
-  src/cartesian_admittance_default_rule.cpp # To be removed once plugified...
+  src/rules/vanilla_cartesian_admittance_rule.cpp
 )
 target_compile_features(cartesian_admittance_controller PUBLIC cxx_std_17)
 target_include_directories(cartesian_admittance_controller PUBLIC
@@ -60,6 +60,7 @@ ament_target_dependencies(cartesian_admittance_controller PUBLIC ${DEPENDENCIES}
 target_compile_definitions(cartesian_admittance_controller PRIVATE "CARTESIAN_ADMITTANCE_CONTROLLER_BUILDING_DLL")
 
 pluginlib_export_plugin_description_file(controller_interface cartesian_admittance_controller.xml)
+pluginlib_export_plugin_description_file(controller_interface cartesian_admittance_rules.xml)
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gmock REQUIRED)
