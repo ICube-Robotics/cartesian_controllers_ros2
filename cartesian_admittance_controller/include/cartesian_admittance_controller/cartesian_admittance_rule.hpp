@@ -144,20 +144,21 @@ public:
     const Eigen::Matrix<double, 6, 1> & desired_damping
   );
 
+  controller_interface::return_type update_compliant_frame_trajectory(
+    const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory);
+
   /**
   * Compute joint (velocity) command from the current cartesian tracking errors
   * and the desired interaction parameters (M, K, D).
   *
   * \param[in] current_joint_state current joint state of the robot
   * \param[in] measured_wrench most recent measured wrench from force torque sensor
-  * \param[in] compliant_frame_trajectory cartesian reference (pose, twist, and acc.)
   * \param[in] period time in seconds since last controller update
   * \param[out] joint_state_command computed joint state command
   */
   controller_interface::return_type update(
     const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
     const geometry_msgs::msg::Wrench & measured_wrench,
-    const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory,
     const rclcpp::Duration & period,
     trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command
   );
@@ -165,8 +166,7 @@ public:
 protected:
   bool update_internal_state(
     const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
-    const geometry_msgs::msg::Wrench & measured_wrench,
-    const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory);
+    const geometry_msgs::msg::Wrench & measured_wrench);
 
   bool process_wrench_measurements(
     const geometry_msgs::msg::Wrench & measured_wrench);

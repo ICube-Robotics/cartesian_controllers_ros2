@@ -135,11 +135,28 @@ void CartesianAdmittanceRule::set_interaction_parameters(
     desired_damping);
 }
 
+
+
+controller_interface::return_type
+CartesianAdmittanceRule::update_compliant_frame_trajectory(
+  const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory)
+{
+  // Fill reference compliant frame trajectory
+  bool success = admittance_state_.reference_compliant_frames.fill_from_msg(compliant_frame_trajectory);
+
+  if (success)
+  {
+    return controller_interface::return_type::OK;
+  } else
+  {
+    return controller_interface::return_type::ERROR;
+  }
+}
+
 controller_interface::return_type
 CartesianAdmittanceRule::update(
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
   const geometry_msgs::msg::Wrench & measured_wrench,
-  const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory,
   const rclcpp::Duration & period,
   trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
 {
@@ -149,11 +166,10 @@ CartesianAdmittanceRule::update(
     apply_parameters_update();
   }
 
-  // Update current robot state (measured AND desired)
+  // Update current robot state
   bool success = update_internal_state(
     current_joint_state,
-    measured_wrench,
-    compliant_frame_trajectory
+    measured_wrench
   );
 
   // Compute controls
@@ -190,8 +206,7 @@ CartesianAdmittanceRule::update(
 
 bool CartesianAdmittanceRule::update_internal_state(
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
-  const geometry_msgs::msg::Wrench & measured_wrench,
-  const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory)
+  const geometry_msgs::msg::Wrench & measured_wrench)
 {
   bool success = true;   // return flag
 
@@ -221,9 +236,6 @@ bool CartesianAdmittanceRule::update_internal_state(
     parameters_.control.frame.id,
     admittance_transforms_.base_control_
   );
-
-  // Fill reference compliant frame trajectory
-  success &= admittance_state_.reference_compliant_frames.fill_from_msg(compliant_frame_trajectory);
 
   // Process wrench measurement
   success &= process_wrench_measurements(measured_wrench);

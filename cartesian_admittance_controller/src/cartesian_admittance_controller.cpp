@@ -127,6 +127,10 @@ controller_interface::return_type CartesianAdmittanceController::update(
 
   // update compliant frme(s) reference from ros subscriber message
   reference_compliant_frame_trajectory_msg_ = *input_compliant_frame_trajectory_msg_.readFromRT();
+  if (reference_compliant_frame_trajectory_msg_.get())
+  {
+    admittance_->update_compliant_frame_trajectory(*reference_compliant_frame_trajectory_msg_.get());
+  }
 
   // get all controller inputs
   read_state_from_hardware(joint_state_, ft_values_);
@@ -135,7 +139,6 @@ controller_interface::return_type CartesianAdmittanceController::update(
   admittance_->update(
     joint_state_,
     ft_values_,
-    *reference_compliant_frame_trajectory_msg_,
     period,
     joint_command_
   );

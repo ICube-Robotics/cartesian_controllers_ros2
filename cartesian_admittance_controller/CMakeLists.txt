@@ -60,7 +60,7 @@ ament_target_dependencies(cartesian_admittance_controller PUBLIC ${DEPENDENCIES}
 target_compile_definitions(cartesian_admittance_controller PRIVATE "CARTESIAN_ADMITTANCE_CONTROLLER_BUILDING_DLL")
 
 pluginlib_export_plugin_description_file(controller_interface cartesian_admittance_controller.xml)
-pluginlib_export_plugin_description_file(controller_interface cartesian_admittance_rules.xml)
+pluginlib_export_plugin_description_file(cartesian_admittance_controller cartesian_admittance_rules.xml)
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gmock REQUIRED)
@@ -82,6 +82,7 @@ if(BUILD_TESTING)
   )
 
   # test controller function
+  ##[===[
   add_rostest_with_parameters_gmock(test_controller
     test/test_cartesian_admittance_controller.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/test_params.yaml
@@ -93,6 +94,7 @@ if(BUILD_TESTING)
     hardware_interface
     ros2_control_test_assets
   )
+  ##]===]
 endif()
 
 install(
