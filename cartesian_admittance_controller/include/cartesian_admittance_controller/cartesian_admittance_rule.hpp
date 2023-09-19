@@ -52,11 +52,10 @@
 namespace cartesian_admittance_controller
 {
 
-class AdmittanceState
+struct AdmittanceState
 {
-public:
   explicit AdmittanceState(size_t num_joints, size_t trajectory_lenght = 1)
-  : reference_compliant_frames(trajectory_lenght)
+    : reference_compliant_frames(trajectory_lenght)
   {
     // Allocate joint state
     joint_state_position = Eigen::VectorXd::Zero(num_joints);
@@ -71,8 +70,6 @@ public:
 
   // General parameters
   //------------------------
-  /// Compliant frames trajectory lenght
-  size_t N;
   /// Name of the robot base frame
   std::string base_frame;
   /// Name of the control frame in which the compliance parameters are specified
@@ -80,8 +77,8 @@ public:
   /// Name of the force/torque sensor frame in wich is expressed the measured wrench
   std::string ft_sensor_frame;
 
-  // Desired compliant frame
-  //-------------------------
+  // Desired compliant frame(s)
+  //----------------------------
   CompliantFrameTrajectory reference_compliant_frames;
 
   // Measured robot state
