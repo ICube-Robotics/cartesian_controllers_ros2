@@ -96,8 +96,8 @@ const
     command_interfaces_config_names};
 }
 
-controller_interface::InterfaceConfiguration CartesianAdmittanceController::
-state_interface_configuration()
+controller_interface::InterfaceConfiguration
+CartesianAdmittanceController::state_interface_configuration()
 const
 {
   std::vector<std::string> state_interfaces_config_names;
@@ -117,17 +117,42 @@ const
     controller_interface::interface_configuration_type::INDIVIDUAL, state_interfaces_config_names};
 }
 
-std::vector<hardware_interface::CommandInterface>
-CartesianAdmittanceController::on_export_reference_interfaces()
+controller_interface::return_type CartesianAdmittanceController::update(
+    const rclcpp::Time & time, const rclcpp::Duration & period)
 {
-  // create CommandInterface interfaces that other controllers will be able to chain with
+  // Realtime constraints are required in this function
   if (!admittance_) {
-    return {};
+    return controller_interface::return_type::ERROR;
   }
-  // TODO?
-  // std::vector<hardware_interface::CommandInterface> chainable_command_interfaces;
 
-  return {};
+  // update input reference from ros subscriber message
+  cartesian_command_msg_ = *input_cartesian_reference_.readFromRT();
+
+  // if message exists, load values into references
+
+  //TODO(tpoignonec): fill cartesian_reference_
+
+  // get all controller inputs
+  read_state_from_hardware(joint_state_, ft_values_);
+
+  // apply admittance control to reference to determine desired state
+  admittance_->update(
+    joint_state_,
+    ft_values_,
+    cartesian_reference_,
+    period,
+    joint_command_
+  );
+
+  // write calculated values to joint interfaces
+  write_state_to_hardware(joint_command_);
+
+  // Publish controller state
+  state_publisher_->lock();
+  // state_publisher_->msg_ = admittance_->get_controller_state();
+  state_publisher_->unlockAndPublish();
+
+  return controller_interface::return_type::OK;
 }
 
 controller_interface::CallbackReturn CartesianAdmittanceController::on_configure(
@@ -320,56 +345,6 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_activate(
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-controller_interface::return_type CartesianAdmittanceController::update_reference_from_subscribers()
-{
-  // update input reference from ros subscriber message
-  if (!admittance_) {
-    return controller_interface::return_type::ERROR;
-  }
-
-  cartesian_command_msg_ = *input_cartesian_reference_.readFromRT();
-
-  // if message exists, load values into references
-
-  //TODO(tpoignonec): fill cartesian_reference_
-
-  return controller_interface::return_type::OK;
-}
-
-controller_interface::return_type CartesianAdmittanceController::update_and_write_commands(
-  const rclcpp::Time & /*time*/, const rclcpp::Duration & period)
-{
-  // Realtime constraints are required in this function
-  if (!admittance_) {
-    return controller_interface::return_type::ERROR;
-  }
-
-  // update input reference from chainable interfaces
-  //read_state_reference_interfaces(reference_);
-
-  // get all controller inputs
-  read_state_from_hardware(joint_state_, ft_values_);
-
-  // apply admittance control to reference to determine desired state
-  admittance_->update(
-    joint_state_,
-    ft_values_,
-    cartesian_reference_,
-    period,
-    joint_command_
-  );
-
-  // write calculated values to joint interfaces
-  write_state_to_hardware(joint_command_);
-
-  // Publish controller state
-  state_publisher_->lock();
-  // state_publisher_->msg_ = admittance_->get_controller_state();
-  state_publisher_->unlockAndPublish();
-
-  return controller_interface::return_type::OK;
-}
-
 controller_interface::CallbackReturn CartesianAdmittanceController::on_deactivate(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
@@ -484,5 +459,5 @@ void CartesianAdmittanceController::write_state_to_hardware(
 
 PLUGINLIB_EXPORT_CLASS(
   cartesian_admittance_controller::CartesianAdmittanceController,
-  controller_interface::ChainableControllerInterface
+  controller_interface::ControllerInterface
 )

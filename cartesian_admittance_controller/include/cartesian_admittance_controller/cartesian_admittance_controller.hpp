@@ -58,7 +58,7 @@ namespace cartesian_admittance_controller
 //using CartesianFrameMsg = cartesian_control_msgs::msg::CartesianTrajectoryPoint;
 using ControllerStateMsg = control_msgs::msg::AdmittanceControllerState;
 
-class CartesianAdmittanceController : public controller_interface::ChainableControllerInterface
+class CartesianAdmittanceController : public controller_interface::ControllerInterface
 {
 public:
   CARTESIAN_ADMITTANCE_CONTROLLER_PUBLIC
@@ -81,6 +81,10 @@ public:
   controller_interface::InterfaceConfiguration state_interface_configuration() const override;
 
   CARTESIAN_ADMITTANCE_CONTROLLER_PUBLIC
+  controller_interface::return_type update(
+    const rclcpp::Time & time, const rclcpp::Duration & period) override;
+
+  CARTESIAN_ADMITTANCE_CONTROLLER_PUBLIC
   controller_interface::CallbackReturn on_configure(
     const rclcpp_lifecycle::State & previous_state) override;
 
@@ -100,15 +104,7 @@ public:
   controller_interface::CallbackReturn on_error(
     const rclcpp_lifecycle::State & previous_state) override;
 
-  CARTESIAN_ADMITTANCE_CONTROLLER_PUBLIC
-  controller_interface::return_type update_and_write_commands(
-    const rclcpp::Time & time, const rclcpp::Duration & period) override;
-
 protected:
-  std::vector<hardware_interface::CommandInterface> on_export_reference_interfaces() override;
-
-  controller_interface::return_type update_reference_from_subscribers() override;
-
   size_t num_joints_ = 0;
   std::vector<std::string> command_joint_names_;
 
