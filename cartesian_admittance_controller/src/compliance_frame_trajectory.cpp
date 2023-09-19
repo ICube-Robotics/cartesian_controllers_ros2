@@ -16,10 +16,7 @@
 
 #include "cartesian_admittance_controller/compliance_frame_trajectory.hpp"
 
-
 #include "tf2_eigen/tf2_eigen.hpp"
-#include "tf2_kdl/tf2_kdl.hpp"
-#include "tf2_ros/buffer.h"
 
 namespace cartesian_admittance_controller
 {

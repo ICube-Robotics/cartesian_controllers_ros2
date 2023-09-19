@@ -19,7 +19,6 @@
 #ifndef CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_SOLVER_HPP_
 #define CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_SOLVER_HPP_
 
-#include <map>
 #include <memory>
 #include <vector>
 #include <string>
@@ -27,19 +26,15 @@
 #include <Eigen/Geometry>
 
 #include "controller_interface/controller_interface.hpp"
-
 #include "kinematics_interface/kinematics_interface.hpp"
 #include "pluginlib/class_loader.hpp"
-#include "tf2_eigen/tf2_eigen.hpp"
-#include "tf2_kdl/tf2_kdl.hpp"
-#include "tf2_ros/buffer.h"
-#include "tf2_ros/transform_listener.h"
 
 // msgs
 #include "control_msgs/msg/admittance_controller_state.hpp"
 #include "geometry_msgs/msg/wrench_stamped.hpp"
 #include "trajectory_msgs/msg/joint_trajectory_point.hpp"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+
 // Custom msgs
 #include "cartesian_control_msgs/msg/cartesian_trajectory.hpp"
 #include "cartesian_control_msgs/msg/compliant_frame_trajectory.hpp"
@@ -47,6 +42,7 @@
 // include generated parameter library
 #include "cartesian_admittance_controller_parameters.hpp"
 
+// include data structures
 #include "cartesian_admittance_controller/compliance_frame_trajectory.hpp"
 
 namespace cartesian_admittance_controller
@@ -55,7 +51,7 @@ namespace cartesian_admittance_controller
 struct AdmittanceState
 {
   explicit AdmittanceState(size_t num_joints, size_t trajectory_lenght = 1)
-    : reference_compliant_frames(trajectory_lenght)
+  : reference_compliant_frames(trajectory_lenght)
   {
     // Allocate joint state
     joint_state_position = Eigen::VectorXd::Zero(num_joints);

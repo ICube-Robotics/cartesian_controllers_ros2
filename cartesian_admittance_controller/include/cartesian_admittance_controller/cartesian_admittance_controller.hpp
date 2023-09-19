@@ -24,7 +24,6 @@
 #include <string>
 #include <vector>
 
-
 #include "cartesian_admittance_controller/visibility_control.h"
 #include "cartesian_admittance_controller/cartesian_admittance_rule.hpp"
 
