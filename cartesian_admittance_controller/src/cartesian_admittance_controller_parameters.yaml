@@ -107,10 +107,12 @@ cartesian_admittance_controller:
   admittance:
     plugin_name: {
       type: string,
+      default_value: "cartesian_admittance_controller/VanillaCartesianImpedanceRule",
       description: "Specifies the name of the admittance rule plugin to load."
     }
     plugin_package: {
       type: string,
+      default_value: "cartesian_admittance_controller",
       description: "Specifies the package name that contains the admittance rule plugin."
     }
     selected_axes:

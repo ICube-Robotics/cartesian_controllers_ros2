@@ -133,17 +133,13 @@ CartesianAdmittanceController::on_export_reference_interfaces()
 controller_interface::CallbackReturn CartesianAdmittanceController::on_configure(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
-  try {
-    parameter_handler_ =
-      std::make_shared<cartesian_admittance_controller::ParamListener>(get_node());
-    admittance_ = std::make_unique<cartesian_admittance_controller::CartesianAdmittanceRule>(
-      parameter_handler_);
-  } catch (const std::exception & e) {
+  if (!admittance_) {
     RCLCPP_ERROR(
-      get_node()->get_logger(), "Exception thrown during init stage with message: %s \n", e.what());
-    return controller_interface::CallbackReturn::ERROR;
+      get_node()->get_logger(),
+      "Error at 'on_configure()': The admittance rule plugin should have been initialized before!"
+    );
+    return CallbackReturn::FAILURE;
   }
-
   command_joint_names_ = admittance_->parameters_.command_joints;
   //TODO: new parameter like "velocity_cmd_interface_names"
   if (command_joint_names_.empty()) {
