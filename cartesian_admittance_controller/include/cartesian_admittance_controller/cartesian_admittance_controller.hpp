@@ -55,7 +55,7 @@
 
 namespace cartesian_admittance_controller
 {
-//using CartesianFrameMsg = cartesian_control_msgs::msg::CartesianTrajectoryPoint;
+//using CartesianFrameMsg = cartesian_control_msgs::msg::CompliantFrameTrajectory;
 using ControllerStateMsg = control_msgs::msg::AdmittanceControllerState;
 
 class CartesianAdmittanceController : public controller_interface::ControllerInterface
@@ -148,26 +148,27 @@ protected:
   std::unique_ptr<semantic_components::ForceTorqueSensor> force_torque_sensor_;
 
   // ROS subscribers
-  rclcpp::Subscription<cartesian_control_msgs::msg::CartesianTrajectoryPoint>::SharedPtr
-    input_cartesian_reference_subscriber_;
+  rclcpp::Subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>::SharedPtr
+    input_compliant_frame_trajectory_subscriber_;
   rclcpp::Publisher<control_msgs::msg::AdmittanceControllerState>::SharedPtr s_publisher_;
 
   // admittance parameters
   std::shared_ptr<cartesian_admittance_controller::ParamListener> parameter_handler_;
 
   // ROS messages
-  std::shared_ptr<cartesian_control_msgs::msg::CartesianTrajectoryPoint> cartesian_command_msg_;
+  std::shared_ptr<cartesian_control_msgs::msg::CompliantFrameTrajectory>
+  reference_compliant_frame_trajectory_msg_;
 
   // real-time buffer
-  realtime_tools::RealtimeBuffer<std::shared_ptr<cartesian_control_msgs::msg::CartesianTrajectoryPoint>>
-  input_cartesian_reference_;
+  realtime_tools::RealtimeBuffer<std::shared_ptr<cartesian_control_msgs::msg::CompliantFrameTrajectory>>
+  input_compliant_frame_trajectory_msg_;
   std::unique_ptr<realtime_tools::RealtimePublisher<ControllerStateMsg>> state_publisher_;
 
   // Control loop data
   // cartesian_reference_: reference cartesian frame read by the controller
   // cartesian_state_: current robot cartesian pose (from joint states and kinematics)
-  cartesian_control_msgs::msg::CartesianTrajectoryPoint cartesian_state_;
-  cartesian_control_msgs::msg::CartesianTrajectoryPoint cartesian_reference_,
+  cartesian_control_msgs::msg::CompliantFrameTrajectory cartesian_state_;
+  cartesian_control_msgs::msg::CompliantFrameTrajectory cartesian_reference_,
     last_cartesian_reference_;
   // joint_state_: current joint readings from the hardware
   // joint_command_: joint reference value computed by the controller
@@ -188,7 +189,7 @@ protected:
    * @brief Set fields of state_reference with values from controllers exported position and
    * velocity references
    */
-  //void read_state_reference_interfaces(cartesian_control_msgs::msg::CartesianTrajectoryPoint & cartesian_reference);
+  //void read_state_reference_interfaces(cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory);
 
   /**
    * @brief Write values from joint_state_command to claimed hardware interfaces

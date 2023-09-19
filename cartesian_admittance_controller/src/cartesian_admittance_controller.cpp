@@ -118,19 +118,15 @@ const
 }
 
 controller_interface::return_type CartesianAdmittanceController::update(
-    const rclcpp::Time & time, const rclcpp::Duration & period)
+  const rclcpp::Time & time, const rclcpp::Duration & period)
 {
   // Realtime constraints are required in this function
   if (!admittance_) {
     return controller_interface::return_type::ERROR;
   }
 
-  // update input reference from ros subscriber message
-  cartesian_command_msg_ = *input_cartesian_reference_.readFromRT();
-
-  // if message exists, load values into references
-
-  //TODO(tpoignonec): fill cartesian_reference_
+  // update compliant frme(s) reference from ros subscriber message
+  reference_compliant_frame_trajectory_msg_ = *input_compliant_frame_trajectory_msg_.readFromRT();
 
   // get all controller inputs
   read_state_from_hardware(joint_state_, ft_values_);
@@ -139,7 +135,7 @@ controller_interface::return_type CartesianAdmittanceController::update(
   admittance_->update(
     joint_state_,
     ft_values_,
-    cartesian_reference_,
+    *reference_compliant_frame_trajectory_msg_,
     period,
     joint_command_
   );
@@ -253,12 +249,13 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_configure
     get_interface_list(admittance_->parameters_.state_interfaces).c_str());
 
   // setup subscribers and publishers
-  auto cartesian_reference_callback =
-    [this](const std::shared_ptr<cartesian_control_msgs::msg::CartesianTrajectoryPoint> msg)
-    {input_cartesian_reference_.writeFromNonRT(msg);};
-  input_cartesian_reference_subscriber_ =
-    get_node()->create_subscription<cartesian_control_msgs::msg::CartesianTrajectoryPoint>(
-    "~/cartesian_frame_reference", rclcpp::SystemDefaultsQoS(), cartesian_reference_callback);
+  auto compliant_frame_trajectory_callback =
+    [this](const std::shared_ptr<cartesian_control_msgs::msg::CompliantFrameTrajectory> msg)
+    {input_compliant_frame_trajectory_msg_.writeFromNonRT(msg);};
+  input_compliant_frame_trajectory_subscriber_ =
+    get_node()->create_subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>(
+    "~/reference_compliant_frame_trajectory",
+    rclcpp::SystemDefaultsQoS(), compliant_frame_trajectory_callback);
   s_publisher_ = get_node()->create_publisher<control_msgs::msg::AdmittanceControllerState>(
     "~/status", rclcpp::SystemDefaultsQoS());
   state_publisher_ =

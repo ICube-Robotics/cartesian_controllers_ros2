@@ -139,7 +139,7 @@ controller_interface::return_type
 CartesianAdmittanceRule::update(
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
   const geometry_msgs::msg::Wrench & measured_wrench,
-  const cartesian_control_msgs::msg::CartesianTrajectoryPoint & cartesian_reference,
+  const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory,
   const rclcpp::Duration & period,
   trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
 {
@@ -148,12 +148,14 @@ CartesianAdmittanceRule::update(
   if (parameters_.enable_parameter_update_without_reactivation) {
     apply_parameters_update();
   }
+
   // Update current robot state (measured AND desired)
   bool success = update_internal_state(
     current_joint_state,
     measured_wrench,
-    cartesian_reference
+    compliant_frame_trajectory
   );
+
   // Compute controls
   success &= compute_controls(admittance_state_, dt);
 
@@ -189,7 +191,7 @@ CartesianAdmittanceRule::update(
 bool CartesianAdmittanceRule::update_internal_state(
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
   const geometry_msgs::msg::Wrench & measured_wrench,
-  const cartesian_control_msgs::msg::CartesianTrajectoryPoint & cartesian_reference)
+  const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory)
 {
   bool success = true;   // return flag
 
@@ -221,9 +223,7 @@ bool CartesianAdmittanceRule::update_internal_state(
   );
 
   // Fill reference compliant frame trajectory
-  success &= admittance_state_.reference_compliant_frames.fill_desired_robot_state_from_msg(
-    0,
-    cartesian_reference);
+  success &= admittance_state_.reference_compliant_frames.fill_from_msg(compliant_frame_trajectory);
 
   // Process wrench measurement
   success &= process_wrench_measurements(measured_wrench);

@@ -20,7 +20,7 @@
 
 namespace cartesian_admittance_controller
 {
-  
+
 controller_interface::return_type VanillaCartesianAdmittanceRule::init(
   const std::shared_ptr<cartesian_admittance_controller::ParamListener> & parameter_handler)
 {

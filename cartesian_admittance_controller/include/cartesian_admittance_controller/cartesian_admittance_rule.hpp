@@ -150,14 +150,14 @@ public:
   *
   * \param[in] current_joint_state current joint state of the robot
   * \param[in] measured_wrench most recent measured wrench from force torque sensor
-  * \param[in] cartesian_reference cartesian reference (pose, twist, and acc.)
+  * \param[in] compliant_frame_trajectory cartesian reference (pose, twist, and acc.)
   * \param[in] period time in seconds since last controller update
   * \param[out] joint_state_command computed joint state command
   */
   controller_interface::return_type update(
     const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
     const geometry_msgs::msg::Wrench & measured_wrench,
-    const cartesian_control_msgs::msg::CartesianTrajectoryPoint & cartesian_reference,
+    const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory,
     const rclcpp::Duration & period,
     trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command
   );
@@ -166,7 +166,7 @@ protected:
   bool update_internal_state(
     const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
     const geometry_msgs::msg::Wrench & measured_wrench,
-    const cartesian_control_msgs::msg::CartesianTrajectoryPoint & cartesian_reference);
+    const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory);
 
   bool process_wrench_measurements(
     const geometry_msgs::msg::Wrench & measured_wrench);

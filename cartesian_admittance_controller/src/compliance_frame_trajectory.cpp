@@ -17,6 +17,7 @@
 #include "cartesian_admittance_controller/compliance_frame_trajectory.hpp"
 
 #include "tf2_eigen/tf2_eigen.hpp"
+#include "tf2_kdl/tf2_kdl.hpp"
 
 namespace cartesian_admittance_controller
 {
@@ -85,14 +86,25 @@ bool CompliantFrameTrajectory::fill_desired_robot_state_from_msg(
     desired_cartesian_state.velocity,
     frames_[index].velocity
   );
-  tf2::fromMsg(
-    desired_cartesian_state.acceleration,
-    frames_[index].acceleration
-  );
-  tf2::fromMsg(
-    desired_cartesian_state.wrench,
-    frames_[index].wrench
-  );
+  // No "tf2::fromMsg" impl. for geometry_msgs::msg::Accel
+  frames_[index].acceleration[0] = desired_cartesian_state.acceleration.linear.x;
+  frames_[index].acceleration[1] = desired_cartesian_state.acceleration.linear.y;
+  frames_[index].acceleration[2] = desired_cartesian_state.acceleration.linear.z;
+  frames_[index].acceleration[3] = desired_cartesian_state.acceleration.angular.x;
+  frames_[index].acceleration[4] = desired_cartesian_state.acceleration.angular.y;
+  frames_[index].acceleration[5] = desired_cartesian_state.acceleration.angular.z;
+
+  // No "tf2::fromMsg" impl. for geometry_msgs::msg::wrench
+  //tf2::fromMsg(
+  //  desired_cartesian_state.wrench,
+  //  frames_[index].wrench
+  //);
+  frames_[index].wrench[0] = desired_cartesian_state.wrench.force.x;
+  frames_[index].wrench[1] = desired_cartesian_state.wrench.force.y;
+  frames_[index].wrench[2] = desired_cartesian_state.wrench.force.z;
+  frames_[index].wrench[3] = desired_cartesian_state.wrench.torque.x;
+  frames_[index].wrench[4] = desired_cartesian_state.wrench.torque.y;
+  frames_[index].wrench[5] = desired_cartesian_state.wrench.torque.z;
 
   return success;
 }
