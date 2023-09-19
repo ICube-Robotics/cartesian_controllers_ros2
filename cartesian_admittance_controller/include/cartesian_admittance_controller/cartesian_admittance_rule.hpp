@@ -47,67 +47,27 @@
 // include generated parameter library
 #include "cartesian_admittance_controller_parameters.hpp"
 
+#include "cartesian_admittance_controller/compliance_frame_trajectory.hpp"
 
 namespace cartesian_admittance_controller
 {
-class CompliantFrame
-{
-public:
-  // Time
-  //------
-  /// Time between first frame and this one in seconds
-  /// (i.e., for the first frame of the trajectory, relative_time = 0.0)
-  double relative_time = 0.0;
-
-  // Interaction parameters
-  //------------------------
-  /// Diagonal terms of the desired inertia matrix, expressed in the control frame
-  Eigen::Matrix<double, 6, 1> inertia;
-  /// Diagonal terms of the desired stiffness matrix, expressed in the control frame
-  Eigen::Matrix<double, 6, 1> stiffness;
-  /// Diagonal terms of the desired damping matrix, expressed in the control frame
-  Eigen::Matrix<double, 6, 1> damping;
-
-  // Reference robot state
-  // (control frame w.r.t. robot base frame)
-  //-----------------------
-  /// Desired cartesian robot pose as an homogeneous transformation "F_base --> F_control"
-  Eigen::Isometry3d pose;
-  /// Desired robot cartesian velocity at the control frame, expressed in base frame
-  Eigen::Matrix<double, 6, 1> velocity;
-  /// Desired robot cartesian acceleration at the control frame, expressed in base frame
-  Eigen::Matrix<double, 6, 1> acceleration;
-  /// Desired robot cartesian wrench at control frame, expressed in base frame
-  /// (we suppose this is also the interaction frame...)
-  Eigen::Matrix<double, 6, 1> wrench;
-};
 
 class AdmittanceState
 {
 public:
-  explicit AdmittanceState(size_t num_joints, size_t trajectory_lenght = 1);
+  explicit AdmittanceState(size_t num_joints, size_t trajectory_lenght = 1)
+  : reference_compliant_frames(trajectory_lenght)
+  {
+    // Allocate joint state
+    joint_state_position = Eigen::VectorXd::Zero(num_joints);
+    joint_state_velocity = Eigen::VectorXd::Zero(num_joints);
 
-  bool fill_frames_from_trajectory_msg(
-    const cartesian_control_msgs::msg::CompliantFrameTrajectory & frame_msgs);
-
-  bool fill_desired_robot_state_from_msg(
-    unsigned int index,
-    const cartesian_control_msgs::msg::CartesianTrajectoryPoint & desired_cartesian_state);
-
-  bool fill_desired_compliance_from_msg(
-    unsigned int index,
-    const cartesian_control_msgs::msg::CartesianCompliance & desired_compliance);
-
-  bool fill_desired_compliance(
-    unsigned int index,
-    const Eigen::Matrix<double, 6, 1> & desired_inertia,
-    const Eigen::Matrix<double, 6, 1> & desired_stiffness,
-    const Eigen::Matrix<double, 6, 1> & desired_damping);
-
-  bool fill_desired_compliance(
-    const Eigen::Matrix<double, 6, 1> & desired_inertia,
-    const Eigen::Matrix<double, 6, 1> & desired_stiffness,
-    const Eigen::Matrix<double, 6, 1> & desired_damping);
+    // Allocate and reset command
+    robot_command_twist.setZero();
+    joint_command_position = Eigen::VectorXd::Zero(num_joints);
+    joint_command_velocity = Eigen::VectorXd::Zero(num_joints);
+    joint_command_acceleration = Eigen::VectorXd::Zero(num_joints);
+  }
 
   // General parameters
   //------------------------
@@ -122,7 +82,7 @@ public:
 
   // Desired compliant frame
   //-------------------------
-  std::vector<CompliantFrame> reference_compliant_frames;
+  CompliantFrameTrajectory reference_compliant_frames;
 
   // Measured robot state
   //-----------------------
