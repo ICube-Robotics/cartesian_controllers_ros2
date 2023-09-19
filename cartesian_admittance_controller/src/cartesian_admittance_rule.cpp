@@ -29,7 +29,8 @@
 namespace cartesian_admittance_controller
 {
 
-CartesianAdmittanceRule::CartesianAdmittanceRule(
+controller_interface::return_type
+CartesianAdmittanceRule::init(
   const std::shared_ptr<cartesian_admittance_controller::ParamListener> & parameter_handler)
 {
   parameter_handler_ = parameter_handler;
@@ -37,7 +38,7 @@ CartesianAdmittanceRule::CartesianAdmittanceRule(
   num_joints_ = parameters_.joints.size();
   admittance_state_ = AdmittanceState(num_joints_);
   use_streamed_interaction_parameters_ = false;
-  reset(num_joints_);
+  return reset(num_joints_);
 }
 
 controller_interface::return_type

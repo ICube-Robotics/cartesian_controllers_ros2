@@ -16,8 +16,8 @@
 
 // Based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
 
-#ifndef CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_SOLVER_HPP_
-#define CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_SOLVER_HPP_
+#ifndef CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_RULE_HPP_
+#define CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_RULE_HPP_
 
 #include <memory>
 #include <vector>
@@ -119,14 +119,17 @@ struct AdmittanceTransforms
 class CartesianAdmittanceRule
 {
 public:
-  explicit CartesianAdmittanceRule(
+  CartesianAdmittanceRule() = default;
+  virtual ~CartesianAdmittanceRule() = default;
+
+  /// Initialize admittance rule
+  virtual controller_interface::return_type init(
     const std::shared_ptr<cartesian_admittance_controller::ParamListener> & parameter_handler);
 
-  /// Configure admittance solver
+  /// Configure admittance rule
   virtual controller_interface::return_type configure(
     const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
-    const size_t num_joint
-  );
+    const size_t num_joint);
 
   /// Reset all values back to default
   virtual controller_interface::return_type reset(const size_t num_joints);
@@ -171,7 +174,7 @@ protected:
   /// Actual admittance control logic
   virtual bool compute_controls(
     AdmittanceState & admittance_state,
-    double dt /*period in seconds*/);
+    double dt /*period in seconds*/) = 0;
 
 public:
   // Parameters management

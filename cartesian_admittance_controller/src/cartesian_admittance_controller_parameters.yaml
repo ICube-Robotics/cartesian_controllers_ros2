@@ -105,6 +105,14 @@ cartesian_admittance_controller:
       }
 
   admittance:
+    plugin_name: {
+      type: string,
+      description: "Specifies the name of the admittance rule plugin to load."
+    }
+    plugin_package: {
+      type: string,
+      description: "Specifies the package name that contains the admittance rule plugin."
+    }
     selected_axes:
       {
         type: bool_array,

@@ -141,7 +141,11 @@ protected:
   };
   std::vector<std::reference_wrapper<double>> velocity_reference_;
 
-  // Admittance rule and dependent variables;
+  // Admittance rule loader
+  std::shared_ptr<pluginlib::ClassLoader<cartesian_admittance_controller::CartesianAdmittanceRule>>
+  admittance_loader_;
+
+  // Admittance rule
   std::unique_ptr<cartesian_admittance_controller::CartesianAdmittanceRule> admittance_;
 
   // force torque sensor

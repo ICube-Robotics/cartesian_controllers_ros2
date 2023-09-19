@@ -16,11 +16,30 @@
 
 // Based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
 
-#include "cartesian_admittance_controller/cartesian_admittance_rule.hpp"
+#include "cartesian_admittance_controller/rules/vanilla_cartesian_admittance_rule.hpp"
 
 namespace cartesian_admittance_controller
 {
-bool CartesianAdmittanceRule::compute_controls(
+  
+controller_interface::return_type VanillaCartesianAdmittanceRule::init(
+  const std::shared_ptr<cartesian_admittance_controller::ParamListener> & parameter_handler)
+{
+  return CartesianAdmittanceRule::init(parameter_handler);
+}
+
+controller_interface::return_type VanillaCartesianAdmittanceRule::configure(
+  const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
+  const size_t num_joints)
+{
+  return CartesianAdmittanceRule::configure(node, num_joints);
+}
+
+controller_interface::return_type VanillaCartesianAdmittanceRule::reset(const size_t num_joints)
+{
+  return CartesianAdmittanceRule::reset(num_joints);
+}
+
+bool VanillaCartesianAdmittanceRule::compute_controls(
   AdmittanceState & admittance_state,
   double dt /*period in seconds*/)
 {
@@ -130,3 +149,10 @@ bool CartesianAdmittanceRule::compute_controls(
 
 
 } // namespace cartesian_admittance_controller
+
+#include "pluginlib/class_list_macros.hpp"
+
+PLUGINLIB_EXPORT_CLASS(
+  cartesian_admittance_controller::VanillaCartesianAdmittanceRule,
+  cartesian_admittance_controller::CartesianAdmittanceRule
+)
