@@ -26,6 +26,128 @@
 
 namespace cartesian_admittance_controller
 {
+AdmittanceState::AdmittanceState(size_t num_joints, size_t trajectory_lenght)
+{
+  if (trajectory_lenght <= 0) {
+    // throw exception?
+    trajectory_lenght = 1;
+  }
+  N = trajectory_lenght;
+
+  // Allocate joint state
+  joint_state_position = Eigen::VectorXd::Zero(num_joints);
+  joint_state_velocity = Eigen::VectorXd::Zero(num_joints);
+
+  // Init compliance frame trajectory
+  reference_compliant_frames.reserve(N);
+  for (unsigned int i=0; i<N; i++) {
+    reference_compliant_frames.push_back(CompliantFrame());
+    // TODO(tpoignonec): fill data with NaN?
+  }
+
+  // Allocate and reset command
+  robot_command_twist.setZero();
+  joint_command_position = Eigen::VectorXd::Zero(num_joints);
+  joint_command_velocity = Eigen::VectorXd::Zero(num_joints);
+  joint_command_acceleration = Eigen::VectorXd::Zero(num_joints);
+}
+
+bool AdmittanceState::fill_frames_from_trajectory_msg(
+  const cartesian_control_msgs::msg::CompliantFrameTrajectory & frame_msgs)
+{
+  if (frame_msgs.cartesian_trajectory_points.size() != N)
+  {
+    //TODO(tpoignonec): throw exception OR print log error?
+    return false;
+  }
+  if (frame_msgs.cartesian_trajectory_points.size() != frame_msgs.compliance_at_points.size())
+  {
+    //TODO(tpoignonec): throw exception OR print log error?
+    return false;
+  }
+  // Update reference compliant frames
+  bool success = true;
+  for (unsigned int i=0; i<N; i++) {
+    // TODO(tpoignonec): Check the frame is correct (i.e., control w.r.t. base)!
+    success &= fill_desired_robot_state_from_msg(i, frame_msgs.cartesian_trajectory_points[i]);
+    success &= fill_desired_compliance_from_msg(i, frame_msgs.compliance_at_points[i]);
+  }
+  return success;
+}
+
+bool AdmittanceState::fill_desired_robot_state_from_msg(
+  unsigned int index,
+  const cartesian_control_msgs::msg::CartesianTrajectoryPoint & desired_cartesian_state)
+{
+  bool success = true; // return flag
+
+  // Retrieve timestamp
+  rclcpp::Duration time_from_start = desired_cartesian_state.time_from_start;
+  reference_compliant_frames[index].relative_time = time_from_start.seconds();
+
+  // Fill desired Cartesian state (pose, twist, acc., and wrench) from msg
+  tf2::fromMsg(
+    desired_cartesian_state.pose,
+    reference_compliant_frames[index].pose
+  );
+  tf2::fromMsg(
+    desired_cartesian_state.velocity,
+    reference_compliant_frames[index].velocity
+  );
+  tf2::fromMsg(
+    desired_cartesian_state.acceleration,
+    reference_compliant_frames[index].acceleration
+  );
+  tf2::fromMsg(
+    desired_cartesian_state.wrench,
+    reference_compliant_frames[index].wrench
+  );
+
+  return success;
+}
+
+bool AdmittanceState::fill_desired_compliance_from_msg(
+  unsigned int index,
+  const cartesian_control_msgs::msg::CartesianCompliance & desired_compliance)
+{
+  (void)index;
+  (void)desired_compliance;
+  /*
+  // TODO(tpoignonec) --> diagonal or dense ? :/
+  bool success = true; // return flag
+
+  reference_compliant_frames[index].inertia = ...
+  reference_compliant_frames[index].stiffness = ...
+  reference_compliant_frames[index].damping = ...
+  */
+  return false;
+}
+
+bool AdmittanceState::fill_desired_compliance(
+  const Eigen::Matrix<double, 6, 1> & desired_inertia,
+  const Eigen::Matrix<double, 6, 1> & desired_stiffness,
+  const Eigen::Matrix<double, 6, 1> & desired_damping)
+{
+  bool success = true; // return flag
+  for (unsigned int i=0; i<N; i++) {
+    success &= fill_desired_compliance(i, desired_inertia, desired_stiffness, desired_damping);
+  }
+  return success;
+}
+
+bool AdmittanceState::fill_desired_compliance(
+  unsigned int index,
+  const Eigen::Matrix<double, 6, 1> & desired_inertia,
+  const Eigen::Matrix<double, 6, 1> & desired_stiffness,
+  const Eigen::Matrix<double, 6, 1> & desired_damping)
+{
+  reference_compliant_frames[index].inertia = desired_inertia;
+  reference_compliant_frames[index].stiffness = desired_stiffness;
+  reference_compliant_frames[index].damping = desired_damping;
+
+  return true;
+}
+
 CartesianAdmittanceRule::CartesianAdmittanceRule(
   const std::shared_ptr<cartesian_admittance_controller::ParamListener> & parameter_handler)
 {
@@ -101,16 +223,21 @@ void CartesianAdmittanceRule::apply_parameters_update()
   admittance_state_.ft_sensor_frame = parameters_.ft_sensor.frame.id;
 
   if (!use_streamed_interaction_parameters_) {
-    admittance_state_.inertia =
+    Eigen::Matrix<double, 6, 1> desired_inertia =
       Eigen::Matrix<double, 6, 1>(parameters_.admittance.inertia.data());
-    admittance_state_.stiffness =
+    Eigen::Matrix<double, 6, 1> desired_stiffness =
       Eigen::Matrix<double, 6, 1>(parameters_.admittance.stiffness.data());
+    Eigen::Matrix<double, 6, 1> desired_damping;
     for (size_t i = 0; i < 6; ++i) {
       // Compute damping from damping ratio
-      admittance_state_.damping[i] =
-        parameters_.admittance.damping_ratio[i] * 2 * \
-        sqrt(admittance_state_.inertia[i] * admittance_state_.stiffness[i]);
+      desired_damping[i] = parameters_.admittance.damping_ratio[i] \
+        * 2 * sqrt(desired_inertia[i] * desired_stiffness[i]);
     }
+    admittance_state_.fill_desired_compliance(
+      desired_inertia,
+      desired_stiffness,
+      desired_damping
+    );
   }
 }
 
@@ -120,9 +247,7 @@ void CartesianAdmittanceRule::set_interaction_parameters(
   const Eigen::Matrix<double, 6, 1> & desired_damping)
 {
   use_streamed_interaction_parameters_ = true;
-  admittance_state_.inertia = desired_inertia;
-  admittance_state_.stiffness = desired_stiffness;
-  admittance_state_.damping = desired_damping;
+  admittance_state_.fill_desired_compliance(desired_inertia, desired_stiffness, desired_damping);
 }
 
 controller_interface::return_type
@@ -210,27 +335,11 @@ bool CartesianAdmittanceRule::update_internal_state(
     admittance_transforms_.base_control_
   );
 
+  // Fill reference compliant frame trajectory
+  success &= admittance_state_.fill_desired_robot_state_from_msg(0, cartesian_reference);
+
   // Process wrench measurement
   success &= process_wrench_measurements(measured_wrench);
-
-  // Update desired pose
-  // TODO(tpoignonec): Check the frame is correct (i.e., control w.r.t. base)!
-  tf2::fromMsg(
-    cartesian_reference.pose,
-    admittance_state_.robot_desired_pose
-  );
-  tf2::fromMsg(
-    cartesian_reference.velocity,
-    admittance_state_.robot_desired_velocity
-  );
-  tf2::fromMsg(
-    cartesian_reference.acceleration,
-    admittance_state_.robot_desired_acceleration
-  );
-  tf2::fromMsg(
-    cartesian_reference.wrench,
-    admittance_state_.robot_desired_wrench
-  );
 
   return true;
 }
@@ -276,9 +385,8 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
   admittance_state_.robot_current_wrench_at_ft_frame.block<3, 1>(3, 0) =
     admittance_transforms_.world_base_.rotation().transpose() * wrench_world_.block<3, 1>(3, 0);
 
-  // Wrench at interaction frame
-
-  // TODO(tpoignonec)
+  // Wrench at interaction point (e.g., assumed to be control frame for now)
+  // TODO(tpoignonec): compute wrench at interaction point
 
   return true;
 }

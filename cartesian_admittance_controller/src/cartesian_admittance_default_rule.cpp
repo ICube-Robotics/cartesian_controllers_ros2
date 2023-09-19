@@ -28,26 +28,38 @@ bool CartesianAdmittanceRule::compute_controls(
   auto rot_base_control = admittance_transforms_.base_control_.rotation();
 
   Eigen::Matrix<double, 6, 6> K = Eigen::Matrix<double, 6, 6>::Zero();
-  K.block<3, 3>(0, 0) = rot_base_control * admittance_state.stiffness.block<3, 1>(0, 0).asDiagonal() * rot_base_control.transpose();
-  K.block<3, 3>(3, 3) = rot_base_control * admittance_state.stiffness.block<3, 1>(3, 0).asDiagonal() * rot_base_control.transpose();
+  K.block<3, 3>(0, 0) =
+    rot_base_control \
+    * admittance_state.reference_compliant_frames[0].stiffness.block<3, 1>(0, 0).asDiagonal() \
+    * rot_base_control.transpose();
+  K.block<3, 3>(3, 3) =
+    rot_base_control \
+    * admittance_state.reference_compliant_frames[0].stiffness.block<3, 1>(3, 0).asDiagonal() \
+    * rot_base_control.transpose();
 
   Eigen::Matrix<double, 6, 6> D = Eigen::Matrix<double, 6, 6>::Zero();
-  D.block<3, 3>(0, 0) = rot_base_control * admittance_state.damping.block<3, 1>(0, 0).asDiagonal() * rot_base_control.transpose();
-  D.block<3, 3>(3, 3) = rot_base_control * admittance_state.damping.block<3, 1>(3, 0).asDiagonal() * rot_base_control.transpose();
+  D.block<3, 3>(0, 0) =
+    rot_base_control \
+    * admittance_state.reference_compliant_frames[0].damping.block<3, 1>(0, 0).asDiagonal() \
+    * rot_base_control.transpose();
+  D.block<3, 3>(3, 3) =
+    rot_base_control \
+    * admittance_state.reference_compliant_frames[0].damping.block<3, 1>(3, 0).asDiagonal() \
+    * rot_base_control.transpose();
 
   Eigen::Matrix<double, 6, 6> M_inv = Eigen::Matrix<double, 6, 6>::Zero();
-  Eigen::Matrix<double, 6, 1> inertia_inv = admittance_state.inertia.cwiseInverse();
+  Eigen::Matrix<double, 6, 1> inertia_inv = admittance_state.reference_compliant_frames[0].inertia.cwiseInverse();
   M_inv.block<3, 3>(0, 0) = rot_base_control * inertia_inv.block<3, 1>(0, 0).asDiagonal() * rot_base_control.transpose();
   M_inv.block<3, 3>(3, 3) = rot_base_control * inertia_inv.block<3, 1>(3, 0).asDiagonal() * rot_base_control.transpose();
 
   // Compute pose tracking errors
   Eigen::Matrix<double, 6, 1> error_pose;
   error_pose.block<3, 1>(0, 0) =
-    admittance_state.robot_desired_pose.translation() \
+    admittance_state.reference_compliant_frames[0].pose.translation() \
     - admittance_state.robot_current_pose.translation();
 
   auto R_angular_error =
-    admittance_state.robot_desired_pose.rotation() \
+    admittance_state.reference_compliant_frames[0].pose.rotation() \
     * admittance_state.robot_current_pose.rotation().transpose();
   auto angle_axis = Eigen::AngleAxisd(R_angular_error);
 
@@ -55,7 +67,7 @@ bool CartesianAdmittanceRule::compute_controls(
 
   // Compute velocity tracking errors in ft frame
   Eigen::Matrix<double, 6, 1> error_velocity =
-    admittance_state.robot_desired_velocity \
+    admittance_state.reference_compliant_frames[0].velocity \
     - admittance_state.robot_current_velocity;
 
   // External force at interaction frame (= control frame), expressed in the base frame
@@ -71,7 +83,7 @@ bool CartesianAdmittanceRule::compute_controls(
   // Compute admittance control law in the base frame
   // commanded_acc = p_ddot_desired + inv(M) * (K * err_p + D * err_p_dot + f_ext)
   Eigen::Matrix<double, 6, 1> commanded_cartesian_acc=
-    admittance_state.robot_desired_acceleration \
+    admittance_state.reference_compliant_frames[0].acceleration \
     + M_inv * (K*error_pose + D*error_velocity + F_ext);
 
   admittance_state.robot_command_twist.setZero();

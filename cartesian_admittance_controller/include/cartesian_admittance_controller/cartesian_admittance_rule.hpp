@@ -42,6 +42,7 @@
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 // Custom msgs
 #include "cartesian_control_msgs/msg/cartesian_trajectory.hpp"
+#include "cartesian_control_msgs/msg/compliant_frame_trajectory.hpp"
 
 // include generated parameter library
 #include "cartesian_admittance_controller_parameters.hpp"
@@ -49,40 +50,79 @@
 
 namespace cartesian_admittance_controller
 {
-struct AdmittanceState
+class CompliantFrame
 {
-  explicit AdmittanceState(size_t num_joints)
-  {
-    // Allocate joint state
-    joint_state_position = Eigen::VectorXd::Zero(num_joints);
-    joint_state_velocity = Eigen::VectorXd::Zero(num_joints);
-
-    // Allocate and reset command
-    robot_command_twist.setZero();
-    joint_command_position = Eigen::VectorXd::Zero(num_joints);
-    joint_command_velocity = Eigen::VectorXd::Zero(num_joints);
-    joint_command_acceleration = Eigen::VectorXd::Zero(num_joints);
-  }
-  bool is_configured = false;
-
-  // General parameters
-  //------------------------
-  std::string control_frame;
-  std::string ft_sensor_frame;
+public:
+  // Time
+  //------
+  /// Time between first frame and this one in seconds
+  /// (i.e., for the first frame of the trajectory, relative_time = 0.0)
+  double relative_time = 0.0;
 
   // Interaction parameters
   //------------------------
+  /// Diagonal terms of the desired inertia matrix, expressed in the control frame
   Eigen::Matrix<double, 6, 1> inertia;
+  /// Diagonal terms of the desired stiffness matrix, expressed in the control frame
   Eigen::Matrix<double, 6, 1> stiffness;
+  /// Diagonal terms of the desired damping matrix, expressed in the control frame
   Eigen::Matrix<double, 6, 1> damping;
 
   // Reference robot state
-  //-----------------------
   // (control frame w.r.t. robot base frame)
-  Eigen::Isometry3d robot_desired_pose;
-  Eigen::Matrix<double, 6, 1> robot_desired_velocity;
-  Eigen::Matrix<double, 6, 1> robot_desired_acceleration;
-  Eigen::Matrix<double, 6, 1> robot_desired_wrench;
+  //-----------------------
+  /// Desired cartesian robot pose as an homogeneous transformation "F_base --> F_control"
+  Eigen::Isometry3d pose;
+  /// Desired robot cartesian velocity at the control frame, expressed in base frame
+  Eigen::Matrix<double, 6, 1> velocity;
+  /// Desired robot cartesian acceleration at the control frame, expressed in base frame
+  Eigen::Matrix<double, 6, 1> acceleration;
+  /// Desired robot cartesian wrench at control frame, expressed in base frame
+  /// (we suppose this is also the interaction frame...)
+  Eigen::Matrix<double, 6, 1> wrench;
+};
+
+class AdmittanceState
+{
+public:
+  explicit AdmittanceState(size_t num_joints, size_t trajectory_lenght = 1);
+
+  bool fill_frames_from_trajectory_msg(
+    const cartesian_control_msgs::msg::CompliantFrameTrajectory & frame_msgs);
+
+  bool fill_desired_robot_state_from_msg(
+    unsigned int index,
+    const cartesian_control_msgs::msg::CartesianTrajectoryPoint & desired_cartesian_state);
+
+  bool fill_desired_compliance_from_msg(
+    unsigned int index,
+    const cartesian_control_msgs::msg::CartesianCompliance & desired_compliance);
+
+  bool fill_desired_compliance(
+    unsigned int index,
+    const Eigen::Matrix<double, 6, 1> & desired_inertia,
+    const Eigen::Matrix<double, 6, 1> & desired_stiffness,
+    const Eigen::Matrix<double, 6, 1> & desired_damping);
+
+  bool fill_desired_compliance(
+    const Eigen::Matrix<double, 6, 1> & desired_inertia,
+    const Eigen::Matrix<double, 6, 1> & desired_stiffness,
+    const Eigen::Matrix<double, 6, 1> & desired_damping);
+
+  // General parameters
+  //------------------------
+  /// Compliant frames trajectory lenght
+  size_t N;
+  /// Name of the robot base frame
+  std::string base_frame;
+  /// Name of the control frame in which the compliance parameters are specified
+  std::string control_frame;
+  /// Name of the force/torque sensor frame in wich is expressed the measured wrench
+  std::string ft_sensor_frame;
+
+  // Desired compliant frame
+  //-------------------------
+  std::vector<CompliantFrame> reference_compliant_frames;
 
   // Measured robot state
   //-----------------------
