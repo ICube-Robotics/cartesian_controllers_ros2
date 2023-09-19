@@ -17,8 +17,6 @@
 // Based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
 
 #include "cartesian_admittance_controller/cartesian_admittance_rule.hpp"
-#include "rclcpp/duration.hpp"
-//#include "rclcpp/utilities.hpp"
 
 namespace cartesian_admittance_controller
 {
@@ -67,7 +65,7 @@ bool CartesianAdmittanceRule::compute_controls(
   // Evaluate torques at new interaction point
   F_ext.block<3, 1>(3, 0) = rot_base_control.transpose() * (
     F_ext_base.block<3, 1>(0, 0)
-    // TODO(tpoignonec): wrench tensor transformation from ft to control frame...
+    // TODO(tpoignonec): ACTUAL wrench tensor transformation from ft to control frame...
   );
 
   // Compute admittance control law in the base frame
@@ -75,18 +73,11 @@ bool CartesianAdmittanceRule::compute_controls(
   Eigen::Matrix<double, 6, 1> commanded_cartesian_acc=
     admittance_state.robot_desired_acceleration \
     + M_inv * (K*error_pose + D*error_velocity + F_ext);
-  /*
-  // add damping if cartesian velocity falls below threshold
-  for (int64_t i = 0; i < admittance_state.joint_acc.size(); ++i)
-  {
-    admittance_state.joint_command_acceleration[i] -=
-      parameters_.admittance.joint_damping * admittance_state.joint_state_velocity[i];
-  }
-  */
 
   admittance_state.robot_command_twist.setZero();
   admittance_state.robot_command_twist += commanded_cartesian_acc * dt;
 
+  auto previous_jnt_cmd_velocity = admittance_state.joint_command_velocity;
 
   bool success = kinematics_->convert_cartesian_deltas_to_joint_deltas(
     admittance_state.joint_state_position,
@@ -95,9 +86,23 @@ bool CartesianAdmittanceRule::compute_controls(
     admittance_state.joint_command_velocity
   );
 
-  // integrate motion in joint space
-  //admittance_state.joint_command_position += (admittance_state.joint_command_acceleration) * dt;
-  admittance_state.joint_command_position += admittance_state.joint_command_velocity * dt;
+  // Integrate motion in joint space
+  admittance_state.joint_command_position =
+    admittance_state.joint_state_position + admittance_state.joint_command_velocity * dt;
+
+  // Estimate joint command acceleration
+  // TODO(tpoigonec): simply set to zero or NaN ?!
+  admittance_state.joint_command_acceleration =
+    (admittance_state.joint_command_velocity - previous_jnt_cmd_velocity) / dt;
+
+  // add damping if cartesian velocity falls below threshold
+  /*
+  for (int64_t i = 0; i < admittance_state.joint_acc.size(); ++i)
+  {
+    admittance_state.joint_command_acceleration[i] -=
+      parameters_.admittance.joint_damping * admittance_state.joint_state_velocity[i];
+  }
+  */
 
   return success;
 }
