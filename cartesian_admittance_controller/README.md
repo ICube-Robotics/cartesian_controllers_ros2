@@ -26,30 +26,44 @@ $$
 \end{align}
 $$
 
-resulting in a joint acceleration command $\ddot{q}^c$ computed using the `kinematics_interface`.
+and integrated to obtain the cartesian velocity command $\dot{p}^c$.
 
-In order to accommodate for `position` and `velocity` command interfaces, the joint position command $q^c$ and velocity command $\dot{q}^c$ are computed using Euler integration such that
+The joint velocity command $\dot{q}^c$ is computed from $\dot{p}^c$ using the `kinematics_interface`.
+
+In order to accommodate for both the `position` and `velocity` command interfaces, the joint velocity command $\dot{q}^c$ is integrated to provide a joint position command ${q}^c$ such that
 
 $$
 \begin{align}
-  \dot{q}^c &= \dot{q} + T_s \ddot{q}^c \\
   {q}^c &= q + T_s \dot{q}^c
 \end{align}
 $$
 
-where $q$ and $\dot{q}$ are the **measured** joint position and velocity, respectively, and $T_s$ is the controller sampling time.
+where $q$ is the **measured** joint position and $T_s$ is the controller sampling time.
 
 ## Topics
 
 - `~/compliant_frame_reference` (input topic) [`cartesian_control_msgs::msg::CompliantFrameTrajectory`]
 
-  Target (cartesian) compliant frame containing at least a pose, a twist and a desired compliance (stiffness, damping, inertia).
+  Target (cartesian) compliant frame containing at least a pose, a twist.
+
+  Aditionally, a desired compliance (stiffness, damping, inertia) can be provided for each reference cartesian state in the trajectory. Otherwise, the ros parameters are used. For instance you could provide
+
+  ```yaml
+  <controller_name>:
+    admittance:
+      frame:
+        id: <admittance_reference_frame> # e.g., tool0 or world
+
+      inertia: [1.0, 1.0, 1.0, 0.1, 0.1, 0.1]
+      damping_ratio: [1., 1., 1., 1., 1., 1.]
+      stiffness: [200., 200., 200., 50., 50., 50.]
+  ```
 
 - `~/state` (output topic) [`control_msgs::msg::AdmittanceControllerState`]
 
   Topic publishing controller internal states.
 
-  **TODO(tpoignonec)** Use custom message `VicControllerState`
+  **TODO(tpoignonec)** Implements + use custom message `VicControllerState`
 
 
 ## ros2_control interfaces
@@ -65,4 +79,4 @@ Additionally, the `Force Torque Sensor` semantic component is used and requires 
 ### Commands
 
 Ideally, the control interface is a joint ``velocity`` group.
-The controller can also use ``position`` or ``acceleration``.
+The controller can also use a ``position`` command interface.
