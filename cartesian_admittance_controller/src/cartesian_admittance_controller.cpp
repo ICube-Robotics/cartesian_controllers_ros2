@@ -342,10 +342,13 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_activate(
   num_joints_ = admittance_->parameters_.joints.size();
 
   // Use current joint_state as a default reference
+  auto ret = admittance_->init_reference_frame_trajectory(joint_state_);
+  if (ret != controller_interface::return_type::OK){
+    RCLCPP_ERROR(get_node()->get_logger(), "Failed to initialize the reference compliance frame trajectory.\n");
+    return controller_interface::CallbackReturn::ERROR;
+  }
   joint_command_ = joint_state_;
   last_commanded_joint_state_ = joint_state_;
-
-  // TODO: set cartesian_reference_ from "joint_state_" using kinematics
 
   return controller_interface::CallbackReturn::SUCCESS;
 }
