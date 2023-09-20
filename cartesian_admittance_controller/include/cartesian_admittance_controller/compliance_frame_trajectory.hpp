@@ -75,6 +75,13 @@ public:
     unsigned int index,
     const cartesian_control_msgs::msg::CartesianTrajectoryPoint & desired_cartesian_state);
 
+  bool fill_desired_desired_robot_state(
+    unsigned int index,
+    const Eigen::Isometry3d & desired_pose,
+    const Eigen::Matrix<double, 6, 1> & desired_velocity,
+    const Eigen::Matrix<double, 6, 1> & desired_acceleration,
+    const Eigen::Matrix<double, 6, 1> & desired_wrench = Eigen::Matrix<double, 6, 1>::Zero());
+
   bool fill_desired_compliance_from_msg(
     unsigned int index,
     const cartesian_control_msgs::msg::CartesianCompliance & desired_compliance);

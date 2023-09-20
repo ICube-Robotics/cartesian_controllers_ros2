@@ -88,6 +88,20 @@ bool CompliantFrameTrajectory::fill_desired_robot_state_from_msg(
   return success;
 }
 
+bool CompliantFrameTrajectory::fill_desired_desired_robot_state(
+    unsigned int index,
+    const Eigen::Isometry3d & desired_pose,
+    const Eigen::Matrix<double, 6, 1> & desired_velocity,
+    const Eigen::Matrix<double, 6, 1> & desired_acceleration,
+    const Eigen::Matrix<double, 6, 1> & desired_wrench)
+{
+  frames_[index].relative_time = 0.0;
+  frames_[index].pose = desired_pose;
+  frames_[index].velocity = desired_velocity;
+  frames_[index].acceleration = desired_acceleration;
+  frames_[index].wrench = desired_wrench;
+}
+
 bool CompliantFrameTrajectory::fill_desired_compliance_from_msg(
   unsigned int index,
   const cartesian_control_msgs::msg::CartesianCompliance & desired_compliance)
