@@ -378,6 +378,15 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
   // Wrench at interaction point (e.g., assumed to be control frame for now)
   // TODO(tpoignonec): compute wrench at interaction point
 
+  /*
+  F_ext.block<3, 1>(0, 0) = rot_base_control.transpose() * F_ext_base.block<3, 1>(0, 0);
+  // Evaluate torques at new interaction point
+  F_ext.block<3, 1>(3, 0) = rot_base_control.transpose() * (
+    F_ext_base.block<3, 1>(0, 0)
+    // TODO(tpoignonec): ACTUAL wrench tensor transformation from ft to control frame...
+  );
+  */
+
   // Transform wrench_world_ into base frame
   admittance_state_.robot_current_wrench_at_ft_frame.block<3, 1>(0, 0) =
     admittance_transforms_.world_base_.rotation().transpose() * wrench_world_.block<3, 1>(0, 0);

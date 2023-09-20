@@ -99,15 +99,8 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     reference_compliant_frame.velocity - \
     admittance_state.robot_current_velocity;
 
-  // External force at interaction frame (= control frame), expressed in the base frame
-  Eigen::Matrix<double, 6, 1> F_ext;
-  auto F_ext_base = admittance_state.robot_current_wrench_at_ft_frame;
-  F_ext.block<3, 1>(0, 0) = rot_base_control.transpose() * F_ext_base.block<3, 1>(0, 0);
-  // Evaluate torques at new interaction point
-  F_ext.block<3, 1>(3, 0) = rot_base_control.transpose() * (
-    F_ext_base.block<3, 1>(0, 0)
-    // TODO(tpoignonec): ACTUAL wrench tensor transformation from ft to control frame...
-  );
+  // External force at interaction frame (assumed to be control frame), expressed in the base frame
+  Eigen::Matrix<double, 6, 1> F_ext = admittance_state.robot_current_wrench_at_ft_frame;
 
   // Compute admittance control law in the base frame
   // commanded_acc = p_ddot_desired + inv(M) * (K * err_p + D * err_p_dot + f_ext)
