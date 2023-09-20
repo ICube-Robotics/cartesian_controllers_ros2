@@ -83,9 +83,44 @@ CartesianAdmittanceRule::configure(
 
 
 controller_interface::return_type
+CartesianAdmittanceRule::init_reference_frame_trajectory(
+    const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state)
+{
+  // Load parameters
+  use_streamed_interaction_parameters_ = false;
+  apply_parameters_update();
+
+  // Assume force is zero
+  geometry_msgs::msg::Wrench dummy_wrench;
+
+  // Update state
+  bool success = update_internal_state(
+    current_joint_state,
+    dummy_wrench
+  );
+
+  // Set current pose as cartesian ref
+  auto N =  admittance_state_.reference_compliant_frames.N();
+  Eigen::Matrix<double, 6, 1> null_vector_6D = Eigen::Matrix<double, 6, 1>::Zero();
+
+  for (unsigned int i = 0; i < N; i++)
+  {
+    // TODO(tpoignonec): Check the frame is correct (i.e., control w.r.t. base)!
+    success &= admittance_state_.reference_compliant_frames.fill_desired_desired_robot_state(
+      i,
+      admittance_state_.robot_current_pose,
+      null_vector_6D,
+      null_vector_6D,
+      null_vector_6D
+    );
+  }
+}
+
+controller_interface::return_type
 CartesianAdmittanceRule::reset(const size_t num_joints)
 {
   // Reset admittance state
+  use_streamed_interaction_parameters_ = false;
   admittance_state_ = AdmittanceState(num_joints);
 
   // Load parameters
@@ -333,14 +368,14 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
     );
   }
 
+  // Wrench at interaction point (e.g., assumed to be control frame for now)
+  // TODO(tpoignonec): compute wrench at interaction point
+
   // Transform wrench_world_ into base frame
   admittance_state_.robot_current_wrench_at_ft_frame.block<3, 1>(0, 0) =
     admittance_transforms_.world_base_.rotation().transpose() * wrench_world_.block<3, 1>(0, 0);
   admittance_state_.robot_current_wrench_at_ft_frame.block<3, 1>(3, 0) =
     admittance_transforms_.world_base_.rotation().transpose() * wrench_world_.block<3, 1>(3, 0);
-
-  // Wrench at interaction point (e.g., assumed to be control frame for now)
-  // TODO(tpoignonec): compute wrench at interaction point
 
   return true;
 }

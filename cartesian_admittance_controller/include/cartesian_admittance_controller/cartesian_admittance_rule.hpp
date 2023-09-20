@@ -134,6 +134,10 @@ public:
     const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
     const size_t num_joint);
 
+  /// Soft reset admittance rule (set cartesian ref as current pose)
+  controller_interface::return_type init_reference_frame_trajectory(
+    const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state);
+
   /// Reset all values back to default
   virtual controller_interface::return_type reset(const size_t num_joints);
 
