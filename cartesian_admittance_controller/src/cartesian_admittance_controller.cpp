@@ -40,33 +40,15 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_init()
       std::make_shared<cartesian_admittance_controller::ParamListener>(get_node());
     cartesian_admittance_controller::Params parameters = parameter_handler_->get_params();
 
-    if (!parameters.admittance.plugin_name.empty() &&
-      !parameters.admittance.plugin_package.empty())
-    {
-      admittance_loader_ =
-        std::make_shared<pluginlib::ClassLoader<cartesian_admittance_controller::CartesianAdmittanceRule>>(
-        parameters.admittance.plugin_package,
-        "cartesian_admittance_controller::CartesianAdmittanceRule");
-      admittance_ = std::unique_ptr<cartesian_admittance_controller::CartesianAdmittanceRule>(
-        admittance_loader_->createUnmanagedInstance(parameters.admittance.plugin_name));
-    } else {
-      RCLCPP_ERROR(
-        get_node()->get_logger(),
-        "Please provide 'admittance.plugin_package' and 'admittance.plugin_name' parameters!");
-      return controller_interface::CallbackReturn::ERROR;
-    }
-    // Initialize admittance rule plugin
-    if (admittance_->init(parameter_handler_) == controller_interface::return_type::ERROR) {
-      return controller_interface::CallbackReturn::ERROR;
-    }
+    // number of joints in controllers is fixed after initialization
+    num_joints_ = parameters.joints.size();
+
   } catch (const std::exception & e) {
     RCLCPP_ERROR(
       get_node()->get_logger(), "Exception thrown during init stage with message: %s \n", e.what());
     return controller_interface::CallbackReturn::ERROR;
   }
 
-  // number of joints in controllers is fixed after initialization
-  num_joints_ = admittance_->parameters_.joints.size();
 
   // allocate dynamic memory
   joint_state_.positions.assign(num_joints_, 0.0);
@@ -157,12 +139,35 @@ controller_interface::return_type CartesianAdmittanceController::update(
 controller_interface::CallbackReturn CartesianAdmittanceController::on_configure(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
-  if (!admittance_) {
+  // initialize controller config
+  try {
+    parameter_handler_ =
+      std::make_shared<cartesian_admittance_controller::ParamListener>(get_node());
+    cartesian_admittance_controller::Params parameters = parameter_handler_->get_params();
+
+    if (!parameters.admittance.plugin_name.empty() &&
+      !parameters.admittance.plugin_package.empty())
+    {
+      admittance_loader_ =
+        std::make_shared<pluginlib::ClassLoader<cartesian_admittance_controller::CartesianAdmittanceRule>>(
+        parameters.admittance.plugin_package,
+        "cartesian_admittance_controller::CartesianAdmittanceRule");
+      admittance_ = std::unique_ptr<cartesian_admittance_controller::CartesianAdmittanceRule>(
+        admittance_loader_->createUnmanagedInstance(parameters.admittance.plugin_name));
+    } else {
+      RCLCPP_ERROR(
+        get_node()->get_logger(),
+        "Please provide 'admittance.plugin_package' and 'admittance.plugin_name' parameters!");
+      return controller_interface::CallbackReturn::ERROR;
+    }
+    // Initialize admittance rule plugin
+    if (admittance_->init(parameter_handler_) == controller_interface::return_type::ERROR) {
+      return controller_interface::CallbackReturn::ERROR;
+    }
+  } catch (const std::exception & e) {
     RCLCPP_ERROR(
-      get_node()->get_logger(),
-      "Error at 'on_configure()': The admittance rule plugin should have been initialized before!"
-    );
-    return CallbackReturn::FAILURE;
+      get_node()->get_logger(), "Exception thrown during configure stage with message: %s \n", e.what());
+    return controller_interface::CallbackReturn::ERROR;
   }
   command_joint_names_ = admittance_->parameters_.command_joints;
   //TODO: new parameter like "velocity_cmd_interface_names"
