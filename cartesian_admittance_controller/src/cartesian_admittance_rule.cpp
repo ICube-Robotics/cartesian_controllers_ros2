@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-/// \authors: Thibault Poignonec, Maciej Bednarczyk
+/// \authors: Thibault Poignonec
 
 // Based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
 
@@ -97,7 +97,7 @@ CartesianAdmittanceRule::init_reference_frame_trajectory(
   if (!update_internal_state(current_joint_state, dummy_wrench)) {
     RCLCPP_ERROR(
       rclcpp::get_logger("CartesianAdmittanceRule"),
-      "Failled to update internal state in 'init_reference_frame_trajectory()'!");
+      "Failed to update internal state in 'init_reference_frame_trajectory()'!");
     return controller_interface::return_type::ERROR;
   }
 
@@ -118,7 +118,7 @@ CartesianAdmittanceRule::init_reference_frame_trajectory(
     if (!success) {
       RCLCPP_ERROR(
         rclcpp::get_logger("CartesianAdmittanceRule"),
-        "Failled to fill the desired robot state for index=%u!",
+        "Failed to fill the desired robot state for index=%u!",
         i);
       return controller_interface::return_type::ERROR;
     }

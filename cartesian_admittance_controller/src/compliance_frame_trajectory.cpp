@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-/// \authors: Thibault Poignonec, Maciej Bednarczyk
+/// \authors: Thibault Poignonec
 
 #include "cartesian_admittance_controller/compliance_frame_trajectory.hpp"
 

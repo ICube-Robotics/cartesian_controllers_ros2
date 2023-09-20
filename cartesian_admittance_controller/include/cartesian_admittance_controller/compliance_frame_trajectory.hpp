@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-/// \authors: Thibault Poignonec, Maciej Bednarczyk
+/// \authors: Thibault Poignonec
 
 #ifndef CARTESIAN_ADMITTANCE_CONTROLLER__COMPLIANCE_FRAME_TRAJECTORY_HPP_
 #define CARTESIAN_ADMITTANCE_CONTROLLER__COMPLIANCE_FRAME_TRAJECTORY_HPP_
