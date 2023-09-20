@@ -1,5 +1,5 @@
 repositories:
-    tpoignonec/kinematics_interface:
+    ros-controls/kinematics_interface:
         type: git
         url: https://github.com/tpoignonec/kinematics_interface.git
         version: tpoignonec-move_definition_logger_to_cpp

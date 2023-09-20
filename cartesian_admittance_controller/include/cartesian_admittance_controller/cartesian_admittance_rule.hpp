@@ -70,9 +70,9 @@ struct AdmittanceState
   std::string base_frame;
   /// Name of the compliance (i.e., admittance) frame in which compliance parameters are specified
   std::string admittance_frame;
-  /// Name of the control frame in wich is expressed the cartesian pose/vel/acc/wrench reference
+  /// Name of the control frame in which is expressed the cartesian pose/vel/acc/wrench reference
   std::string control_frame;
-  /// Name of the force/torque sensor frame in wich is expressed the measured wrench
+  /// Name of the force/torque sensor frame in which is expressed the measured wrench
   std::string ft_sensor_frame;
 
   // Desired compliant frame(s)

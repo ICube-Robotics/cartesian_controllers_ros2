@@ -24,7 +24,7 @@ $$
 
 resulting in a joint acceleration command $\ddot{q}^c$ computed using the `kinematics_interface`.
 
-In order to accomodate for `position` and `velocity` command interfaces, the joint position command $q^c$ and velocity command $\dot{q}^c$ are computed using Euler integration such that
+In order to accommodate for `position` and `velocity` command interfaces, the joint position command $q^c$ and velocity command $\dot{q}^c$ are computed using Euler integration such that
 
 $$
 \begin{align}
