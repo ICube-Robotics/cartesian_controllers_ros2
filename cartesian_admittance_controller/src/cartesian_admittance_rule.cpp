@@ -242,11 +242,6 @@ bool CartesianAdmittanceRule::update_internal_state(
 {
   bool success = true;   // return flag
 
-  // Update kinematics from joint states
-  //TODO(tpoignonec): fill
-  // Eigen::Isometry3d robot_current_pose;
-  // Eigen::Matrix<double, 6, 1> robot_current_velocity;
-
   // Pre-compute commonly used transformations
   success &= kinematics_->calculate_link_transform(
     current_joint_state.positions,
@@ -277,6 +272,24 @@ bool CartesianAdmittanceRule::update_internal_state(
     current_joint_state.positions,
     parameters_.control.frame.id,
     admittance_transforms_.base_admittance_
+  );
+
+  // Update current robot joint states
+  vec_to_eigen(current_joint_state.positions, admittance_state_.joint_state_position);
+  vec_to_eigen(current_joint_state.velocities, admittance_state_.joint_state_velocity);
+
+  // Update current cartesian pose and velocity from robot joint states
+  success &= kinematics_->calculate_link_transform(
+    current_joint_state.positions,
+    admittance_state_.control_frame,
+    admittance_state_.robot_current_pose
+  );
+
+  success = kinematics_->convert_joint_deltas_to_cartesian_deltas(
+    admittance_state_.joint_state_position,
+    admittance_state_.joint_state_velocity,
+    admittance_state_.control_frame,
+    admittance_state_.robot_current_velocity
   );
 
   // Process wrench measurement
@@ -332,5 +345,16 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
   return true;
 }
 
+template <typename T1, typename T2>
+void CartesianAdmittanceRule::vec_to_eigen(const std::vector<T1> & data, T2 & matrix)
+{
+  for (auto col = 0; col < matrix.cols(); col++)
+  {
+    for (auto row = 0; row < matrix.rows(); row++)
+    {
+      matrix(row, col) = data[row + col * matrix.rows()];
+    }
+  }
+}
 
 } // namespace cartesian_admittance_controller
