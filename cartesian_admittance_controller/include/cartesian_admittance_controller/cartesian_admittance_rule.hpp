@@ -192,7 +192,7 @@ public:
   AdmittanceState admittance_state_{0};
 
 protected:
-  template <typename T1, typename T2>
+  template<typename T1, typename T2>
   void vec_to_eigen(const std::vector<T1> & data, T2 & matrix);
 
   /// Number of robot joints

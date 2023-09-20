@@ -94,11 +94,11 @@ bool CompliantFrameTrajectory::fill_desired_robot_state_from_msg(
 }
 
 bool CompliantFrameTrajectory::fill_desired_desired_robot_state(
-    unsigned int index,
-    const Eigen::Isometry3d & desired_pose,
-    const Eigen::Matrix<double, 6, 1> & desired_velocity,
-    const Eigen::Matrix<double, 6, 1> & desired_acceleration,
-    const Eigen::Matrix<double, 6, 1> & desired_wrench)
+  unsigned int index,
+  const Eigen::Isometry3d & desired_pose,
+  const Eigen::Matrix<double, 6, 1> & desired_velocity,
+  const Eigen::Matrix<double, 6, 1> & desired_acceleration,
+  const Eigen::Matrix<double, 6, 1> & desired_wrench)
 {
   if (index >= N()) {
     return false;

@@ -84,7 +84,7 @@ CartesianAdmittanceRule::configure(
 
 controller_interface::return_type
 CartesianAdmittanceRule::init_reference_frame_trajectory(
-    const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state)
+  const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state)
 {
   // Load parameters
   use_streamed_interaction_parameters_ = false;
@@ -94,7 +94,7 @@ CartesianAdmittanceRule::init_reference_frame_trajectory(
   geometry_msgs::msg::Wrench dummy_wrench;
 
   // Update state
-  if (!update_internal_state(current_joint_state,dummy_wrench)){
+  if (!update_internal_state(current_joint_state, dummy_wrench)) {
     RCLCPP_ERROR(
       rclcpp::get_logger("CartesianAdmittanceRule"),
       "Failled to update internal state in 'init_reference_frame_trajectory()'!");
@@ -102,12 +102,11 @@ CartesianAdmittanceRule::init_reference_frame_trajectory(
   }
 
   // Set current pose as cartesian ref
-  auto N =  admittance_state_.reference_compliant_frames.N();
+  auto N = admittance_state_.reference_compliant_frames.N();
   Eigen::Matrix<double, 6, 1> null_vector_6D = Eigen::Matrix<double, 6, 1>::Zero();
 
   bool success = true;
-  for (unsigned int i = 0; i < N; i++)
-  {
+  for (unsigned int i = 0; i < N; i++) {
     // TODO(tpoignonec): Check the frame is correct (i.e., control w.r.t. base)!
     success &= admittance_state_.reference_compliant_frames.fill_desired_desired_robot_state(
       i,
@@ -116,7 +115,7 @@ CartesianAdmittanceRule::init_reference_frame_trajectory(
       null_vector_6D,
       null_vector_6D
     );
-    if (!success){
+    if (!success) {
       RCLCPP_ERROR(
         rclcpp::get_logger("CartesianAdmittanceRule"),
         "Failled to fill the desired robot state for index=%u!",
@@ -184,13 +183,12 @@ void CartesianAdmittanceRule::set_interaction_parameters(
 }
 
 
-
 controller_interface::return_type
 CartesianAdmittanceRule::update_compliant_frame_trajectory(
   const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory)
 {
   // Check cartesian ref trajectory validity
-  auto N =  admittance_state_.reference_compliant_frames.N();
+  auto N = admittance_state_.reference_compliant_frames.N();
   if (compliant_frame_trajectory.cartesian_trajectory_points.size() != N) {
     return controller_interface::return_type::ERROR;
   }
@@ -198,13 +196,11 @@ CartesianAdmittanceRule::update_compliant_frame_trajectory(
   // Check compliance parameters validity
   if (compliant_frame_trajectory.compliance_at_points.size() == N) {
     use_streamed_interaction_parameters_ = true;
-  }
-  else if (compliant_frame_trajectory.compliance_at_points.empty()){
+  } else if (compliant_frame_trajectory.compliance_at_points.empty()) {
     if (use_streamed_interaction_parameters_) {
       return controller_interface::return_type::ERROR;
     }
-  }
-  else {
+  } else {
     return controller_interface::return_type::ERROR;
   }
 
@@ -226,8 +222,7 @@ CartesianAdmittanceRule::update_compliant_frame_trajectory(
 
   if (success) {
     return controller_interface::return_type::OK;
-  } else
-  {
+  } else {
     return controller_interface::return_type::ERROR;
   }
 }
@@ -392,13 +387,11 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
   return true;
 }
 
-template <typename T1, typename T2>
+template<typename T1, typename T2>
 void CartesianAdmittanceRule::vec_to_eigen(const std::vector<T1> & data, T2 & matrix)
 {
-  for (auto col = 0; col < matrix.cols(); col++)
-  {
-    for (auto row = 0; row < matrix.rows(); row++)
-    {
+  for (auto col = 0; col < matrix.cols(); col++) {
+    for (auto row = 0; row < matrix.rows(); row++) {
       matrix(row, col) = data[row + col * matrix.rows()];
     }
   }

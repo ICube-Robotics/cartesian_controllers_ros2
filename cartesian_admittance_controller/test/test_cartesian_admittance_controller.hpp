@@ -148,7 +148,8 @@ public:
 
     command_publisher_node_ = std::make_shared<rclcpp::Node>("command_publisher");
 
-    compliant_frame_trajectory_publisher_ = command_publisher_node_->create_publisher<ControllerRefCompliantTrajectoryMsg>(
+    compliant_frame_trajectory_publisher_ =
+      command_publisher_node_->create_publisher<ControllerRefCompliantTrajectoryMsg>(
       "/test_cartesian_admittance_controller/compliant_frame_trajectory",
       rclcpp::SystemDefaultsQoS());
 
@@ -223,7 +224,7 @@ protected:
     }
 
     std::vector<std::string> fts_itf_names =
-      {"force.x", "force.y", "force.z", "torque.x", "torque.y", "torque.z"};
+    {"force.x", "force.y", "force.z", "torque.x", "torque.y", "torque.z"};
 
     for (auto i = 0u; i < fts_state_names_.size(); ++i) {
       state_itfs_.emplace_back(
@@ -324,17 +325,18 @@ protected:
     //}
     cartesian_control_msgs::msg::CartesianTrajectoryPoint cartesian_trajectory_point;
 
-  try {
+    try {
       kinematics_loader_ =
         std::make_shared<pluginlib::ClassLoader<kinematics_interface::KinematicsInterface>>(
-          "kinematics_interface",
-          "kinematics_interface::KinematicsInterface"
-      );
+        "kinematics_interface",
+        "kinematics_interface::KinematicsInterface"
+        );
       kinematics_ = std::unique_ptr<kinematics_interface::KinematicsInterface>(
-        kinematics_loader_->createUnmanagedInstance("kinematics_interface_kdl/KinematicsInterfaceKDL"));
+        kinematics_loader_->createUnmanagedInstance(
+          "kinematics_interface_kdl/KinematicsInterfaceKDL"));
 
       kinematics_->initialize(
-            controller_->get_node()->get_node_parameters_interface(), ik_tip_frame_);
+        controller_->get_node()->get_node_parameters_interface(), ik_tip_frame_);
     } catch (const std::exception & e) {
       RCLCPP_ERROR(
         controller_->get_node()->get_logger(),
@@ -359,26 +361,26 @@ protected:
 
     cartesian_control_msgs::msg::CartesianCompliance desired_compliance;
 
-    auto eigen_to_multiarray = [] (Eigen::Matrix<double, 6, 6> & mat)
-    {
-      // Now we can convert to a message
-      std_msgs::msg::Float64MultiArray msg;
-      msg.layout.dim.push_back(std_msgs::msg::MultiArrayDimension());
-      msg.layout.dim.push_back(std_msgs::msg::MultiArrayDimension());
-      msg.layout.dim[0].label = "rows";
-      msg.layout.dim[0].size = 6;
-      msg.layout.dim[0].stride = 6*6;
-      msg.layout.dim[1].label = "cols";
-      msg.layout.dim[1].size = 6;
-      msg.layout.dim[1].stride = 6;
-      msg.layout.data_offset = 0;
-      std::vector<double> vec;
-      vec.resize(mat.size());
-      Eigen::Map<Eigen::VectorXd> mvec(mat.data(), mat.size());
-      Eigen::VectorXd::Map(&vec[0], mvec.size()) = mvec;
-      msg.data = vec;
-      return msg;
-    };
+    auto eigen_to_multiarray = [](Eigen::Matrix<double, 6, 6> & mat)
+      {
+        // Now we can convert to a message
+        std_msgs::msg::Float64MultiArray msg;
+        msg.layout.dim.push_back(std_msgs::msg::MultiArrayDimension());
+        msg.layout.dim.push_back(std_msgs::msg::MultiArrayDimension());
+        msg.layout.dim[0].label = "rows";
+        msg.layout.dim[0].size = 6;
+        msg.layout.dim[0].stride = 6 * 6;
+        msg.layout.dim[1].label = "cols";
+        msg.layout.dim[1].size = 6;
+        msg.layout.dim[1].stride = 6;
+        msg.layout.data_offset = 0;
+        std::vector<double> vec;
+        vec.resize(mat.size());
+        Eigen::Map<Eigen::VectorXd> mvec(mat.data(), mat.size());
+        Eigen::VectorXd::Map(&vec[0], mvec.size()) = mvec;
+        msg.data = vec;
+        return msg;
+      };
 
     Eigen::Matrix<double, 6, 6> M = Eigen::DiagonalMatrix<double, 6>(1, 2, 3, 0.1, 0.2, 0.3);
     Eigen::Matrix<double, 6, 6> K = Eigen::DiagonalMatrix<double, 6>(100, 200, 300, 10, 20, 30);
@@ -434,7 +436,8 @@ protected:
   // Test related parameters
   std::unique_ptr<TestableCartesianAdmittanceController> controller_;
   rclcpp::Node::SharedPtr command_publisher_node_;
-  rclcpp::Publisher<ControllerRefCompliantTrajectoryMsg>::SharedPtr compliant_frame_trajectory_publisher_;
+  rclcpp::Publisher<ControllerRefCompliantTrajectoryMsg>::SharedPtr
+    compliant_frame_trajectory_publisher_;
   rclcpp::Node::SharedPtr test_subscription_node_;
   rclcpp::Node::SharedPtr test_broadcaster_node_;
 

@@ -109,8 +109,7 @@ controller_interface::return_type CartesianAdmittanceController::update(
 
   // update compliant frme(s) reference from ros subscriber message
   reference_compliant_frame_trajectory_msg_ = *input_compliant_frame_trajectory_msg_.readFromRT();
-  if (reference_compliant_frame_trajectory_msg_.get())
-  {
+  if (reference_compliant_frame_trajectory_msg_.get()) {
     admittance_->update_compliant_frame_trajectory(*reference_compliant_frame_trajectory_msg_.get());
   }
 
@@ -166,7 +165,8 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_configure
     }
   } catch (const std::exception & e) {
     RCLCPP_ERROR(
-      get_node()->get_logger(), "Exception thrown during configure stage with message: %s \n", e.what());
+      get_node()->get_logger(), "Exception thrown during configure stage with message: %s \n",
+      e.what());
     return controller_interface::CallbackReturn::ERROR;
   }
   command_joint_names_ = admittance_->parameters_.command_joints;
@@ -343,8 +343,10 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_activate(
 
   // Use current joint_state as a default reference
   auto ret = admittance_->init_reference_frame_trajectory(joint_state_);
-  if (ret != controller_interface::return_type::OK){
-    RCLCPP_ERROR(get_node()->get_logger(), "Failed to initialize the reference compliance frame trajectory.\n");
+  if (ret != controller_interface::return_type::OK) {
+    RCLCPP_ERROR(
+      get_node()->get_logger(),
+      "Failed to initialize the reference compliance frame trajectory.\n");
     return controller_interface::CallbackReturn::ERROR;
   }
   joint_command_ = joint_state_;
