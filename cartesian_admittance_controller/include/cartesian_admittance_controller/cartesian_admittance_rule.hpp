@@ -144,13 +144,6 @@ public:
   /// Retrieve parameters and update if applicable
   void apply_parameters_update();
 
-  /// Manual setting of inertia, damping, and stiffness (diagonal matrices)
-  void set_interaction_parameters(
-    const Eigen::Matrix<double, 6, 1> & desired_inertia,
-    const Eigen::Matrix<double, 6, 1> & desired_stiffness,
-    const Eigen::Matrix<double, 6, 1> & desired_damping
-  );
-
   controller_interface::return_type update_compliant_frame_trajectory(
     const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory);
 
@@ -171,6 +164,13 @@ public:
   );
 
 protected:
+  /// Manual setting of inertia, damping, and stiffness (diagonal matrices)
+  void set_interaction_parameters(
+    const Eigen::Matrix<double, 6, 1> & desired_inertia,
+    const Eigen::Matrix<double, 6, 1> & desired_stiffness,
+    const Eigen::Matrix<double, 6, 1> & desired_damping
+  );
+
   bool update_internal_state(
     const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
     const geometry_msgs::msg::Wrench & measured_wrench);

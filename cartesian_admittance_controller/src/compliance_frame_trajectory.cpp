@@ -50,6 +50,11 @@ bool CompliantFrameTrajectory::fill_desired_robot_state_from_msg(
   unsigned int index,
   const cartesian_control_msgs::msg::CartesianTrajectoryPoint & desired_cartesian_state)
 {
+  // Test index is valid
+  if (index >= N()) {
+    return false;
+  }
+
   bool success = true; // return flag
 
   // Retrieve timestamp
@@ -95,18 +100,27 @@ bool CompliantFrameTrajectory::fill_desired_desired_robot_state(
     const Eigen::Matrix<double, 6, 1> & desired_acceleration,
     const Eigen::Matrix<double, 6, 1> & desired_wrench)
 {
+  if (index >= N()) {
+    return false;
+  }
   frames_[index].relative_time = 0.0;
   frames_[index].pose = desired_pose;
   frames_[index].velocity = desired_velocity;
   frames_[index].acceleration = desired_acceleration;
   frames_[index].wrench = desired_wrench;
+
+  return true;
 }
 
 bool CompliantFrameTrajectory::fill_desired_compliance_from_msg(
   unsigned int index,
   const cartesian_control_msgs::msg::CartesianCompliance & desired_compliance)
 {
-  (void)index;
+  // Test index is valid
+  if (index >= N()) {
+    return false;
+  }
+
   (void)desired_compliance;
   /*
   // TODO(tpoignonec) --> diagonal or dense ? :/
@@ -137,6 +151,12 @@ bool CompliantFrameTrajectory::fill_desired_compliance(
   const Eigen::Matrix<double, 6, 1> & desired_stiffness,
   const Eigen::Matrix<double, 6, 1> & desired_damping)
 {
+
+  // Test index is valid
+  if (index >= N()) {
+    return false;
+  }
+
   frames_[index].inertia = desired_inertia;
   frames_[index].stiffness = desired_stiffness;
   frames_[index].damping = desired_damping;
