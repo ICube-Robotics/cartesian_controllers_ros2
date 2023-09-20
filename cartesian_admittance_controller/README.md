@@ -46,7 +46,7 @@ where $q$ is the **measured** joint position and $T_s$ is the controller samplin
 
   Target (cartesian) compliant frame containing at least a pose, a twist.
 
-  Aditionally, a desired compliance (stiffness, damping, inertia) can be provided for each reference cartesian state in the trajectory. Otherwise, the ros parameters are used. For instance you could provide
+  Additionally, a desired compliance (stiffness, damping, inertia) can be provided for each reference cartesian state in the trajectory. Otherwise, the ros parameters are used. For instance you could provide the following ros parameters:
 
   ```yaml
   <controller_name>:
