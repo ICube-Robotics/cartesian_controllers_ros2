@@ -71,9 +71,6 @@ public:
 
   size_t N() const;
 
-  bool fill_from_msg(
-    const cartesian_control_msgs::msg::CompliantFrameTrajectory & frame_msgs);
-
   bool fill_desired_robot_state_from_msg(
     unsigned int index,
     const cartesian_control_msgs::msg::CartesianTrajectoryPoint & desired_cartesian_state);

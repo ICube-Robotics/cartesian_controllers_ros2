@@ -46,27 +46,6 @@ size_t CompliantFrameTrajectory::N() const
   return frames_.size();
 }
 
-bool CompliantFrameTrajectory::fill_from_msg(
-  const cartesian_control_msgs::msg::CompliantFrameTrajectory & frame_msgs)
-{
-  if (frame_msgs.cartesian_trajectory_points.size() != N()) {
-    //TODO(tpoignonec): throw exception OR print log error?
-    return false;
-  }
-  if (frame_msgs.cartesian_trajectory_points.size() != frame_msgs.compliance_at_points.size()) {
-    //TODO(tpoignonec): throw exception OR print log error?
-    return false;
-  }
-  // Update reference compliant frames
-  bool success = true;
-  for (unsigned int i = 0; i < N(); i++) {
-    // TODO(tpoignonec): Check the frame is correct (i.e., control w.r.t. base)!
-    success &= fill_desired_robot_state_from_msg(i, frame_msgs.cartesian_trajectory_points[i]);
-    success &= fill_desired_compliance_from_msg(i, frame_msgs.compliance_at_points[i]);
-  }
-  return success;
-}
-
 bool CompliantFrameTrajectory::fill_desired_robot_state_from_msg(
   unsigned int index,
   const cartesian_control_msgs::msg::CartesianTrajectoryPoint & desired_cartesian_state)

@@ -68,7 +68,9 @@ struct AdmittanceState
   //------------------------
   /// Name of the robot base frame
   std::string base_frame;
-  /// Name of the control frame in which the compliance parameters are specified
+  /// Name of the compliance (i.e., admittance) frame in which compliance parameters are specified
+  std::string admittance_frame;
+  /// Name of the control frame in wich is expressed the cartesian pose/vel/acc/wrench reference
   std::string control_frame;
   /// Name of the force/torque sensor frame in wich is expressed the measured wrench
   std::string ft_sensor_frame;
@@ -106,6 +108,7 @@ struct AdmittanceTransforms
   // transformation from control frame to base link frame at reference + admittance offset joint
   // angles
   Eigen::Isometry3d base_control_;
+  Eigen::Isometry3d base_admittance_;
   // transformation from end effector frame to base link frame at reference + admittance offset
   // joint angles
   Eigen::Isometry3d base_tip_;

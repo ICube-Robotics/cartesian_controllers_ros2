@@ -74,7 +74,7 @@ cartesian_admittance_controller:
     frame:
       id: {
         type: string,
-        description: "Specifies the control frame used for admittance calculation."
+        description: "Specifies the robot control frame in which the reference pose and velocities are expressed."
       }
 
   fixed_world_frame: # Gravity points down (neg. Z) in this frame (Usually: world or base_link)
@@ -105,6 +105,11 @@ cartesian_admittance_controller:
       }
 
   admittance:
+    frame:
+      id: {
+        type: string,
+        description: "Specifies the control frame used for admittance calculation."
+      }
     plugin_name: {
       type: string,
       default_value: "cartesian_admittance_controller/VanillaCartesianAdmittanceRule",

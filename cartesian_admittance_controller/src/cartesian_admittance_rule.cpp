@@ -101,6 +101,7 @@ void CartesianAdmittanceRule::apply_parameters_update()
     parameters_ = parameter_handler_->get_params();
   }
   // update param values
+  admittance_state_.admittance_frame = parameters_.admittance.frame.id;
   admittance_state_.control_frame = parameters_.control.frame.id;
   admittance_state_.ft_sensor_frame = parameters_.ft_sensor.frame.id;
 
@@ -141,11 +142,42 @@ controller_interface::return_type
 CartesianAdmittanceRule::update_compliant_frame_trajectory(
   const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory)
 {
-  // Fill reference compliant frame trajectory
-  bool success = admittance_state_.reference_compliant_frames.fill_from_msg(compliant_frame_trajectory);
+  // Check cartesian ref trajectory validity
+  auto N =  admittance_state_.reference_compliant_frames.N();
+  if (compliant_frame_trajectory.cartesian_trajectory_points.size() != N) {
+    return controller_interface::return_type::ERROR;
+  }
+  // TODO : check frame_id and child_frame_id
+  // Check compliance parameters validity
+  if (compliant_frame_trajectory.compliance_at_points.size() == N) {
+    use_streamed_interaction_parameters_ = true;
+  }
+  else if (compliant_frame_trajectory.compliance_at_points.empty()){
+    if (use_streamed_interaction_parameters_) {
+      return controller_interface::return_type::ERROR;
+    }
+  }
+  else {
+    return controller_interface::return_type::ERROR;
+  }
 
-  if (success)
-  {
+  // Update reference compliant frames
+  bool success = true;
+  for (unsigned int i = 0; i < N; i++) {
+    // TODO(tpoignonec): Check the frame is correct (i.e., control w.r.t. base)!
+    success &= admittance_state_.reference_compliant_frames.fill_desired_robot_state_from_msg(
+      i,
+      compliant_frame_trajectory.cartesian_trajectory_points[i]
+    );
+    if (use_streamed_interaction_parameters_) {
+      success &= admittance_state_.reference_compliant_frames.fill_desired_compliance_from_msg(
+        i,
+        compliant_frame_trajectory.compliance_at_points[i]
+      );
+    }
+  }
+
+  if (success) {
     return controller_interface::return_type::OK;
   } else
   {
@@ -211,6 +243,11 @@ bool CartesianAdmittanceRule::update_internal_state(
   bool success = true;   // return flag
 
   // Update kinematics from joint states
+  //TODO(tpoignonec): fill
+  // Eigen::Isometry3d robot_current_pose;
+  // Eigen::Matrix<double, 6, 1> robot_current_velocity;
+
+  // Pre-compute commonly used transformations
   success &= kinematics_->calculate_link_transform(
     current_joint_state.positions,
     admittance_state_.ft_sensor_frame,
@@ -235,6 +272,11 @@ bool CartesianAdmittanceRule::update_internal_state(
     current_joint_state.positions,
     parameters_.control.frame.id,
     admittance_transforms_.base_control_
+  );
+  success &= kinematics_->calculate_link_transform(
+    current_joint_state.positions,
+    parameters_.control.frame.id,
+    admittance_transforms_.base_admittance_
   );
 
   // Process wrench measurement
