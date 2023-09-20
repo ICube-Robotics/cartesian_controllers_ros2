@@ -2,6 +2,10 @@
 
 This is a cartesian version of the package `admittance_controller` from [ros-controls/ros2_controllers](https://github.com/ros-controls/ros2_controllers/tree/master).
 
+> **Warning**
+>
+> This package is currently under development and possibly unsafe if used to control an actual robot!
+
 ## Control law
 
 The controller imposes the following cartesian behavior
