@@ -76,6 +76,10 @@ test_cartesian_admittance_controller:
         force: 23.0 # mass * 9.81
 
     admittance:
+      frame:
+        id: tool0 # Admittance calcs (displacement etc) are done in this frame. Usually the tool or end-effector
+        external: false # control frame exists within URDF kinematic chain
+
       selected_axes:
         - true # x
         - true # y

@@ -33,7 +33,7 @@ INSTANTIATE_TEST_SUITE_P(
   AdmittanceControllerTestParameterizedMissingParameters,
   ::testing::Values(
     "admittance.inertia", "admittance.selected_axes", "admittance.stiffness",
-    "chainable_command_interfaces", "command_interfaces", "control.frame.id",
+    "chainable_command_interfaces", "command_interfaces", "control.frame.id", "admittance.frame.id",
     "fixed_world_frame.frame.id", "ft_sensor.frame.id", "ft_sensor.name",
     "gravity_compensation.CoG.pos", "gravity_compensation.frame.id", "joints", "kinematics.base",
     "kinematics.plugin_name", "kinematics.plugin_package", "kinematics.tip", "state_interfaces"));
