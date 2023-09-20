@@ -94,15 +94,18 @@ CartesianAdmittanceRule::init_reference_frame_trajectory(
   geometry_msgs::msg::Wrench dummy_wrench;
 
   // Update state
-  bool success = update_internal_state(
-    current_joint_state,
-    dummy_wrench
-  );
+  if (!update_internal_state(current_joint_state,dummy_wrench)){
+    RCLCPP_ERROR(
+      rclcpp::get_logger("CartesianAdmittanceRule"),
+      "Failled to update internal state in 'init_reference_frame_trajectory()'!");
+    return controller_interface::return_type::ERROR;
+  }
 
   // Set current pose as cartesian ref
   auto N =  admittance_state_.reference_compliant_frames.N();
   Eigen::Matrix<double, 6, 1> null_vector_6D = Eigen::Matrix<double, 6, 1>::Zero();
 
+  bool success = true;
   for (unsigned int i = 0; i < N; i++)
   {
     // TODO(tpoignonec): Check the frame is correct (i.e., control w.r.t. base)!
@@ -113,7 +116,16 @@ CartesianAdmittanceRule::init_reference_frame_trajectory(
       null_vector_6D,
       null_vector_6D
     );
+    if (!success){
+      RCLCPP_ERROR(
+        rclcpp::get_logger("CartesianAdmittanceRule"),
+        "Failled to fill the desired robot state for index=%u!",
+        i);
+      return controller_interface::return_type::ERROR;
+    }
   }
+  return controller_interface::return_type::OK;
+
 }
 
 controller_interface::return_type
