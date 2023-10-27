@@ -62,6 +62,9 @@ struct AdmittanceState
     joint_command_position = Eigen::VectorXd::Zero(num_joints);
     joint_command_velocity = Eigen::VectorXd::Zero(num_joints);
     joint_command_acceleration = Eigen::VectorXd::Zero(num_joints);
+
+    // Allocate and reset history
+    last_robot_commanded_twist.setZero();
   }
 
   // General parameters
@@ -92,6 +95,9 @@ struct AdmittanceState
   //------------------------
   // Commanded twist (control frame w.r.t. robot base frame)
   Eigen::Matrix<double, 6, 1> robot_command_twist;
+  // Last commanded twist
+  Eigen::Matrix<double, 6, 1> last_robot_commanded_twist;
+  
   // Commanded joint state computed from "robot_command_twist"
   Eigen::VectorXd joint_command_position;
   Eigen::VectorXd joint_command_velocity;
