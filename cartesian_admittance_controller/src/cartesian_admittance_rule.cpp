@@ -37,6 +37,7 @@ CartesianAdmittanceRule::init(
   parameters_ = parameter_handler_->get_params();
   num_joints_ = parameters_.joints.size();
   admittance_state_ = AdmittanceState(num_joints_);
+  wrench_world_.setZero();
   use_streamed_interaction_parameters_ = false;
   return reset(num_joints_);
 }
@@ -100,6 +101,11 @@ CartesianAdmittanceRule::init_reference_frame_trajectory(
       "Failed to update internal state in 'init_reference_frame_trajectory()'!");
     return controller_interface::return_type::ERROR;
   }
+
+  // Reset robot command
+  // TODO(tpoignonec): move elsewhere?
+  admittance_state_.joint_command_position = admittance_state_.joint_state_position;
+  admittance_state_.joint_command_velocity = admittance_state_.joint_state_velocity;
 
   // Set current pose as cartesian ref
   auto N = admittance_state_.reference_compliant_frames.N();
@@ -251,6 +257,10 @@ CartesianAdmittanceRule::update(
 
   // If an error is detected, set commanded velocity to zero
   if (!success) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("CartesianAdmittanceRule"),
+      "Failed to compute the controls!"
+    );
     // Set commanded position to the previous one
     joint_state_command.positions = current_joint_state.positions;
     // Set commanded velocity/acc to zero
@@ -352,6 +362,9 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
   new_wrench(1, 1) = measured_wrench.torque.y;
   new_wrench(2, 1) = measured_wrench.torque.z;
 
+  // TODO: remove, debug only!!!
+  // new_wrench.setZero();
+
   // F/T measurement w.r.t. world frame
   Eigen::Matrix<double, 3, 3> rot_world_sensor =
     admittance_transforms_.world_base_.rotation() * admittance_transforms_.base_ft_.rotation();
@@ -372,7 +385,7 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
       new_wrench_world(i),
       wrench_world_(i),
       parameters_.ft_sensor.filter_coefficient
-    );
+    ); 
   }
 
   // Wrench at interaction point (e.g., assumed to be control frame for now)
@@ -388,11 +401,18 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
   */
 
   // Transform wrench_world_ into base frame
-  admittance_state_.robot_current_wrench_at_ft_frame.block<3, 1>(0, 0) =
-    admittance_transforms_.world_base_.rotation().transpose() * wrench_world_.block<3, 1>(0, 0);
-  admittance_state_.robot_current_wrench_at_ft_frame.block<3, 1>(3, 0) =
-    admittance_transforms_.world_base_.rotation().transpose() * wrench_world_.block<3, 1>(3, 0);
+  admittance_state_.robot_current_wrench_at_ft_frame.head(3)=
+    admittance_transforms_.world_base_.rotation().transpose() * wrench_world_.head(3);
+  admittance_state_.robot_current_wrench_at_ft_frame.tail(3) =
+    admittance_transforms_.world_base_.rotation().transpose() * wrench_world_.tail(3);
 
+  /*
+  std::cerr << "raw wrench = " << new_wrench.transpose() << std::endl;
+  std::cerr << "new_wrench_world = " << new_wrench_world.transpose() << std::endl;
+  std::cerr << "filter coef = " << parameters_.ft_sensor.filter_coefficient << std::endl;
+  std::cerr << "filtered_wrench_world = " << wrench_world_.transpose() << std::endl;
+  std::cerr << "new_wrench_base = " << admittance_state_.robot_current_wrench_at_ft_frame.transpose() << std::endl;
+  */
   return true;
 }
 

@@ -108,19 +108,13 @@ controller_interface::return_type CartesianAdmittanceController::update(
     return controller_interface::return_type::ERROR;
   }
 
-  // update compliant frme(s) reference from ros subscriber message
-  reference_compliant_frame_trajectory_msg_ = *input_compliant_frame_trajectory_msg_.readFromRT();
-  if (reference_compliant_frame_trajectory_msg_.get()) {
-    admittance_->update_compliant_frame_trajectory(*reference_compliant_frame_trajectory_msg_.get());
-  }
-
   // get all controller inputs
   bool is_state_valid = read_state_from_hardware(joint_state_, ft_values_);
 
   /*
   RCLCPP_INFO(
     get_node()->get_logger(),
-    "f_x = %.3f, f_y = %.3f, f_z = %.3f\n",
+    "f_x = %.4f, f_y = %.4f, f_z = %.4f\n",
     ft_values_.force.x, ft_values_.force.y, ft_values_.force.z
   );
   */
@@ -142,19 +136,28 @@ controller_interface::return_type CartesianAdmittanceController::update(
   }
 
   // Control logic
-  if (false) {
+  if (all_ok) {
+    // update compliant frme(s) reference from ros subscriber message
+    reference_compliant_frame_trajectory_msg_ = *input_compliant_frame_trajectory_msg_.readFromRT();
+    if (reference_compliant_frame_trajectory_msg_.get()) {
+      admittance_->update_compliant_frame_trajectory(
+        *reference_compliant_frame_trajectory_msg_.get());
+    }
     // apply admittance control to reference to determine desired state
-    admittance_->update(
+    auto ret_admittance = admittance_->update(
       joint_state_,
       ft_values_,
       period,
       joint_command_
     );
+    if (ret_admittance != controller_interface::return_type::OK) {
+      return controller_interface::return_type::ERROR;
+    }
   }
-
+  /*
   RCLCPP_INFO(
     get_node()->get_logger(),
-    "Joint position cmd: [%.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f]\n",
+    "Joint position cmd: [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f]\n",
     joint_command_.positions[0],
     joint_command_.positions[1],
     joint_command_.positions[2],
@@ -166,7 +169,7 @@ controller_interface::return_type CartesianAdmittanceController::update(
 
   RCLCPP_INFO(
     get_node()->get_logger(),
-    "Joint velocity cmd: [%.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f] \n\n",
+    "Joint velocity cmd: [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f] \n\n",
     joint_command_.velocities[0],
     joint_command_.velocities[1],
     joint_command_.velocities[2],
@@ -175,6 +178,7 @@ controller_interface::return_type CartesianAdmittanceController::update(
     joint_command_.velocities[5],
     joint_command_.velocities[6]
   );
+  */
 
   // write calculated values to joint interfaces
   write_state_to_hardware(joint_command_);
@@ -464,7 +468,7 @@ bool CartesianAdmittanceController::read_state_from_hardware(
   /*
   RCLCPP_INFO(
     get_node()->get_logger(),
-    "Joint position state: [%.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f]\n",
+    "Joint position state: [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f]\n",
     state_current.positions[0],
     state_current.positions[1],
     state_current.positions[2],
@@ -559,7 +563,7 @@ bool CartesianAdmittanceController::initialize_impedance_rule(
   auto ret = admittance_->init_reference_frame_trajectory(joint_state);
   RCLCPP_INFO(
     get_node()->get_logger(),
-    "Joint position initialization: [%.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f]\n",
+    "Joint position initialization: [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f]\n",
     joint_state.positions[0],
     joint_state.positions[1],
     joint_state.positions[2],
