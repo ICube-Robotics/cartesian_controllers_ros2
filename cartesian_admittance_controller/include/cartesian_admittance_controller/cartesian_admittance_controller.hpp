@@ -143,6 +143,7 @@ protected:
 
   // Admittance rule
   std::unique_ptr<cartesian_admittance_controller::CartesianAdmittanceRule> admittance_;
+  bool is_impedance_initialized_ = false;
 
   // force torque sensor
   std::unique_ptr<semantic_components::ForceTorqueSensor> force_torque_sensor_;
@@ -181,7 +182,7 @@ protected:
    * @brief Read values from hardware interfaces and set corresponding fields of joint_state and
    * ft_values
    */
-  void read_state_from_hardware(
+  bool read_state_from_hardware(
     trajectory_msgs::msg::JointTrajectoryPoint & joint_state,
     geometry_msgs::msg::Wrench & ft_values);
 
@@ -194,7 +195,12 @@ protected:
   /**
    * @brief Write values from joint_state_command to claimed hardware interfaces
    */
-  void write_state_to_hardware(trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command);
+  bool write_state_to_hardware(trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command);
+
+  /**
+   * @brief Initialize the impedance rule
+   */
+  bool initialize_impedance_rule(const trajectory_msgs::msg::JointTrajectoryPoint & joint_state);
 };
 
 }  // namespace cartesian_admittance_controller

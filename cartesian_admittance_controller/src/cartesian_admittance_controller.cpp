@@ -25,7 +25,8 @@
 #include <vector>
 
 #include "geometry_msgs/msg/wrench.hpp"
-#include "rcutils/logging_macros.h"
+// #include "rcutils/logging_macros.h"
+#include "rclcpp/logging.hpp"
 #include "tf2_ros/buffer.h"
 #include "trajectory_msgs/msg/joint_trajectory_point.hpp"
 #include "cartesian_control_msgs/msg/cartesian_trajectory_point.hpp"
@@ -51,9 +52,9 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_init()
 
 
   // allocate dynamic memory
-  joint_state_.positions.assign(num_joints_, 0.0);
-  joint_state_.velocities.assign(num_joints_, 0.0);
-  joint_state_.accelerations.assign(num_joints_, 0.0);
+  joint_state_.positions.assign(num_joints_, 0.0);  // std::nan);
+  joint_state_.velocities.assign(num_joints_, 0.0);  //  std::nan);
+  joint_state_.accelerations.assign(num_joints_, 0.0);  //  std::nan);
 
   joint_command_ = joint_state_;
   last_commanded_joint_state_ = joint_state_;
@@ -114,14 +115,65 @@ controller_interface::return_type CartesianAdmittanceController::update(
   }
 
   // get all controller inputs
-  read_state_from_hardware(joint_state_, ft_values_);
+  bool is_state_valid = read_state_from_hardware(joint_state_, ft_values_);
 
-  // apply admittance control to reference to determine desired state
-  admittance_->update(
-    joint_state_,
-    ft_values_,
-    period,
-    joint_command_
+  /*
+  RCLCPP_INFO(
+    get_node()->get_logger(),
+    "f_x = %.3f, f_y = %.3f, f_z = %.3f\n",
+    ft_values_.force.x, ft_values_.force.y, ft_values_.force.z
+  );
+  */
+
+  bool all_ok = true;
+  // make sure impedance was initialized
+  if (!is_impedance_initialized_ && !is_state_valid) {
+    // Exit and wait for valid data...
+    return controller_interface::return_type::OK;
+  } else if (!is_impedance_initialized_ && is_state_valid) {
+    // Init current desired pose from current joint position
+    if (!initialize_impedance_rule(joint_state_)) {
+      return controller_interface::return_type::ERROR;
+    }
+  } else if (!is_state_valid) {
+    // TODO : return ERROR?
+    all_ok &= false;
+    joint_command_ = last_commanded_joint_state_;
+  }
+
+  // Control logic
+  if (false) {
+    // apply admittance control to reference to determine desired state
+    admittance_->update(
+      joint_state_,
+      ft_values_,
+      period,
+      joint_command_
+    );
+  }
+
+  RCLCPP_INFO(
+    get_node()->get_logger(),
+    "Joint position cmd: [%.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f]\n",
+    joint_command_.positions[0],
+    joint_command_.positions[1],
+    joint_command_.positions[2],
+    joint_command_.positions[3],
+    joint_command_.positions[4],
+    joint_command_.positions[5],
+    joint_command_.positions[6]
+  );
+
+  RCLCPP_INFO(
+    get_node()->get_logger(),
+    "Joint velocity cmd: [%.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f] \n\n",
+    joint_command_.velocities[0],
+    joint_command_.velocities[1],
+    joint_command_.velocities[2],
+    joint_command_.velocities[3],
+    joint_command_.velocities[4],
+    joint_command_.velocities[5],
+    joint_command_.velocities[6]
   );
 
   // write calculated values to joint interfaces
@@ -341,17 +393,6 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_activate(
   // number of joints in controllers is fixed after initialization
   num_joints_ = admittance_->parameters_.joints.size();
 
-  // Use current joint_state as a default reference
-  auto ret = admittance_->init_reference_frame_trajectory(joint_state_);
-  if (ret != controller_interface::return_type::OK) {
-    RCLCPP_ERROR(
-      get_node()->get_logger(),
-      "Failed to initialize the reference compliance frame trajectory.\n");
-    return controller_interface::CallbackReturn::ERROR;
-  }
-  joint_command_ = joint_state_;
-  last_commanded_joint_state_ = joint_state_;
-
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -392,17 +433,18 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_error(
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-void CartesianAdmittanceController::read_state_from_hardware(
+bool CartesianAdmittanceController::read_state_from_hardware(
   trajectory_msgs::msg::JointTrajectoryPoint & state_current,
   geometry_msgs::msg::Wrench & ft_values)
 {
   // if any interface has nan values, assume state_current is the last command state
+  bool all_ok = true;
   bool nan_position = false;
   bool nan_velocity = false;
   bool nan_acceleration = false;
 
   size_t pos_ind = 0;
-  size_t vel_ind = pos_ind + has_velocity_command_interface_;
+  size_t vel_ind = pos_ind + has_velocity_state_interface_;
   size_t acc_ind = vel_ind + has_acceleration_state_interface_;
   for (size_t joint_ind = 0; joint_ind < num_joints_; ++joint_ind) {
     if (has_position_state_interface_) {
@@ -419,15 +461,34 @@ void CartesianAdmittanceController::read_state_from_hardware(
       nan_acceleration |= std::isnan(state_current.accelerations[joint_ind]);
     }
   }
-
+  /*
+  RCLCPP_INFO(
+    get_node()->get_logger(),
+    "Joint position state: [%.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f]\n",
+    state_current.positions[0],
+    state_current.positions[1],
+    state_current.positions[2],
+    state_current.positions[3],
+    state_current.positions[4],
+    state_current.positions[5],
+    state_current.positions[6]
+  );
+  */
+  auto clock = get_node()->get_clock();
   if (nan_position) {
+    all_ok &= false;
     state_current.positions = last_commanded_joint_state_.positions;
+    RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *clock, 1000, "State position is NaN!");
   }
   if (nan_velocity) {
+    all_ok &= false;
     state_current.velocities = last_commanded_joint_state_.velocities;
+    RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *clock, 1000, "State velocity is NaN!");
   }
   if (nan_acceleration) {
+    all_ok &= false;
     state_current.accelerations = last_commanded_joint_state_.accelerations;
+    RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *clock, 1000, "State acceleration is NaN!");
   }
 
   // if any ft_values are nan, assume values are zero
@@ -437,30 +498,87 @@ void CartesianAdmittanceController::read_state_from_hardware(
     std::isnan(ft_values.force.z) || std::isnan(ft_values.torque.x) ||
     std::isnan(ft_values.torque.y) || std::isnan(ft_values.torque.z))
   {
+    all_ok &= false;
     ft_values = geometry_msgs::msg::Wrench();
   }
+  return all_ok;
 }
 
-void CartesianAdmittanceController::write_state_to_hardware(
+bool CartesianAdmittanceController::write_state_to_hardware(
   trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
 {
   // if any interface has nan values, assume state_commanded is the last command state
   size_t pos_ind = 0;
   size_t vel_ind = pos_ind + has_velocity_command_interface_;
   size_t acc_ind = vel_ind + has_acceleration_state_interface_;
+  // You never know...
+  bool has_nan = false;
+  for (size_t joint_ind = 0; joint_ind < num_joints_; ++joint_ind) {
+    if (has_position_command_interface_) {
+      if (std::isnan(joint_state_command.positions[joint_ind])) {
+        has_nan |= true;
+      }
+    } else if (has_velocity_command_interface_) {
+      if (std::isnan(joint_state_command.velocities[joint_ind])) {
+        has_nan |= true;
+      }
+    } else if (has_acceleration_command_interface_) {
+      if (std::isnan(joint_state_command.accelerations[joint_ind])) {
+        has_nan |= true;
+      }
+    }
+  }
+  if (has_nan) {
+    auto clock = get_node()->get_clock();
+    RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *clock, 1000, "Joint command has NaN value(s)!");
+    return false;
+  }
+
   for (size_t joint_ind = 0; joint_ind < num_joints_; ++joint_ind) {
     if (has_position_command_interface_) {
       command_interfaces_[pos_ind * num_joints_ + joint_ind].set_value(
         joint_state_command.positions[joint_ind]);
     } else if (has_velocity_command_interface_) {
       command_interfaces_[vel_ind * num_joints_ + joint_ind].set_value(
-        joint_state_command.positions[joint_ind]);
+        joint_state_command.velocities[joint_ind]);
     } else if (has_acceleration_command_interface_) {
       command_interfaces_[acc_ind * num_joints_ + joint_ind].set_value(
-        joint_state_command.positions[joint_ind]);
+        joint_state_command.accelerations[joint_ind]);
     }
   }
   last_commanded_joint_state_ = joint_state_command;
+  return true;
+}
+
+bool CartesianAdmittanceController::initialize_impedance_rule(
+  const trajectory_msgs::msg::JointTrajectoryPoint & joint_state)
+{
+  bool all_ok = true;
+
+  // Use current joint_state as a default reference
+  auto ret = admittance_->init_reference_frame_trajectory(joint_state);
+  RCLCPP_INFO(
+    get_node()->get_logger(),
+    "Joint position initialization: [%.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f]\n",
+    joint_state.positions[0],
+    joint_state.positions[1],
+    joint_state.positions[2],
+    joint_state.positions[3],
+    joint_state.positions[4],
+    joint_state.positions[5],
+    joint_state.positions[6]
+  );
+  if (ret != controller_interface::return_type::OK) {
+    all_ok = false;
+    RCLCPP_ERROR(
+      get_node()->get_logger(),
+      "Failed to initialize the reference compliance frame trajectory.\n");
+    return false;
+  }
+  joint_command_ = joint_state;
+  last_commanded_joint_state_ = joint_state;
+  is_impedance_initialized_ = all_ok;
+  return all_ok;
 }
 
 }  // namespace cartesian_admittance_controller

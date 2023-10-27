@@ -69,10 +69,11 @@ def generate_launch_description():
         parameters=[robot_description]
     )
 
+
     # Launch controllers
     robot_controllers = PathJoinSubstitution(
         [
-            FindPackageShare('ft_tools_examples'),
+            FindPackageShare('cartesian_admittance_controller'),
             'config',
             'controllers.yaml',
         ]
@@ -91,12 +92,6 @@ def generate_launch_description():
         arguments=['joint_state_broadcaster', '-c', '/controller_manager'],
     )
 
-    arm_controller_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['iiwa_arm_controller', '-c', '/controller_manager'],
-    )
-
     admittance_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
@@ -107,8 +102,7 @@ def generate_launch_description():
         robot_state_pub_node,
         control_node,
         joint_state_broadcaster_spawner,
-        admittance_controller_spawner,
-        arm_controller_spawner
+        admittance_controller_spawner
     ]
 
     return LaunchDescription(declared_arguments + nodes)
