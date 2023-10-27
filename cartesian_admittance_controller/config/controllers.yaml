@@ -41,7 +41,7 @@ cartesian_admittance_controller:
 
     control:
       frame:
-        id: interaction_point # Admittance calcs (displacement etc) are done in this frame. Usually the tool or end-effector
+        id: ft_sensor # Admittance calcs (displacement etc) are done in this frame. Usually the tool or end-effector
         external: false # control frame exists within URDF kinematic chain
 
     fixed_world_frame:   # Gravity points down (neg. Z) in this frame (Usually: world or base_link)
@@ -99,6 +99,6 @@ cartesian_admittance_controller:
         - 200.0
         - 200.0
         - 200.0
-        - 50.0
-        - 50.0
-        - 50.0
+        - 10.0
+        - 10.0
+        - 10.0

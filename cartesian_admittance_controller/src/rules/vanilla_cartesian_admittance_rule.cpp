@@ -18,6 +18,8 @@
 
 #include "cartesian_admittance_controller/rules/vanilla_cartesian_admittance_rule.hpp"
 
+#include <iostream>  // for debug purposes...
+
 namespace cartesian_admittance_controller
 {
 
@@ -53,46 +55,42 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   Eigen::Matrix<double, 6, 6> K = Eigen::Matrix<double, 6, 6>::Zero();
   K.block<3, 3>(0, 0) =
     rot_base_admittance * \
-    reference_compliant_frame.stiffness.block<3, 1>(0, 0).asDiagonal() * \
+    reference_compliant_frame.stiffness.head(3).asDiagonal() * \
     rot_base_admittance.transpose();
   K.block<3, 3>(3, 3) =
     rot_base_admittance * \
-    reference_compliant_frame.stiffness.block<3, 1>(3, 0).asDiagonal() * \
+    reference_compliant_frame.stiffness.tail(3).asDiagonal() * \
     rot_base_admittance.transpose();
 
   Eigen::Matrix<double, 6, 6> D = Eigen::Matrix<double, 6, 6>::Zero();
   D.block<3, 3>(0, 0) =
     rot_base_admittance * \
-    reference_compliant_frame.damping.block<3, 1>(0, 0).asDiagonal() * \
+    reference_compliant_frame.damping.head(3).asDiagonal() * \
     rot_base_admittance.transpose();
   D.block<3, 3>(3, 3) =
     rot_base_admittance * \
-    reference_compliant_frame.damping.block<3, 1>(3, 0).asDiagonal() * \
+    reference_compliant_frame.damping.tail(3).asDiagonal() * \
     rot_base_admittance.transpose();
 
   Eigen::Matrix<double, 6, 6> M_inv = Eigen::Matrix<double, 6, 6>::Zero();
   Eigen::Matrix<double, 6, 1> inertia_inv = reference_compliant_frame.inertia.cwiseInverse();
-  M_inv.block<3, 3>(
-    0,
-    0) = rot_base_admittance *
-    inertia_inv.block<3, 1>(0, 0).asDiagonal() * rot_base_admittance.transpose();
-  M_inv.block<3, 3>(
-    3,
-    3) = rot_base_admittance *
-    inertia_inv.block<3, 1>(3, 0).asDiagonal() * rot_base_admittance.transpose();
+  M_inv.block<3, 3>(0, 0) = rot_base_admittance *
+    inertia_inv.head(3).asDiagonal() * rot_base_admittance.transpose();
+  M_inv.block<3, 3>(3, 3) = rot_base_admittance *
+    inertia_inv.tail(3).asDiagonal() * rot_base_admittance.transpose();
 
   // Compute pose tracking errors
   Eigen::Matrix<double, 6, 1> error_pose;
-  error_pose.block<3, 1>(0, 0) =
+  error_pose.head(3) =
     reference_compliant_frame.pose.translation() - \
     admittance_state.robot_current_pose.translation();
 
-  auto R_angular_error =
-    reference_compliant_frame.pose.rotation() * \
-    admittance_state.robot_current_pose.rotation().transpose();
+  auto R_angular_error = \
+    reference_compliant_frame.pose.rotation() \
+    * admittance_state.robot_current_pose.rotation().transpose();
   auto angle_axis = Eigen::AngleAxisd(R_angular_error);
 
-  error_pose.block<3, 1>(3, 0) = angle_axis.angle() * angle_axis.axis();
+  error_pose.tail(3) = angle_axis.angle() * angle_axis.axis();
 
   // Compute velocity tracking errors in ft frame
   Eigen::Matrix<double, 6, 1> error_velocity =
@@ -108,8 +106,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     reference_compliant_frame.acceleration + \
     M_inv * (K * error_pose + D * error_velocity + F_ext);
 
-  admittance_state.robot_command_twist.setZero();
-  admittance_state.robot_command_twist += commanded_cartesian_acc * dt;
+  admittance_state.robot_command_twist += admittance_state.last_robot_commanded_twist + commanded_cartesian_acc * dt;
 
   auto previous_jnt_cmd_velocity = admittance_state.joint_command_velocity;
 
@@ -121,16 +118,27 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   );
 
   // Integrate motion in joint space
-  admittance_state.joint_command_position =
-    admittance_state.joint_state_position + admittance_state.joint_command_velocity * dt;
+  admittance_state.joint_command_position += admittance_state.joint_command_velocity * dt;
+
+  /*
+  std::cerr << "error_pose = " << error_pose.transpose() << std::endl;
+  std::cerr << "error_vel = " << error_velocity.transpose() << std::endl;
+  std::cerr << "F_ext = " << F_ext.transpose() << std::endl;
+
+  std::cerr << "commanded acc = " << commanded_cartesian_acc.transpose() << std::endl;
+  std::cerr << "commanded twist = " << admittance_state.robot_command_twist.transpose() << std::endl;
+
+  std::cerr << "commanded joint vel = " << admittance_state.joint_command_velocity.transpose() << std::endl;
+  std::cerr << "commanded joint pos = " << admittance_state.joint_command_position.transpose() << std::endl;
+  */
 
   // Estimate joint command acceleration
   // TODO(tpoigonec): simply set to zero or NaN ?!
-  admittance_state.joint_command_acceleration =
-    (admittance_state.joint_command_velocity - previous_jnt_cmd_velocity) / dt;
+  admittance_state.joint_command_acceleration.setZero();
+  //  (admittance_state.joint_command_velocity - previous_jnt_cmd_velocity) / dt;
 
-  // add damping if cartesian velocity falls below threshold
   /*
+  // add damping if cartesian velocity falls below threshold
   for (int64_t i = 0; i < admittance_state.joint_acc.size(); ++i)
   {
     admittance_state.joint_command_acceleration[i] -=
