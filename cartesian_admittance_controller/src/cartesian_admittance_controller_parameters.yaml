@@ -24,12 +24,12 @@ cartesian_admittance_controller:
       read_only: true
     }
 
-  chainable_command_interfaces:
-    {
-      type: string_array,
-      description: "Specifies which reference interfaces the controller will export. Normally, the position and velocity are used.",
-      read_only: true
-    }
+#  chainable_command_interfaces:
+#    {
+#      type: string_array,
+#      description: "Specifies which reference interfaces the controller will export. Normally, the position and velocity are used.",
+#      read_only: true
+#    }
 
   kinematics:
     plugin_name: {

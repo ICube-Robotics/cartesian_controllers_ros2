@@ -17,16 +17,19 @@
 #ifndef CARTESIAN_ADMITTANCE_CONTROLLER__COMPLIANCE_FRAME_TRAJECTORY_HPP_
 #define CARTESIAN_ADMITTANCE_CONTROLLER__COMPLIANCE_FRAME_TRAJECTORY_HPP_
 
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+
+// C++
 #include <map>
 #include <memory>
 #include <vector>
 #include <string>
-#include <Eigen/Core>
-#include <Eigen/Geometry>
 
 // Custom msgs
 #include "cartesian_control_msgs/msg/cartesian_trajectory.hpp"
 #include "cartesian_control_msgs/msg/compliant_frame_trajectory.hpp"
+
 
 namespace cartesian_admittance_controller
 {
@@ -65,7 +68,7 @@ struct CompliantFrame
 class CompliantFrameTrajectory
 {
 public:
-  CompliantFrameTrajectory(size_t trajectory_lenght);
+  explicit CompliantFrameTrajectory(size_t trajectory_lenght);
 
   const CompliantFrame & get_compliant_frame(unsigned int index = 0) const;
 
@@ -101,6 +104,6 @@ protected:
   std::vector<CompliantFrame> frames_;
 };
 
-} // namespace cartesian_admittance_controller
+}  // namespace cartesian_admittance_controller
 
 #endif  // CARTESIAN_ADMITTANCE_CONTROLLER__COMPLIANCE_FRAME_TRAJECTORY_HPP_

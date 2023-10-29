@@ -14,8 +14,8 @@
 //
 /// \author: Denis Stogl
 
-#ifndef TEST_ADMITTANCE_CONTROLLER_HPP_
-#define TEST_ADMITTANCE_CONTROLLER_HPP_
+#ifndef TEST_CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
+#define TEST_CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
 
 #include <chrono>
 #include <map>
@@ -321,8 +321,8 @@ protected:
     ref_compliant_frame_traj_msg.cartesian_trajectory_points.reserve(N);
     ref_compliant_frame_traj_msg.compliance_at_points.reserve(N);
 
-    //for (auto index = 0u; index < N; index++) {
-    //}
+    // for (auto index = 0u; index < N; index++) {
+    // }
     cartesian_control_msgs::msg::CartesianTrajectoryPoint cartesian_trajectory_point;
 
     try {
@@ -390,7 +390,8 @@ protected:
     desired_compliance.stiffness = eigen_to_multiarray(K);
     desired_compliance.damping = eigen_to_multiarray(D);
 
-    ref_compliant_frame_traj_msg.cartesian_trajectory_points.emplace_back(cartesian_trajectory_point);
+    ref_compliant_frame_traj_msg.cartesian_trajectory_points.emplace_back(
+      cartesian_trajectory_point);
     ref_compliant_frame_traj_msg.compliance_at_points.emplace_back(desired_compliance);
 
     compliant_frame_trajectory_publisher_->publish(ref_compliant_frame_traj_msg);
@@ -506,4 +507,4 @@ protected:
   }
 };
 
-#endif  // TEST_ADMITTANCE_CONTROLLER_HPP_
+#endif  // TEST_CARTESIAN_ADMITTANCE_CONTROLLER_HPP_

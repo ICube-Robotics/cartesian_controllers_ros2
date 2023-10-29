@@ -16,8 +16,8 @@
 
 // Based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
 
-#ifndef ADMITTANCE_CONTROLLER__ADMITTANCE_CONTROLLER_HPP_
-#define ADMITTANCE_CONTROLLER__ADMITTANCE_CONTROLLER_HPP_
+#ifndef CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
+#define CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
 
 #include <chrono>
 #include <memory>
@@ -55,7 +55,7 @@
 
 namespace cartesian_admittance_controller
 {
-//using CartesianFrameMsg = cartesian_control_msgs::msg::CompliantFrameTrajectory;
+// using CartesianFrameMsg = cartesian_control_msgs::msg::CompliantFrameTrajectory;
 using ControllerStateMsg = control_msgs::msg::AdmittanceControllerState;
 
 class CartesianAdmittanceController : public controller_interface::ControllerInterface
@@ -143,6 +143,7 @@ protected:
 
   // Admittance rule
   std::unique_ptr<cartesian_admittance_controller::CartesianAdmittanceRule> admittance_;
+  bool is_impedance_initialized_ = false;
 
   // force torque sensor
   std::unique_ptr<semantic_components::ForceTorqueSensor> force_torque_sensor_;
@@ -160,8 +161,8 @@ protected:
   reference_compliant_frame_trajectory_msg_;
 
   // real-time buffer
-  realtime_tools::RealtimeBuffer<std::shared_ptr<cartesian_control_msgs::msg::CompliantFrameTrajectory>>
-  input_compliant_frame_trajectory_msg_;
+  realtime_tools::RealtimeBuffer<std::shared_ptr<
+      cartesian_control_msgs::msg::CompliantFrameTrajectory>> input_compliant_frame_trajectory_msg_;
   std::unique_ptr<realtime_tools::RealtimePublisher<ControllerStateMsg>> state_publisher_;
 
   // Control loop data
@@ -181,7 +182,7 @@ protected:
    * @brief Read values from hardware interfaces and set corresponding fields of joint_state and
    * ft_values
    */
-  void read_state_from_hardware(
+  bool read_state_from_hardware(
     trajectory_msgs::msg::JointTrajectoryPoint & joint_state,
     geometry_msgs::msg::Wrench & ft_values);
 
@@ -189,14 +190,20 @@ protected:
    * @brief Set fields of state_reference with values from controllers exported position and
    * velocity references
    */
-  //void read_state_reference_interfaces(cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory);
+  // void read_state_reference_interfaces(
+  //  cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory);
 
   /**
    * @brief Write values from joint_state_command to claimed hardware interfaces
    */
-  void write_state_to_hardware(trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command);
+  bool write_state_to_hardware(trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command);
+
+  /**
+   * @brief Initialize the impedance rule
+   */
+  bool initialize_impedance_rule(const trajectory_msgs::msg::JointTrajectoryPoint & joint_state);
 };
 
 }  // namespace cartesian_admittance_controller
 
-#endif  // ADMITTANCE_CONTROLLER__ADMITTANCE_CONTROLLER_HPP_
+#endif  // CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_CONTROLLER_HPP_

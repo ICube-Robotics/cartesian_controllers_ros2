@@ -109,6 +109,11 @@ install(TARGETS cartesian_admittance_controller cartesian_admittance_controller_
   LIBRARY DESTINATION lib
 )
 
+install(
+  DIRECTORY launch config
+  DESTINATION share/${PROJECT_NAME}
+)
+
 ament_export_targets(export_cartesian_admittance_controller HAS_LIBRARY_TARGET)
 ament_export_dependencies(${DEPENDENCIES})
 ament_package()

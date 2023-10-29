@@ -55,7 +55,7 @@ bool CompliantFrameTrajectory::fill_desired_robot_state_from_msg(
     return false;
   }
 
-  bool success = true; // return flag
+  bool success = true;  // return flag
 
   // Retrieve timestamp
   rclcpp::Duration time_from_start = desired_cartesian_state.time_from_start;
@@ -79,10 +79,10 @@ bool CompliantFrameTrajectory::fill_desired_robot_state_from_msg(
   frames_[index].acceleration[5] = desired_cartesian_state.acceleration.angular.z;
 
   // No "tf2::fromMsg" impl. for geometry_msgs::msg::wrench
-  //tf2::fromMsg(
+  // tf2::fromMsg(
   //  desired_cartesian_state.wrench,
   //  frames_[index].wrench
-  //);
+  // );
   frames_[index].wrench[0] = desired_cartesian_state.wrench.force.x;
   frames_[index].wrench[1] = desired_cartesian_state.wrench.force.y;
   frames_[index].wrench[2] = desired_cartesian_state.wrench.force.z;
@@ -138,7 +138,7 @@ bool CompliantFrameTrajectory::fill_desired_compliance(
   const Eigen::Matrix<double, 6, 1> & desired_stiffness,
   const Eigen::Matrix<double, 6, 1> & desired_damping)
 {
-  bool success = true; // return flag
+  bool success = true;  // return flag
   for (unsigned int i = 0; i < N(); i++) {
     success &= fill_desired_compliance(i, desired_inertia, desired_stiffness, desired_damping);
   }
@@ -151,7 +151,6 @@ bool CompliantFrameTrajectory::fill_desired_compliance(
   const Eigen::Matrix<double, 6, 1> & desired_stiffness,
   const Eigen::Matrix<double, 6, 1> & desired_damping)
 {
-
   // Test index is valid
   if (index >= N()) {
     return false;
@@ -164,4 +163,4 @@ bool CompliantFrameTrajectory::fill_desired_compliance(
   return true;
 }
 
-} // namespace cartesian_admittance_controller
+}  // namespace cartesian_admittance_controller

@@ -15,9 +15,11 @@
 /// \authors: Thibault Poignonec, Maciej Bednarczyk
 /// \description: Plugin for CartesianAdmittanceRule implementing "classical" admittance control
 
-#ifndef CARTESIAN_ADMITTANCE_CONTROLLER__VANILLA_CARTESIAN_ADMITTANCE_RULE_HPP_
-#define CARTESIAN_ADMITTANCE_CONTROLLER__VANILLA_CARTESIAN_ADMITTANCE_RULE_HPP_
+#ifndef CARTESIAN_ADMITTANCE_CONTROLLER__RULES__VANILLA_CARTESIAN_ADMITTANCE_RULE_HPP_
+#define CARTESIAN_ADMITTANCE_CONTROLLER__RULES__VANILLA_CARTESIAN_ADMITTANCE_RULE_HPP_
 
+
+#include <memory>
 
 #include "cartesian_admittance_controller/cartesian_admittance_rule.hpp"
 
@@ -50,4 +52,4 @@ protected:
 
 }  // namespace cartesian_admittance_controller
 
-#endif  // CARTESIAN_ADMITTANCE_CONTROLLER__VANILLA_CARTESIAN_ADMITTANCE_RULE_HPP_
+#endif  // CARTESIAN_ADMITTANCE_CONTROLLER__RULES__VANILLA_CARTESIAN_ADMITTANCE_RULE_HPP_
