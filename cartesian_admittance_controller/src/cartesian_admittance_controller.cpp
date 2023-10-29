@@ -40,16 +40,13 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_init()
     parameter_handler_ =
       std::make_shared<cartesian_admittance_controller::ParamListener>(get_node());
     cartesian_admittance_controller::Params parameters = parameter_handler_->get_params();
-
     // number of joints in controllers is fixed after initialization
     num_joints_ = parameters.joints.size();
-
   } catch (const std::exception & e) {
     RCLCPP_ERROR(
       get_node()->get_logger(), "Exception thrown during init stage with message: %s \n", e.what());
     return controller_interface::CallbackReturn::ERROR;
   }
-
 
   // allocate dynamic memory
   joint_state_.positions.assign(num_joints_, 0.0);  // std::nan);
@@ -130,7 +127,7 @@ controller_interface::return_type CartesianAdmittanceController::update(
       return controller_interface::return_type::ERROR;
     }
   } else if (!is_state_valid) {
-    // TODO : return ERROR?
+    // TODO(tpoignonec): return ERROR?
     all_ok &= false;
     joint_command_ = last_commanded_joint_state_;
   }
@@ -204,9 +201,11 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_configure
       !parameters.admittance.plugin_package.empty())
     {
       admittance_loader_ =
-        std::make_shared<pluginlib::ClassLoader<cartesian_admittance_controller::CartesianAdmittanceRule>>(
+        std::make_shared<pluginlib::ClassLoader<
+            cartesian_admittance_controller::CartesianAdmittanceRule>>(
         parameters.admittance.plugin_package,
-        "cartesian_admittance_controller::CartesianAdmittanceRule");
+        "cartesian_admittance_controller::CartesianAdmittanceRule"
+            );
       admittance_ = std::unique_ptr<cartesian_admittance_controller::CartesianAdmittanceRule>(
         admittance_loader_->createUnmanagedInstance(parameters.admittance.plugin_name));
     } else {
@@ -226,7 +225,6 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_configure
     return controller_interface::CallbackReturn::ERROR;
   }
   command_joint_names_ = admittance_->parameters_.command_joints;
-  //TODO: new parameter like "velocity_cmd_interface_names"
   if (command_joint_names_.empty()) {
     command_joint_names_ = admittance_->parameters_.joints;
     RCLCPP_INFO(
@@ -327,7 +325,7 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_configure
 
   // Initialize state message
   state_publisher_->lock();
-  //state_publisher_->msg_ = admittance_->get_controller_state();
+  // state_publisher_->msg_ = admittance_->get_controller_state();
   state_publisher_->unlock();
 
   // Initialize FTS semantic semantic_component

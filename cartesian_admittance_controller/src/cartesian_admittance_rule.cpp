@@ -130,7 +130,6 @@ CartesianAdmittanceRule::init_reference_frame_trajectory(
     }
   }
   return controller_interface::return_type::OK;
-
 }
 
 controller_interface::return_type
@@ -198,7 +197,7 @@ CartesianAdmittanceRule::update_compliant_frame_trajectory(
   if (compliant_frame_trajectory.cartesian_trajectory_points.size() != N) {
     return controller_interface::return_type::ERROR;
   }
-  // TODO : check frame_id and child_frame_id
+  // TODO(tpoignonec): check frame_id and child_frame_id
   // Check compliance parameters validity
   if (compliant_frame_trajectory.compliance_at_points.size() == N) {
     use_streamed_interaction_parameters_ = true;
@@ -344,6 +343,17 @@ bool CartesianAdmittanceRule::update_internal_state(
     admittance_state_.robot_current_velocity
   );
 
+  std::cerr << "joint velocity msg = " \
+            << current_joint_state.velocities[0] << ", " \
+            << current_joint_state.velocities[1] << ", " \
+            << current_joint_state.velocities[2] << ", " \
+            << current_joint_state.velocities[3] << ", " \
+            << current_joint_state.velocities[4] << ", " \
+            << current_joint_state.velocities[5] << ", " \
+            << current_joint_state.velocities[6] << std::endl;
+  std::cerr << "joint velocity = " << (admittance_state_.joint_state_velocity).transpose() <<
+    std::endl;
+
   // Process wrench measurement
   success &= process_wrench_measurements(measured_wrench);
 
@@ -361,9 +371,6 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
   new_wrench(0, 1) = measured_wrench.torque.x;
   new_wrench(1, 1) = measured_wrench.torque.y;
   new_wrench(2, 1) = measured_wrench.torque.z;
-
-  // TODO: remove, debug only!!!
-  // new_wrench.setZero();
 
   // F/T measurement w.r.t. world frame
   Eigen::Matrix<double, 3, 3> rot_world_sensor =
@@ -385,23 +392,19 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
       new_wrench_world(i),
       wrench_world_(i),
       parameters_.ft_sensor.filter_coefficient
-    ); 
+    );
   }
 
-  // Wrench at interaction point (e.g., assumed to be control frame for now)
-  // TODO(tpoignonec): compute wrench at interaction point
-
-  /*
+  // Wrench at interaction point (e.g., assumed to be control frame
   F_ext.block<3, 1>(0, 0) = rot_base_control.transpose() * F_ext_base.block<3, 1>(0, 0);
   // Evaluate torques at new interaction point
   F_ext.block<3, 1>(3, 0) = rot_base_control.transpose() * (
     F_ext_base.block<3, 1>(0, 0)
     // TODO(tpoignonec): ACTUAL wrench tensor transformation from ft to control frame...
   );
-  */
 
   // Transform wrench_world_ into base frame
-  admittance_state_.robot_current_wrench_at_ft_frame.head(3)=
+  admittance_state_.robot_current_wrench_at_ft_frame.head(3) =
     admittance_transforms_.world_base_.rotation().transpose() * wrench_world_.head(3);
   admittance_state_.robot_current_wrench_at_ft_frame.tail(3) =
     admittance_transforms_.world_base_.rotation().transpose() * wrench_world_.tail(3);
@@ -426,4 +429,4 @@ void CartesianAdmittanceRule::vec_to_eigen(const std::vector<T1> & data, T2 & ma
   }
 }
 
-} // namespace cartesian_admittance_controller
+}  // namespace cartesian_admittance_controller

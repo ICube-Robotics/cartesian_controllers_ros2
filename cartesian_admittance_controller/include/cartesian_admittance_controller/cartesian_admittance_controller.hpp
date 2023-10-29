@@ -16,8 +16,8 @@
 
 // Based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
 
-#ifndef ADMITTANCE_CONTROLLER__ADMITTANCE_CONTROLLER_HPP_
-#define ADMITTANCE_CONTROLLER__ADMITTANCE_CONTROLLER_HPP_
+#ifndef CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
+#define CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
 
 #include <chrono>
 #include <memory>
@@ -55,7 +55,7 @@
 
 namespace cartesian_admittance_controller
 {
-//using CartesianFrameMsg = cartesian_control_msgs::msg::CompliantFrameTrajectory;
+// using CartesianFrameMsg = cartesian_control_msgs::msg::CompliantFrameTrajectory;
 using ControllerStateMsg = control_msgs::msg::AdmittanceControllerState;
 
 class CartesianAdmittanceController : public controller_interface::ControllerInterface
@@ -161,8 +161,8 @@ protected:
   reference_compliant_frame_trajectory_msg_;
 
   // real-time buffer
-  realtime_tools::RealtimeBuffer<std::shared_ptr<cartesian_control_msgs::msg::CompliantFrameTrajectory>>
-  input_compliant_frame_trajectory_msg_;
+  realtime_tools::RealtimeBuffer<std::shared_ptr<
+      cartesian_control_msgs::msg::CompliantFrameTrajectory>> input_compliant_frame_trajectory_msg_;
   std::unique_ptr<realtime_tools::RealtimePublisher<ControllerStateMsg>> state_publisher_;
 
   // Control loop data
@@ -190,7 +190,8 @@ protected:
    * @brief Set fields of state_reference with values from controllers exported position and
    * velocity references
    */
-  //void read_state_reference_interfaces(cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory);
+  // void read_state_reference_interfaces(
+  //  cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory);
 
   /**
    * @brief Write values from joint_state_command to claimed hardware interfaces
@@ -205,4 +206,4 @@ protected:
 
 }  // namespace cartesian_admittance_controller
 
-#endif  // ADMITTANCE_CONTROLLER__ADMITTANCE_CONTROLLER_HPP_
+#endif  // CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_CONTROLLER_HPP_

@@ -86,8 +86,8 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     admittance_state.robot_current_pose.translation();
 
   auto R_angular_error = \
-    reference_compliant_frame.pose.rotation() \
-    * admittance_state.robot_current_pose.rotation().transpose();
+    reference_compliant_frame.pose.rotation() * \
+    admittance_state.robot_current_pose.rotation().transpose();
   auto angle_axis = Eigen::AngleAxisd(R_angular_error);
 
   error_pose.tail(3) = angle_axis.angle() * angle_axis.axis();
@@ -106,7 +106,8 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     reference_compliant_frame.acceleration + \
     M_inv * (K * error_pose + D * error_velocity + F_ext);
 
-  admittance_state.robot_command_twist += admittance_state.last_robot_commanded_twist + commanded_cartesian_acc * dt;
+  admittance_state.robot_command_twist += admittance_state.last_robot_commanded_twist +
+    commanded_cartesian_acc * dt;
 
   auto previous_jnt_cmd_velocity = admittance_state.joint_command_velocity;
 
@@ -119,18 +120,6 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
 
   // Integrate motion in joint space
   admittance_state.joint_command_position += admittance_state.joint_command_velocity * dt;
-
-  /*
-  std::cerr << "error_pose = " << error_pose.transpose() << std::endl;
-  std::cerr << "error_vel = " << error_velocity.transpose() << std::endl;
-  std::cerr << "F_ext = " << F_ext.transpose() << std::endl;
-
-  std::cerr << "commanded acc = " << commanded_cartesian_acc.transpose() << std::endl;
-  std::cerr << "commanded twist = " << admittance_state.robot_command_twist.transpose() << std::endl;
-
-  std::cerr << "commanded joint vel = " << admittance_state.joint_command_velocity.transpose() << std::endl;
-  std::cerr << "commanded joint pos = " << admittance_state.joint_command_position.transpose() << std::endl;
-  */
 
   // Estimate joint command acceleration
   // TODO(tpoigonec): simply set to zero or NaN ?!
@@ -150,7 +139,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
 }
 
 
-} // namespace cartesian_admittance_controller
+}  // namespace cartesian_admittance_controller
 
 #include "pluginlib/class_list_macros.hpp"
 
