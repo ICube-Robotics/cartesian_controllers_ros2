@@ -343,17 +343,6 @@ bool CartesianAdmittanceRule::update_internal_state(
     admittance_state_.robot_current_velocity
   );
 
-  std::cerr << "joint velocity msg = " \
-            << current_joint_state.velocities[0] << ", " \
-            << current_joint_state.velocities[1] << ", " \
-            << current_joint_state.velocities[2] << ", " \
-            << current_joint_state.velocities[3] << ", " \
-            << current_joint_state.velocities[4] << ", " \
-            << current_joint_state.velocities[5] << ", " \
-            << current_joint_state.velocities[6] << std::endl;
-  std::cerr << "joint velocity = " << (admittance_state_.joint_state_velocity).transpose() <<
-    std::endl;
-
   // Process wrench measurement
   success &= process_wrench_measurements(measured_wrench);
 
@@ -395,6 +384,7 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
     );
   }
 
+  /*
   // Wrench at interaction point (e.g., assumed to be control frame
   F_ext.block<3, 1>(0, 0) = rot_base_control.transpose() * F_ext_base.block<3, 1>(0, 0);
   // Evaluate torques at new interaction point
@@ -402,7 +392,8 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
     F_ext_base.block<3, 1>(0, 0)
     // TODO(tpoignonec): ACTUAL wrench tensor transformation from ft to control frame...
   );
-
+  */
+  
   // Transform wrench_world_ into base frame
   admittance_state_.robot_current_wrench_at_ft_frame.head(3) =
     admittance_transforms_.world_base_.rotation().transpose() * wrench_world_.head(3);
