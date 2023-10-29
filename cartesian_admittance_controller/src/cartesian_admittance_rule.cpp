@@ -393,7 +393,7 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
     // TODO(tpoignonec): ACTUAL wrench tensor transformation from ft to control frame...
   );
   */
-  
+
   // Transform wrench_world_ into base frame
   admittance_state_.robot_current_wrench_at_ft_frame.head(3) =
     admittance_transforms_.world_base_.rotation().transpose() * wrench_world_.head(3);
