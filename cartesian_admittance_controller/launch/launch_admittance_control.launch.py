@@ -69,7 +69,6 @@ def generate_launch_description():
         parameters=[robot_description]
     )
 
-
     # Launch controllers
     robot_controllers = PathJoinSubstitution(
         [
@@ -92,6 +91,18 @@ def generate_launch_description():
         arguments=['joint_state_broadcaster', '-c', '/controller_manager'],
     )
 
+    cartesian_state_broadcaster_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['cartesian_state_broadcaster', '-c', '/controller_manager'],
+    )
+
+    ft_sensor_broadcaster_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['force_torque_sensor_broadcaster', '-c', '/controller_manager'],
+    )
+
     admittance_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
@@ -102,6 +113,8 @@ def generate_launch_description():
         robot_state_pub_node,
         control_node,
         joint_state_broadcaster_spawner,
+        cartesian_state_broadcaster_spawner,
+        ft_sensor_broadcaster_spawner,
         admittance_controller_spawner
     ]
 
