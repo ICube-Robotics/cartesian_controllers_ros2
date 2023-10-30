@@ -372,17 +372,9 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
   // Remove contribution of gravity
   Eigen::Vector3d cog_pos = Eigen::Vector3d(parameters_.gravity_compensation.CoG.pos.data());
   Eigen::Vector3d end_effector_weight = Eigen::Vector3d::Zero();
-  end_effector_weight[2] = parameters_.gravity_compensation.CoG.force;
+  end_effector_weight[2] = -parameters_.gravity_compensation.CoG.force;
+  new_wrench_world(2, 0) -= end_effector_weight[2];
   new_wrench_world.block<3, 1>(0, 1) -= (rot_world_cog * cog_pos).cross(end_effector_weight);
-
-  // Filter measurement
-  for (size_t i = 0; i < 6; ++i) {
-    wrench_world_(i) = filters::exponentialSmoothing(
-      new_wrench_world(i),
-      wrench_world_(i),
-      parameters_.ft_sensor.filter_coefficient
-    );
-  }
 
   /*
   // Wrench at interaction point (e.g., assumed to be control frame
@@ -393,13 +385,20 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
     // TODO(tpoignonec): ACTUAL wrench tensor transformation from ft to control frame...
   );
   */
+  // Filter measurement
+  for (size_t i = 0; i < 6; ++i) {
+    wrench_world_(i) = filters::exponentialSmoothing(
+      new_wrench_world(i),
+      wrench_world_(i),
+      parameters_.ft_sensor.filter_coefficient
+    );
+  }
 
   // Transform wrench_world_ into base frame
   admittance_state_.robot_current_wrench_at_ft_frame.head(3) =
     admittance_transforms_.world_base_.rotation().transpose() * wrench_world_.head(3);
   admittance_state_.robot_current_wrench_at_ft_frame.tail(3) =
     admittance_transforms_.world_base_.rotation().transpose() * wrench_world_.tail(3);
-
   /*
   std::cerr << "raw wrench = " << new_wrench.transpose() << std::endl;
   std::cerr << "new_wrench_world = " << new_wrench_world.transpose() << std::endl;
