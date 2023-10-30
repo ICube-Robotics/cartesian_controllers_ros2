@@ -62,7 +62,7 @@ cartesian_admittance_controller:
       frame:
         id: ft_sensor  # tool0 Wrench measurements are in this frame
         external: false # force torque frame exists within URDF kinematic chain
-      filter_coefficient: 0.005
+      filter_coefficient: 0.016 # 1 - exp(-Ts/tau) = 1 - exp(-Ts*2*pi*f_cutoff)
 
     control:
       frame:
@@ -124,6 +124,6 @@ cartesian_admittance_controller:
         - 100.0
         - 100.0
         - 100.0
-        - 5.0
-        - 5.0
-        - 5.0
+        - 10.0
+        - 10.0
+        - 10.0

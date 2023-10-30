@@ -105,6 +105,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   Eigen::Matrix<double, 6, 1> commanded_cartesian_acc =
     reference_compliant_frame.acceleration + \
     M_inv * (K * error_pose + D * error_velocity + F_ext);
+  // std::cerr << "commanded_cartesian_acc = " << commanded_cartesian_acc.transpose() << std::endl;
 
   admittance_state.robot_command_twist += admittance_state.last_robot_commanded_twist +
     commanded_cartesian_acc * dt;
