@@ -105,12 +105,12 @@ cartesian_admittance_controller:
       # Having ".0" at the end is MUST, otherwise there is a loading error
       # F = M*a + D*v + S*(x - x_d)
       inertia:
-        - 5.0
-        - 5.0
-        - 5.0
         - 2.0
         - 2.0
         - 2.0
+        - 1.0
+        - 1.0
+        - 1.0
 
       damping_ratio: # damping can be used instead: zeta = D / (2 * sqrt( M * S ))
         - 0.9 # x
@@ -121,9 +121,9 @@ cartesian_admittance_controller:
         - 0.9 # rz
 
       stiffness:
-        - 200.0
-        - 200.0
-        - 200.0
-        - 10.0
-        - 10.0
-        - 10.0
+        - 100.0
+        - 100.0
+        - 100.0
+        - 5.0
+        - 5.0
+        - 5.0
