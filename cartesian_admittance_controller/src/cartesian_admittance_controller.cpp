@@ -100,6 +100,7 @@ const
 controller_interface::return_type CartesianAdmittanceController::update(
   const rclcpp::Time & time, const rclcpp::Duration & period)
 {
+  (void) time;
   // Realtime constraints are required in this function
   if (!admittance_) {
     return controller_interface::return_type::ERROR;
@@ -107,14 +108,6 @@ controller_interface::return_type CartesianAdmittanceController::update(
 
   // get all controller inputs
   bool is_state_valid = read_state_from_hardware(joint_state_, ft_values_);
-
-  /*
-  RCLCPP_INFO(
-    get_node()->get_logger(),
-    "f_x = %.4f, f_y = %.4f, f_z = %.4f\n",
-    ft_values_.force.x, ft_values_.force.y, ft_values_.force.z
-  );
-  */
 
   bool all_ok = true;
   // make sure impedance was initialized
@@ -237,14 +230,6 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_configure
     return CallbackReturn::FAILURE;
   }
 
-  // print and validate interface types
-  for (const auto & tmp : admittance_->parameters_.state_interfaces) {
-    RCLCPP_INFO(get_node()->get_logger(), "%s", ("state int types are: " + tmp + "\n").c_str());
-  }
-  for (const auto & tmp : admittance_->parameters_.command_interfaces) {
-    RCLCPP_INFO(get_node()->get_logger(), "%s", ("command int types are: " + tmp + "\n").c_str());
-  }
-
   // Check if only allowed interface types are used and initialize storage to avoid memory
   // allocation during activation
   auto contains_interface_type =
@@ -309,6 +294,20 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_configure
     get_node()->get_logger(), "Command interfaces are [%s] and and state interfaces are [%s].",
     get_interface_list(admittance_->parameters_.command_interfaces).c_str(),
     get_interface_list(admittance_->parameters_.state_interfaces).c_str());
+
+  if (!has_position_command_interface_ && !has_velocity_command_interface_) {
+    RCLCPP_ERROR(
+      get_node()->get_logger(),
+      "At least the position or velocity command interface must be available!");
+    return CallbackReturn::FAILURE;
+  }
+
+  if (!has_position_state_interface_ || !has_velocity_state_interface_) {
+    RCLCPP_ERROR(
+      get_node()->get_logger(),
+      "Both the position AND velocity state interface must be available!");
+    return CallbackReturn::FAILURE;
+  }
 
   // setup subscribers and publishers
   auto compliant_frame_trajectory_callback =
@@ -445,7 +444,7 @@ bool CartesianAdmittanceController::read_state_from_hardware(
   bool nan_velocity = false;
   bool nan_acceleration = false;
 
-  size_t pos_ind = 0;
+  size_t pos_ind = 0;  // Mandatory state interface
   size_t vel_ind = pos_ind + has_velocity_state_interface_;
   size_t acc_ind = vel_ind + has_acceleration_state_interface_;
   for (size_t joint_ind = 0; joint_ind < num_joints_; ++joint_ind) {
@@ -501,7 +500,7 @@ bool CartesianAdmittanceController::write_state_to_hardware(
 {
   // if any interface has nan values, assume state_commanded is the last command state
   size_t pos_ind = 0;
-  size_t vel_ind = pos_ind + has_velocity_command_interface_;
+  size_t vel_ind = pos_ind + (has_velocity_command_interface_ && has_position_command_interface_);
   size_t acc_ind = vel_ind + has_acceleration_state_interface_;
   // You never know...
   bool has_nan = false;
@@ -530,10 +529,12 @@ bool CartesianAdmittanceController::write_state_to_hardware(
     if (has_position_command_interface_) {
       command_interfaces_[pos_ind * num_joints_ + joint_ind].set_value(
         joint_state_command.positions[joint_ind]);
-    } else if (has_velocity_command_interface_) {
+    }
+    if (has_velocity_command_interface_) {
       command_interfaces_[vel_ind * num_joints_ + joint_ind].set_value(
         joint_state_command.velocities[joint_ind]);
-    } else if (has_acceleration_command_interface_) {
+    }
+    if (has_acceleration_command_interface_) {
       command_interfaces_[acc_ind * num_joints_ + joint_ind].set_value(
         joint_state_command.accelerations[joint_ind]);
     }
