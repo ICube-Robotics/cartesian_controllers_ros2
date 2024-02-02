@@ -2,4 +2,4 @@ repositories:
     ros-controls/kinematics_interface:
         type: git
         url: https://github.com/ros-controls/kinematics_interface.git
-        version: main
+        version: master
