@@ -18,9 +18,31 @@
 
 #include "tf2_eigen/tf2_eigen.hpp"
 #include "tf2_kdl/tf2_kdl.hpp"
+#include "std_msgs/msg/float64_multi_array.hpp"
 
 namespace cartesian_admittance_controller
 {
+
+bool fromMsg(const std_msgs::msg::Float64MultiArray & m, Eigen::Matrix<double, 6, 6> & e)
+{
+  /*
+  // TODO(tpoignonec): check layout validity !!! (could be flattened or not...)
+  size_t size_in_msg = m.layout.dim[0].size;
+  assert(m.layout.dim.size() == 2);
+  assert(m.layout.dim[0].stride == e.rows() * e.cols());
+  assert(m.layout.dim[0].stride == e.rows() * e.cols());
+  assert(m.layout.dim[1].stride == e.cols());
+  assert(m.layout.dim[1].stride == e.size());
+  */
+  int ii = 0;
+  for (int i = 0; i < e.rows(); ++i) {
+    for (int j = 0; j < e.cols(); ++j) {
+      e(i, j) = m.data[ii++];
+    }
+  }
+  return true;
+}
+
 CompliantFrameTrajectory::CompliantFrameTrajectory(size_t trajectory_lenght)
 {
   if (trajectory_lenght == 0) {
@@ -131,16 +153,10 @@ bool CompliantFrameTrajectory::fill_desired_compliance_from_msg(
     return false;
   }
 
-  (void)desired_compliance;
-  /*
-  // TODO(tpoignonec) --> diagonal or dense ? :/
-  bool success = true; // return flag
-
-  frames_[index].inertia = ...
-  frames_[index].stiffness = ...
-  frames_[index].damping = ...
-  */
-  return false;
+  bool success = fromMsg(desired_compliance.inertia, frames_[index].inertia);
+  success &= fromMsg(desired_compliance.stiffness, frames_[index].stiffness);
+  success &= fromMsg(desired_compliance.damping, frames_[index].damping);
+  return success;
 }
 
 bool CompliantFrameTrajectory::fill_desired_compliance(
