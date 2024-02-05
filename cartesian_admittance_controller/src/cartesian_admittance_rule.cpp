@@ -193,9 +193,15 @@ CartesianAdmittanceRule::update_compliant_frame_trajectory(
   const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory)
 {
   // Check cartesian ref trajectory validity
-  auto N = admittance_state_.reference_compliant_frames.N();
-  if (compliant_frame_trajectory.cartesian_trajectory_points.size() != N) {
-    return controller_interface::return_type::ERROR;
+  auto N = compliant_frame_trajectory.cartesian_trajectory_points.size();
+  if (admittance_state_.reference_compliant_frames.N() != N) {
+    std::cerr \
+      << "Warning! 'compliant_frame_trajectory.cartesian_trajectory_points.size() != N'" \
+      << " and will be resized..." \
+      << std::endl;
+    if (!admittance_state_.reference_compliant_frames.resize(N)) {
+      return controller_interface::return_type::ERROR;
+    }
   }
   // TODO(tpoignonec): check frame_id and child_frame_id
   // Check compliance parameters validity
