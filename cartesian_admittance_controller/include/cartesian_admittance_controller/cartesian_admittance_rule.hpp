@@ -83,6 +83,15 @@ struct AdmittanceState
   //----------------------------
   CompliantFrameTrajectory reference_compliant_frames;
 
+  // Rendered compliance
+  //----------------------------
+  /// Rendered inertia matrix
+  Eigen::Matrix<double, 6, 6> inertia;
+  /// Rendered stiffness matrix
+  Eigen::Matrix<double, 6, 6> stiffness;
+  /// Rendered damping matrix
+  Eigen::Matrix<double, 6, 6> damping;
+
   // Measured robot state
   //-----------------------
   Eigen::VectorXd joint_state_position;
