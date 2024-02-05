@@ -44,12 +44,12 @@ struct CompliantFrame
 
   // Interaction parameters
   //------------------------
-  /// Diagonal terms of the desired inertia matrix, expressed in the control frame
-  Eigen::Matrix<double, 6, 1> inertia;
-  /// Diagonal terms of the desired stiffness matrix, expressed in the control frame
-  Eigen::Matrix<double, 6, 1> stiffness;
-  /// Diagonal terms of the desired damping matrix, expressed in the control frame
-  Eigen::Matrix<double, 6, 1> damping;
+  /// Desired inertia matrix, expressed in the control frame
+  Eigen::Matrix<double, 6, 6> inertia;
+  /// Desired stiffness matrix, expressed in the control frame
+  Eigen::Matrix<double, 6, 6> stiffness;
+  /// Desired damping matrix, expressed in the control frame
+  Eigen::Matrix<double, 6, 6> damping;
 
   // Reference robot state
   // (control frame w.r.t. robot base frame)

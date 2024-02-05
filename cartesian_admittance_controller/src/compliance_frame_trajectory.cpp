@@ -166,9 +166,9 @@ bool CompliantFrameTrajectory::fill_desired_compliance(
     return false;
   }
 
-  frames_[index].inertia = desired_inertia;
-  frames_[index].stiffness = desired_stiffness;
-  frames_[index].damping = desired_damping;
+  frames_[index].inertia = desired_inertia.asDiagonal();
+  frames_[index].stiffness = desired_stiffness.asDiagonal();
+  frames_[index].damping = desired_damping.asDiagonal();
 
   return true;
 }

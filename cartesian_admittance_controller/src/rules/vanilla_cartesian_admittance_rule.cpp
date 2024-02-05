@@ -55,29 +55,34 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   Eigen::Matrix<double, 6, 6> K = Eigen::Matrix<double, 6, 6>::Zero();
   K.block<3, 3>(0, 0) =
     rot_base_admittance * \
-    reference_compliant_frame.stiffness.head(3).asDiagonal() * \
+    reference_compliant_frame.stiffness.block<3, 3>(0, 0) * \
     rot_base_admittance.transpose();
   K.block<3, 3>(3, 3) =
     rot_base_admittance * \
-    reference_compliant_frame.stiffness.tail(3).asDiagonal() * \
+    reference_compliant_frame.stiffness.block<3, 3>(3, 3) * \
     rot_base_admittance.transpose();
 
   Eigen::Matrix<double, 6, 6> D = Eigen::Matrix<double, 6, 6>::Zero();
   D.block<3, 3>(0, 0) =
     rot_base_admittance * \
-    reference_compliant_frame.damping.head(3).asDiagonal() * \
+    reference_compliant_frame.damping.block<3, 3>(0, 0) * \
     rot_base_admittance.transpose();
   D.block<3, 3>(3, 3) =
     rot_base_admittance * \
-    reference_compliant_frame.damping.tail(3).asDiagonal() * \
+    reference_compliant_frame.damping.block<3, 3>(3, 3) * \
     rot_base_admittance.transpose();
 
-  Eigen::Matrix<double, 6, 6> M_inv = Eigen::Matrix<double, 6, 6>::Zero();
-  Eigen::Matrix<double, 6, 1> inertia_inv = reference_compliant_frame.inertia.cwiseInverse();
-  M_inv.block<3, 3>(0, 0) = rot_base_admittance *
-    inertia_inv.head(3).asDiagonal() * rot_base_admittance.transpose();
-  M_inv.block<3, 3>(3, 3) = rot_base_admittance *
-    inertia_inv.tail(3).asDiagonal() * rot_base_admittance.transpose();
+  Eigen::Matrix<double, 6, 6> M = Eigen::Matrix<double, 6, 6>::Zero();
+  M.block<3, 3>(0, 0) =
+    rot_base_admittance * \
+    reference_compliant_frame.inertia.block<3, 3>(0, 0) * \
+    rot_base_admittance.transpose();
+  M.block<3, 3>(3, 3) =
+    rot_base_admittance * \
+    reference_compliant_frame.inertia.block<3, 3>(3, 3) * \
+    rot_base_admittance.transpose();
+
+  Eigen::Matrix<double, 6, 6> M_inv = M.inverse();
 
   // Compute pose tracking errors
   Eigen::Matrix<double, 6, 1> error_pose;
