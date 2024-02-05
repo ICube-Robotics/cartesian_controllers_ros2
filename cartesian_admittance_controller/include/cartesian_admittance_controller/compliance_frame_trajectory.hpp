@@ -70,6 +70,8 @@ class CompliantFrameTrajectory
 public:
   explicit CompliantFrameTrajectory(size_t trajectory_lenght);
 
+  bool resize(size_t trajectory_lenght);
+
   const CompliantFrame & get_compliant_frame(unsigned int index = 0) const;
 
   size_t N() const;

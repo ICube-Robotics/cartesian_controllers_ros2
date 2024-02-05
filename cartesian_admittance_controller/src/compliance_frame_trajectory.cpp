@@ -29,11 +29,21 @@ CompliantFrameTrajectory::CompliantFrameTrajectory(size_t trajectory_lenght)
   }
 
   // Init compliance frame trajectory
-  frames_.reserve(trajectory_lenght);
+  frames_.reserve(trajectory_lenght + 1);
   for (unsigned int i = 0; i < trajectory_lenght; i++) {
     frames_.push_back(CompliantFrame());
     // TODO(tpoignonec): fill data with NaN?
   }
+}
+
+
+bool CompliantFrameTrajectory::resize(size_t trajectory_lenght)
+{
+  if (trajectory_lenght == 0) {
+    return false;
+  }
+  frames_.resize(trajectory_lenght);
+  return true;
 }
 
 const CompliantFrame & CompliantFrameTrajectory::get_compliant_frame(unsigned int index) const
