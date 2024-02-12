@@ -141,6 +141,11 @@ controller_interface::return_type CartesianAdmittanceController::update(
       joint_command_
     );
     if (ret_admittance != controller_interface::return_type::OK) {
+      std::fill(
+        joint_command_.accelerations.begin(), joint_command_.accelerations.end(), 0.0);
+      std::fill(
+        joint_command_.velocities.begin(), joint_command_.velocities.end(), 0.0);
+      write_state_to_hardware(joint_command_);
       return controller_interface::return_type::ERROR;
     }
   }
