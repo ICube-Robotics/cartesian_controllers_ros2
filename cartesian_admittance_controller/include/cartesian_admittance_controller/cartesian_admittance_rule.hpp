@@ -22,6 +22,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -37,6 +38,7 @@
 #include "trajectory_msgs/msg/joint_trajectory_point.hpp"
 
 // Custom msgs
+#include "cartesian_control_msgs/msg/admittance_controller_state.hpp"
 #include "cartesian_control_msgs/msg/cartesian_trajectory.hpp"
 #include "cartesian_control_msgs/msg/compliant_frame_trajectory.hpp"
 
@@ -48,6 +50,12 @@
 
 namespace cartesian_admittance_controller
 {
+
+geometry_msgs::msg::Accel AccelToMsg(const Eigen::Matrix<double,6,1>& in);
+geometry_msgs::msg::Wrench WrenchToMsg(const Eigen::Matrix<double,6,1>& in);
+
+template <class Derived>
+void matrixEigenToMsg(const Eigen::MatrixBase<Derived> &e, std_msgs::msg::Float64MultiArray &m);
 
 struct AdmittanceState
 {
@@ -112,6 +120,10 @@ struct AdmittanceState
   Eigen::VectorXd joint_command_position;
   Eigen::VectorXd joint_command_velocity;
   Eigen::VectorXd joint_command_acceleration;
+
+  // Additional diagnostic data
+  //------------------------
+  std::map<std::string, double> diagnostic_data;
 };
 
 struct AdmittanceTransforms
@@ -162,6 +174,10 @@ public:
 
   controller_interface::return_type update_compliant_frame_trajectory(
     const cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory);
+
+
+  controller_interface::return_type controller_state_to_msg(
+    cartesian_control_msgs::msg::AdmittanceControllerState & msg);
 
   /**
   * Compute joint (velocity) command from the current cartesian tracking errors

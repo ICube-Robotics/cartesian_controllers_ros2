@@ -59,7 +59,7 @@ where $q$ is the **measured** joint position and $T_s$ is the controller samplin
       stiffness: [200., 200., 200., 50., 50., 50.]
   ```
 
-- `~/state` (output topic) [`control_msgs::msg::AdmittanceControllerState`]
+- `~/state` (output topic) [`cartesian_control_msgs::msg::AdmittanceControllerState`]
 
   Topic publishing controller internal states.
 

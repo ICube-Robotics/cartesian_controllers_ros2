@@ -44,6 +44,7 @@
 #include "tf2_eigen/tf2_eigen.hpp"
 #include "tf2_kdl/tf2_kdl.hpp"
 
+#include "cartesian_control_msgs/msg/admittance_controller_state.hpp"
 #include "cartesian_control_msgs/msg/cartesian_trajectory.hpp"
 #include "cartesian_control_msgs/msg/compliant_frame_trajectory.hpp"
 
@@ -51,7 +52,7 @@
 using ControllerCommandWrenchMsg = geometry_msgs::msg::WrenchStamped;
 using ControllerCommandPoseMsg = geometry_msgs::msg::PoseStamped;
 using ControllerRefCompliantTrajectoryMsg = cartesian_control_msgs::msg::CompliantFrameTrajectory;
-using ControllerStateMsg = control_msgs::msg::AdmittanceControllerState;
+using ControllerStateMsg = cartesian_control_msgs::msg::AdmittanceControllerState;
 
 namespace
 {

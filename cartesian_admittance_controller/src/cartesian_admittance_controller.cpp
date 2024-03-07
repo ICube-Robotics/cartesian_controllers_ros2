@@ -179,10 +179,17 @@ controller_interface::return_type CartesianAdmittanceController::update(
   write_state_to_hardware(joint_command_);
 
   // Publish controller state
-  state_publisher_->lock();
-  // state_publisher_->msg_ = admittance_->get_controller_state();
-  state_publisher_->unlockAndPublish();
-
+  if (admittance_->controller_state_to_msg(controller_state_msg_) != \
+      controller_interface::return_type::OK) {
+      RCLCPP_ERROR(
+        get_node()->get_logger(),
+        "Failled to retrieve Admittance rule state!");
+  }
+  else {
+    state_publisher_->lock();
+    state_publisher_->msg_ = controller_state_msg_;
+    state_publisher_->unlockAndPublish();
+  }
   return controller_interface::return_type::OK;
 }
 
@@ -322,7 +329,7 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_configure
     get_node()->create_subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>(
     "~/reference_compliant_frame_trajectory",
     rclcpp::SystemDefaultsQoS(), compliant_frame_trajectory_callback);
-  s_publisher_ = get_node()->create_publisher<control_msgs::msg::AdmittanceControllerState>(
+  s_publisher_ = get_node()->create_publisher<ControllerStateMsg>(
     "~/status", rclcpp::SystemDefaultsQoS());
   state_publisher_ =
     std::make_unique<realtime_tools::RealtimePublisher<ControllerStateMsg>>(s_publisher_);

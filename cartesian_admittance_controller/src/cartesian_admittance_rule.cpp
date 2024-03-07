@@ -29,6 +29,51 @@
 namespace cartesian_admittance_controller
 {
 
+geometry_msgs::msg::Accel AccelToMsg(const Eigen::Matrix<double,6,1>& in)
+{
+  geometry_msgs::msg::Accel msg;
+  msg.linear.x = in[0];
+  msg.linear.y = in[1];
+  msg.linear.z = in[2];
+  msg.angular.x = in[3];
+  msg.angular.y = in[4];
+  msg.angular.z = in[5];
+  return msg;
+}
+
+geometry_msgs::msg::Wrench WrenchToMsg(const Eigen::Matrix<double,6,1>& in)
+{
+  geometry_msgs::msg::Wrench msg;
+  msg.force.x = in[0];
+  msg.force.y = in[1];
+  msg.force.z = in[2];
+  msg.torque.x = in[3];
+  msg.torque.y = in[4];
+  msg.torque.z = in[5];
+  return msg;
+}
+
+template <class Derived>
+void matrixEigenToMsg(const Eigen::MatrixBase<Derived> &e, std_msgs::msg::Float64MultiArray &m)
+{
+  if (m.layout.dim.size() != 2){
+    m.layout.dim.resize(2);
+  }
+  m.layout.dim[0].stride = e.rows() * e.cols();
+  m.layout.dim[0].size = e.rows();
+  m.layout.dim[1].stride = e.cols();
+  m.layout.dim[1].size = e.cols();
+  if ((int)m.data.size() != e.size()) {
+    m.data.resize(e.size());
+
+  }
+  int ii = 0;
+  for (int i = 0; i < e.rows(); ++i) {
+    for (int j = 0; j < e.cols(); ++j) {
+      m.data[ii++] = e.coeff(i, j);
+  }}
+}
+
 controller_interface::return_type
 CartesianAdmittanceRule::init(
   const std::shared_ptr<cartesian_admittance_controller::ParamListener> & parameter_handler)
@@ -237,6 +282,50 @@ CartesianAdmittanceRule::update_compliant_frame_trajectory(
     return controller_interface::return_type::ERROR;
   }
 }
+
+controller_interface::return_type
+CartesianAdmittanceRule::controller_state_to_msg(
+    cartesian_control_msgs::msg::AdmittanceControllerState & admittance_state_msg)
+{
+  bool success = true;
+  // Fill desired compliance
+  auto desired_frame_0 = \
+    admittance_state_.reference_compliant_frames.get_compliant_frame(0);
+  admittance_state_msg.desired_pose = Eigen::toMsg(desired_frame_0.pose);
+  admittance_state_msg.desired_velocity = Eigen::toMsg(desired_frame_0.velocity);
+  admittance_state_msg.desired_acceleration = AccelToMsg(desired_frame_0.acceleration);
+  matrixEigenToMsg(desired_frame_0.inertia, admittance_state_msg.desired_inertia);
+  matrixEigenToMsg(desired_frame_0.stiffness, admittance_state_msg.desired_stiffness);
+  matrixEigenToMsg(desired_frame_0.damping, admittance_state_msg.desired_damping);
+
+  // Fill robot state
+  admittance_state_msg.pose = Eigen::toMsg(admittance_state_.robot_current_pose);
+  admittance_state_msg.velocity = Eigen::toMsg(admittance_state_.robot_current_velocity);
+  admittance_state_msg.wrench = WrenchToMsg(admittance_state_.robot_current_wrench_at_ft_frame);
+  matrixEigenToMsg(admittance_state_.inertia, admittance_state_msg.rendered_inertia);
+  matrixEigenToMsg(admittance_state_.stiffness, admittance_state_msg.rendered_stiffness);
+  matrixEigenToMsg(admittance_state_.damping, admittance_state_msg.rendered_damping);
+
+  // Fill commands
+  admittance_state_msg.robot_command_twist = Eigen::toMsg(admittance_state_.robot_command_twist);
+
+  // Fill diagnostic data
+  admittance_state_msg.diagnostic_data.keys.clear();
+  admittance_state_msg.diagnostic_data.values.clear();
+
+  for (const auto& [key, value] : admittance_state_.diagnostic_data){
+    admittance_state_msg.diagnostic_data.keys.push_back(key);
+    admittance_state_msg.diagnostic_data.values.push_back(value);
+  }
+
+  // Return
+  if (success) {
+    return controller_interface::return_type::OK;
+  } else {
+    return controller_interface::return_type::ERROR;
+  }
+}
+
 
 controller_interface::return_type
 CartesianAdmittanceRule::update(

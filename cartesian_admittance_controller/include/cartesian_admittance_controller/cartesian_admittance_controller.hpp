@@ -42,7 +42,6 @@
 #include "semantic_components/force_torque_sensor.hpp"
 
 // Ros msgs
-#include "control_msgs/msg/admittance_controller_state.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
@@ -50,13 +49,13 @@
 #include "trajectory_msgs/msg/joint_trajectory.hpp"
 
 // Custom msgs
+#include "cartesian_control_msgs/msg/admittance_controller_state.hpp"
 #include "cartesian_control_msgs/msg/cartesian_trajectory.hpp"
 #include "cartesian_control_msgs/msg/compliant_frame_trajectory.hpp"
 
 namespace cartesian_admittance_controller
 {
-// using CartesianFrameMsg = cartesian_control_msgs::msg::CompliantFrameTrajectory;
-using ControllerStateMsg = control_msgs::msg::AdmittanceControllerState;
+using ControllerStateMsg = cartesian_control_msgs::msg::AdmittanceControllerState;
 
 class CartesianAdmittanceController : public controller_interface::ControllerInterface
 {
@@ -151,7 +150,7 @@ protected:
   // ROS subscribers
   rclcpp::Subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>::SharedPtr
     input_compliant_frame_trajectory_subscriber_;
-  rclcpp::Publisher<control_msgs::msg::AdmittanceControllerState>::SharedPtr s_publisher_;
+  rclcpp::Publisher<ControllerStateMsg>::SharedPtr s_publisher_;
 
   // admittance parameters
   std::shared_ptr<cartesian_admittance_controller::ParamListener> parameter_handler_;
@@ -161,6 +160,7 @@ protected:
   reference_compliant_frame_trajectory_msg_;
 
   // real-time buffer
+  ControllerStateMsg controller_state_msg_;
   realtime_tools::RealtimeBuffer<std::shared_ptr<
       cartesian_control_msgs::msg::CompliantFrameTrajectory>> input_compliant_frame_trajectory_msg_;
   std::unique_ptr<realtime_tools::RealtimePublisher<ControllerStateMsg>> state_publisher_;
