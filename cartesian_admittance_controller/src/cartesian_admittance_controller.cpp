@@ -186,6 +186,7 @@ controller_interface::return_type CartesianAdmittanceController::update(
         "Failled to retrieve Admittance rule state!");
   }
   else {
+    controller_state_msg_.header.stamp = get_node()->get_clock()->now();
     state_publisher_->lock();
     state_publisher_->msg_ = controller_state_msg_;
     state_publisher_->unlockAndPublish();
