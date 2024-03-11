@@ -309,6 +309,17 @@ CartesianAdmittanceRule::controller_state_to_msg(
   // Fill commands
   admittance_state_msg.robot_command_twist = Eigen::toMsg(admittance_state_.robot_command_twist);
 
+  admittance_state_msg.joint_command_position.resize(num_joints_);
+  admittance_state_msg.joint_command_velocity.resize(num_joints_);
+  admittance_state_msg.joint_command_acceleration.resize(num_joints_);
+
+  for (int i = 0; i < num_joints_; i++) {
+    admittance_state_msg.joint_command_position[i] = admittance_state_.joint_command_position[i];
+    admittance_state_msg.joint_command_velocity[i] = admittance_state_.joint_command_velocity[i];
+    admittance_state_msg.joint_command_acceleration[i] =
+      admittance_state_.joint_command_acceleration[i];
+  }
+
   // Fill diagnostic data
   admittance_state_msg.diagnostic_data.keys.clear();
   admittance_state_msg.diagnostic_data.values.clear();

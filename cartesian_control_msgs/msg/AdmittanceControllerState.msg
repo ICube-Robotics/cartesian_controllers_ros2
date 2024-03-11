@@ -21,6 +21,9 @@ std_msgs/Float64MultiArray rendered_stiffness  # optional
 
 # Commands
 geometry_msgs/Twist robot_command_twist
+float64[] joint_command_position
+float64[] joint_command_velocity
+float64[] joint_command_acceleration
 
 # Misc.
 cartesian_control_msgs/KeyValues diagnostic_data
