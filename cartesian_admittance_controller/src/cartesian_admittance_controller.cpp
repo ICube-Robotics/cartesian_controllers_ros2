@@ -180,12 +180,12 @@ controller_interface::return_type CartesianAdmittanceController::update(
 
   // Publish controller state
   if (admittance_->controller_state_to_msg(controller_state_msg_) != \
-      controller_interface::return_type::OK) {
-      RCLCPP_ERROR(
-        get_node()->get_logger(),
-        "Failled to retrieve Admittance rule state!");
-  }
-  else {
+    controller_interface::return_type::OK)
+  {
+    RCLCPP_ERROR(
+      get_node()->get_logger(),
+      "Failed to retrieve Admittance rule state!");
+  } else {
     controller_state_msg_.header.stamp = get_node()->get_clock()->now();
     state_publisher_->lock();
     state_publisher_->msg_ = controller_state_msg_;
