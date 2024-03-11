@@ -29,7 +29,7 @@
 namespace cartesian_admittance_controller
 {
 
-geometry_msgs::msg::Accel AccelToMsg(const Eigen::Matrix<double,6,1>& in)
+geometry_msgs::msg::Accel AccelToMsg(const Eigen::Matrix<double, 6, 1> & in)
 {
   geometry_msgs::msg::Accel msg;
   msg.linear.x = in[0];
@@ -41,7 +41,7 @@ geometry_msgs::msg::Accel AccelToMsg(const Eigen::Matrix<double,6,1>& in)
   return msg;
 }
 
-geometry_msgs::msg::Wrench WrenchToMsg(const Eigen::Matrix<double,6,1>& in)
+geometry_msgs::msg::Wrench WrenchToMsg(const Eigen::Matrix<double, 6, 1> & in)
 {
   geometry_msgs::msg::Wrench msg;
   msg.force.x = in[0];
@@ -53,25 +53,25 @@ geometry_msgs::msg::Wrench WrenchToMsg(const Eigen::Matrix<double,6,1>& in)
   return msg;
 }
 
-template <class Derived>
-void matrixEigenToMsg(const Eigen::MatrixBase<Derived> &e, std_msgs::msg::Float64MultiArray &m)
+template<class Derived>
+void matrixEigenToMsg(const Eigen::MatrixBase<Derived> & e, std_msgs::msg::Float64MultiArray & m)
 {
-  if (m.layout.dim.size() != 2){
+  if (m.layout.dim.size() != 2) {
     m.layout.dim.resize(2);
   }
   m.layout.dim[0].stride = e.rows() * e.cols();
   m.layout.dim[0].size = e.rows();
   m.layout.dim[1].stride = e.cols();
   m.layout.dim[1].size = e.cols();
-  if ((int)m.data.size() != e.size()) {
+  if (static_cast<int>(m.data.size()) != e.size()) {
     m.data.resize(e.size());
-
   }
   int ii = 0;
   for (int i = 0; i < e.rows(); ++i) {
     for (int j = 0; j < e.cols(); ++j) {
       m.data[ii++] = e.coeff(i, j);
-  }}
+    }
+  }
 }
 
 controller_interface::return_type
@@ -140,7 +140,7 @@ CartesianAdmittanceRule::init_reference_frame_trajectory(
   geometry_msgs::msg::Wrench dummy_wrench;
 
   // Update state
-  if (!update_internal_state(current_joint_state, dummy_wrench)) {
+  if (!update_internal_state(current_joint_state, dummy_wrench, -1.0)) {
     RCLCPP_ERROR(
       rclcpp::get_logger("CartesianAdmittanceRule"),
       "Failed to update internal state in 'init_reference_frame_trajectory()'!");
@@ -285,7 +285,7 @@ CartesianAdmittanceRule::update_compliant_frame_trajectory(
 
 controller_interface::return_type
 CartesianAdmittanceRule::controller_state_to_msg(
-    cartesian_control_msgs::msg::AdmittanceControllerState & admittance_state_msg)
+  cartesian_control_msgs::msg::AdmittanceControllerState & admittance_state_msg)
 {
   bool success = true;
   // Fill desired compliance
@@ -313,7 +313,7 @@ CartesianAdmittanceRule::controller_state_to_msg(
   admittance_state_msg.diagnostic_data.keys.clear();
   admittance_state_msg.diagnostic_data.values.clear();
 
-  for (const auto& [key, value] : admittance_state_.diagnostic_data){
+  for (const auto & [key, value] : admittance_state_.diagnostic_data) {
     admittance_state_msg.diagnostic_data.keys.push_back(key);
     admittance_state_msg.diagnostic_data.values.push_back(value);
   }
@@ -343,7 +343,8 @@ CartesianAdmittanceRule::update(
   // Update current robot state
   bool success = update_internal_state(
     current_joint_state,
-    measured_wrench
+    measured_wrench,
+    dt
   );
 
   // Compute controls
@@ -384,7 +385,8 @@ CartesianAdmittanceRule::update(
 
 bool CartesianAdmittanceRule::update_internal_state(
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
-  const geometry_msgs::msg::Wrench & measured_wrench)
+  const geometry_msgs::msg::Wrench & measured_wrench,
+  double dt)
 {
   bool success = true;   // return flag
 
@@ -422,7 +424,22 @@ bool CartesianAdmittanceRule::update_internal_state(
 
   // Update current robot joint states
   vec_to_eigen(current_joint_state.positions, admittance_state_.joint_state_position);
-  vec_to_eigen(current_joint_state.velocities, admittance_state_.joint_state_velocity);
+
+  // Filter velocity measurement and copy to state
+  if (dt > 0) {
+    double cutoff_jnt_vel = 80.0;
+    double jnt_velocity_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_jnt_vel);
+    for (size_t i = 0; i < num_joints_; ++i) {
+      admittance_state_.joint_state_velocity(i) = filters::exponentialSmoothing(
+        current_joint_state.velocities.at(i),
+        admittance_state_.joint_state_velocity(i),
+        jnt_velocity_filter_coefficient
+      );
+    }
+  } else {
+    // Initialization
+    vec_to_eigen(current_joint_state.velocities, admittance_state_.joint_state_velocity);
+  }
 
   // Update current cartesian pose and velocity from robot joint states
   success &= kinematics_->calculate_link_transform(

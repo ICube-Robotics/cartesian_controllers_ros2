@@ -51,11 +51,11 @@
 namespace cartesian_admittance_controller
 {
 
-geometry_msgs::msg::Accel AccelToMsg(const Eigen::Matrix<double,6,1>& in);
-geometry_msgs::msg::Wrench WrenchToMsg(const Eigen::Matrix<double,6,1>& in);
+geometry_msgs::msg::Accel AccelToMsg(const Eigen::Matrix<double, 6, 1> & in);
+geometry_msgs::msg::Wrench WrenchToMsg(const Eigen::Matrix<double, 6, 1> & in);
 
-template <class Derived>
-void matrixEigenToMsg(const Eigen::MatrixBase<Derived> &e, std_msgs::msg::Float64MultiArray &m);
+template<class Derived>
+void matrixEigenToMsg(const Eigen::MatrixBase<Derived> & e, std_msgs::msg::Float64MultiArray & m);
 
 struct AdmittanceState
 {
@@ -205,7 +205,8 @@ protected:
 
   bool update_internal_state(
     const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
-    const geometry_msgs::msg::Wrench & measured_wrench);
+    const geometry_msgs::msg::Wrench & measured_wrench,
+    double dt /*period in seconds*/);
 
   bool process_wrench_measurements(
     const geometry_msgs::msg::Wrench & measured_wrench);
