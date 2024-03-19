@@ -146,7 +146,8 @@ CallbackReturn CartesianVelocityController::on_activate(
 
   std::fill(
     reference_interfaces_.begin(), reference_interfaces_.end(),
-    std::numeric_limits<double>::quiet_NaN());
+    0.0  // std::numeric_limits<double>::quiet_NaN()
+  );
 
   return CallbackReturn::SUCCESS;
 }
@@ -166,32 +167,62 @@ controller_interface::return_type CartesianVelocityController::update_and_write_
   const rclcpp::Time & /* time */,
   const rclcpp::Duration & /* period */)
 {
+  bool all_ok = true;
+
+  bool nan_joint_position = false;
   for (auto j = 0ul; j < command_joint_names_.size(); j++) {
     joint_positions_(j) = state_interfaces_[j].get_value();
+    nan_joint_position |= std::isnan(joint_positions_(j));
   }
 
+  bool nan_ref_velocity = false;
   for (auto j = 0ul; j < reference_interface_names_.size(); j++) {
     cart_velocities_(j) = reference_interfaces_[j];
+    nan_ref_velocity |= std::isnan(cart_velocities_(j));
   }
 
-  if (!kinematics_->convert_cartesian_deltas_to_joint_deltas(
-      joint_positions_,
-      cart_velocities_,
-      params_.kinematics.tip,
-      joint_velocities_))
-  {
-    RCLCPP_ERROR(
-      rclcpp::get_logger("CartesianVelocityController"),
-      "convert_cartesian_deltas_to_joint_deltas failed.");
-    return controller_interface::return_type::ERROR;
+  auto clock = get_node()->get_clock();
+  if (nan_joint_position) {
+    all_ok &= false;
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(), *clock, 1000,
+      "State position is NaN!");
+  }
+  if (nan_ref_velocity) {
+    all_ok &= false;
+    std::fill(joint_velocities_.begin(), joint_velocities_.end(), 0.0);
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(), *clock, 1000,
+      "Reference cartesian velocity is NaN!");
+  }
+
+  if (all_ok) {
+    if (!kinematics_->convert_cartesian_deltas_to_joint_deltas(
+        joint_positions_,
+        cart_velocities_,
+        params_.kinematics.tip,
+        joint_velocities_))
+    {
+      RCLCPP_ERROR(
+        rclcpp::get_logger("CartesianVelocityController"),
+        "convert_cartesian_deltas_to_joint_deltas failed.");
+    }
+  }
+
+  if (!all_ok) {
+    // Send zero-velocity if there is an error!
+    std::fill(joint_velocities_.begin(), joint_velocities_.end(), 0.0);
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(), *clock, 1000,
+      "Error detected! Zero-velocity command sent to joints.");
   }
 
   for (auto j = 0ul; j < command_joint_names_.size(); j++) {
     command_interfaces_[j].set_value(joint_velocities_(j));
   }
 
-
-  return controller_interface::return_type::OK;
+  return all_ok ? \
+         controller_interface::return_type::OK : controller_interface::return_type::ERROR;
 }
 
 std::vector<hardware_interface::CommandInterface>
