@@ -1,0 +1,9 @@
+<library path="cartesian_velocity_controller">
+  <class name="cartesian_velocity_controller/CartesianVelocityController"
+         type="cartesian_velocity_controller::CartesianVelocityController"
+         base_class_type="controller_interface::ChainableControllerInterface">
+  <description>
+    This ros2_control controller commands the Cartesian velocity of the robot end-effector.
+  </description>
+  </class>
+</library>
