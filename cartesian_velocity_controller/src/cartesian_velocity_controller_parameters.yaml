@@ -25,3 +25,20 @@ cartesian_velocity_controller:
       type: string,
       description: "Specifies the end effector link of the robot description used by the kinematics plugin."
     }
+    alpha: {
+      type: double,
+      default_value: 0.01,
+      description: "Specifies the damping coefficient for the Jacobian pseudo inverse."
+    }
+
+  # general settings
+  robot_description: {
+    type: string,
+    description: "Contains robot description in URDF format. The description is used for forward and inverse kinematics.",
+    read_only: true
+  }
+  enable_parameter_update_without_reactivation: {
+    type: bool,
+    default_value: true,
+    description: "If enabled, the parameters will be dynamically updated while the controller is running."
+  }
