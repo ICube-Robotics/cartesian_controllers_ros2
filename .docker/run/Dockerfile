@@ -7,7 +7,8 @@ RUN apt install -y python3-pip
 RUN apt install -y git clang-format-14 cppcheck
 RUN pip install pre-commit
 RUN apt update && \
-    cd ros2_dev/src/cartesian_controllers_ros2
+    cd ros2_dev/src && \
+    vcs import . < cartesian_controllers_ros2/cartesian_controllers_ros2.repos
 RUN cd ros2_dev/ && \
     . /opt/ros/${ROS_DISTRO}/setup.sh && \
     rosdep install --ignore-src --from-paths . -y -r

@@ -1,0 +1,178 @@
+{
+  "configById": {
+    "Plot!6oe0yo": {
+      "paths": [
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/cartesian_state_broadcaster/cartesian_state.pose.position.x",
+          "enabled": true
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/cartesian_state_broadcaster/cartesian_state.pose.position.y",
+          "enabled": true
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/cartesian_state_broadcaster/cartesian_state.pose.position.z",
+          "enabled": true
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/cartesian_admittance_controller/reference_compliant_frame_trajectory.cartesian_trajectory_points[0].pose.position.x",
+          "enabled": true
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/cartesian_admittance_controller/reference_compliant_frame_trajectory.cartesian_trajectory_points[0].pose.position.y",
+          "enabled": true
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/cartesian_admittance_controller/reference_compliant_frame_trajectory.cartesian_trajectory_points[0].pose.position.z",
+          "enabled": true
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": false,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "followingViewWidth": 10
+    },
+    "Plot!4feadyz": {
+      "paths": [
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/force_torque_sensor_broadcaster/wrench.wrench.force.x",
+          "enabled": true
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/force_torque_sensor_broadcaster/wrench.wrench.force.y",
+          "enabled": true
+        },
+        {
+          "timestampMethod": "receiveTime",
+          "value": "/force_torque_sensor_broadcaster/wrench.wrench.force.z",
+          "enabled": true
+        }
+      ],
+      "showXAxisLabels": true,
+      "showYAxisLabels": true,
+      "showLegend": true,
+      "legendDisplay": "floating",
+      "showPlotValuesInLegend": false,
+      "isSynced": true,
+      "xAxisVal": "timestamp",
+      "sidebarDimension": 240,
+      "followingViewWidth": 10
+    },
+    "Publish!27gh7s6": {
+      "buttonText": "Publish",
+      "buttonTooltip": "",
+      "advancedView": true,
+      "value": "{\n  \"force\": {\n    \"x\": 0,\n    \"y\": 0,\n    \"z\": 0\n  },\n  \"torque\": {\n    \"x\": 0,\n    \"y\": 0,\n    \"z\": 0\n  }\n}",
+      "topicName": "/dummy_ft_sensor_data",
+      "datatype": "geometry_msgs/msg/Wrench"
+    },
+    "3D!18i6zy7": {
+      "layers": {
+        "845139cb-26bc-40b3-8161-8ab60af4baf5": {
+          "visible": true,
+          "frameLocked": true,
+          "label": "Grid",
+          "instanceId": "845139cb-26bc-40b3-8161-8ab60af4baf5",
+          "layerId": "foxglove.Grid",
+          "size": 10,
+          "divisions": 10,
+          "lineWidth": 1,
+          "color": "#248eff",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "order": 1
+        }
+      },
+      "cameraState": {
+        "perspective": true,
+        "distance": 2.2036622046976575,
+        "phi": 64.91603587972673,
+        "thetaOffset": 43.38809553026675,
+        "targetOffset": [
+          0.01649338052627331,
+          0.5256051739949053,
+          1.8925111498137608e-17
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-position",
+      "scene": {
+        "syncCamera": false,
+        "transforms": {
+          "showLabel": false,
+          "editable": false
+        }
+      },
+      "transforms": {},
+      "topics": {
+        "/robot_description": {
+          "visible": true
+        }
+      },
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "imageMode": {}
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "layout": {
+    "first": {
+      "first": "Plot!6oe0yo",
+      "second": "Plot!4feadyz",
+      "direction": "row"
+    },
+    "second": {
+      "first": "Publish!27gh7s6",
+      "second": "3D!18i6zy7",
+      "direction": "row",
+      "splitPercentage": 50
+    },
+    "direction": "column",
+    "splitPercentage": 64.53068592057761
+  }
+}
