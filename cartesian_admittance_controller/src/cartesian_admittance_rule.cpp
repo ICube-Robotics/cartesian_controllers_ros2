@@ -313,7 +313,7 @@ CartesianAdmittanceRule::controller_state_to_msg(
   admittance_state_msg.joint_command_velocity.resize(num_joints_);
   admittance_state_msg.joint_command_acceleration.resize(num_joints_);
 
-  for (int i = 0; i < num_joints_; i++) {
+  for (size_t i = 0; i < num_joints_; i++) {
     admittance_state_msg.joint_command_position[i] = admittance_state_.joint_command_position[i];
     admittance_state_msg.joint_command_velocity[i] = admittance_state_.joint_command_velocity[i];
     admittance_state_msg.joint_command_acceleration[i] =
