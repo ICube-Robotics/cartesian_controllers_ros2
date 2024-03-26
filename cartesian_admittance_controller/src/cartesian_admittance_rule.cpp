@@ -436,7 +436,7 @@ bool CartesianAdmittanceRule::update_internal_state(
   // Update current robot joint states
 
   // Filter velocity measurement and copy to state
-  double cutoff_jnt_state = 80.0;
+  double cutoff_jnt_state = parameters_.filters.state_filter_cuttoff_freq;
   if (dt > 0 && cutoff_jnt_state > 0.0) {
     double jnt_state_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_jnt_state);
     for (size_t i = 0; i < num_joints_; ++i) {

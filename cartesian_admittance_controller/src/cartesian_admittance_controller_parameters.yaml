@@ -24,6 +24,18 @@ cartesian_admittance_controller:
       read_only: true
     }
 
+  filters:
+    state_filter_cuttoff_freq: {
+      type: double,
+      default_value: 100.0,
+      description: "Specifies the cutoff frequency for the state measurements (position / velocity)."
+    }
+    command_filter_cuttoff_freq: {
+      type: double,
+      default_value: 100.0,
+      description: "Specifies the cutoff frequency for the command signals."
+    }
+
 #  chainable_command_interfaces:
 #    {
 #      type: string_array,
