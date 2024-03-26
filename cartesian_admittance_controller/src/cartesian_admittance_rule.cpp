@@ -434,27 +434,32 @@ bool CartesianAdmittanceRule::update_internal_state(
   );
 
   // Update current robot joint states
-  vec_to_eigen(current_joint_state.positions, admittance_state_.joint_state_position);
 
   // Filter velocity measurement and copy to state
-  if (dt > 0) {
-    double cutoff_jnt_vel = 80.0;
-    double jnt_velocity_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_jnt_vel);
+  double cutoff_jnt_state = 80.0;
+  if (dt > 0 && cutoff_jnt_state > 0.0) {
+    double jnt_state_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_jnt_state);
     for (size_t i = 0; i < num_joints_; ++i) {
+      admittance_state_.joint_state_position(i) = filters::exponentialSmoothing(
+        current_joint_state.positions.at(i),
+        admittance_state_.joint_state_position(i),
+        jnt_state_filter_coefficient
+      );
       admittance_state_.joint_state_velocity(i) = filters::exponentialSmoothing(
         current_joint_state.velocities.at(i),
         admittance_state_.joint_state_velocity(i),
-        jnt_velocity_filter_coefficient
+        jnt_state_filter_coefficient
       );
     }
   } else {
     // Initialization
+    vec_to_eigen(current_joint_state.positions, admittance_state_.joint_state_position);
     vec_to_eigen(current_joint_state.velocities, admittance_state_.joint_state_velocity);
   }
 
   // Update current cartesian pose and velocity from robot joint states
   success &= kinematics_->calculate_link_transform(
-    current_joint_state.positions,
+    admittance_state_.joint_state_position,
     admittance_state_.control_frame,
     admittance_state_.robot_current_pose
   );
