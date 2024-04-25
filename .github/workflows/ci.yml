@@ -50,7 +50,7 @@ jobs:
             vcs import src < src/cartesian_controllers_ros2/cartesian_controllers_ros2.repos
             rosdep install --ignore-src --from-paths . -y -r
             colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --symlink-install
-            colcon test
+            colcon test --event-handlers console_direct+
             colcon test-result
 
       - name: Upload Tests to Artifacts
