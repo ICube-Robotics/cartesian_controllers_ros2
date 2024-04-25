@@ -28,12 +28,12 @@ cartesian_admittance_controller:
     state_filter_cuttoff_freq: {
       type: double,
       default_value: 100.0,
-      description: "Specifies the cutoff frequency for the state measurements (position / velocity)."
+      description: "Specifies the cutoff frequency for the state measurements (position / velocity). Disabled if frequency <= 0."
     }
     command_filter_cuttoff_freq: {
       type: double,
-      default_value: 100.0,
-      description: "Specifies the cutoff frequency for the command signals."
+      default_value: -1.0,
+      description: "Specifies the cutoff frequency for the command signals. Disabled if frequency <= 0."
     }
 
 #  chainable_command_interfaces:

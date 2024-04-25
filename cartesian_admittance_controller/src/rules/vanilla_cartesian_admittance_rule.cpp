@@ -129,16 +129,18 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
 
   // Filter joint command velocity
   double cutoff_freq_cmd = parameters_.filters.command_filter_cuttoff_freq;
-  double cmd_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_freq_cmd);
+  if (cutoff_freq_cmd > 0.0) {  // No smoothing otherwise
+    double cmd_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_freq_cmd);
 
-  for (size_t i = 0; i < static_cast<size_t>(
-      admittance_state.joint_command_velocity.size()); i++)
-  {
-    admittance_state.joint_command_velocity(i) = filters::exponentialSmoothing(
-      admittance_state.joint_command_velocity(i),
-      previous_jnt_cmd_velocity(i),
-      cmd_filter_coefficient
-    );
+    for (size_t i = 0; i < static_cast<size_t>(
+        admittance_state.joint_command_velocity.size()); i++)
+    {
+      admittance_state.joint_command_velocity(i) = filters::exponentialSmoothing(
+        admittance_state.joint_command_velocity(i),
+        previous_jnt_cmd_velocity(i),
+        cmd_filter_coefficient
+      );
+    }
   }
 
   // Integrate motion in joint space
