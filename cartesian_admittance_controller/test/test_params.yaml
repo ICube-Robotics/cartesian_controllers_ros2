@@ -12,11 +12,6 @@ load_admittance_controller:
       - position
       - velocity
 
-    chainable_command_interfaces:
-      - position
-      - velocity
-
-
 test_cartesian_admittance_controller:
   # contains minimal needed parameters for kuka_kr6
   ros__parameters:
@@ -32,9 +27,6 @@ test_cartesian_admittance_controller:
       - position
 
     state_interfaces:
-      - position
-
-    chainable_command_interfaces:
       - position
       - velocity
 
@@ -79,6 +71,9 @@ test_cartesian_admittance_controller:
       frame:
         id: tool0 # Admittance calcs (displacement etc) are done in this frame. Usually the tool or end-effector
         external: false # control frame exists within URDF kinematic chain
+      # Admittance rule
+      plugin_name: cartesian_admittance_controller/VanillaCartesianAdmittanceRule
+      plugin_package: cartesian_admittance_controller
 
       selected_axes:
         - true # x
