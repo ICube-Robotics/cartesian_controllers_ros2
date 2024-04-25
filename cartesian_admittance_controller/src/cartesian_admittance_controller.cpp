@@ -149,31 +149,6 @@ controller_interface::return_type CartesianAdmittanceController::update(
       return controller_interface::return_type::ERROR;
     }
   }
-  /*
-  RCLCPP_INFO(
-    get_node()->get_logger(),
-    "Joint position cmd: [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f]\n",
-    joint_command_.positions[0],
-    joint_command_.positions[1],
-    joint_command_.positions[2],
-    joint_command_.positions[3],
-    joint_command_.positions[4],
-    joint_command_.positions[5],
-    joint_command_.positions[6]
-  );
-
-  RCLCPP_INFO(
-    get_node()->get_logger(),
-    "Joint velocity cmd: [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f] \n\n",
-    joint_command_.velocities[0],
-    joint_command_.velocities[1],
-    joint_command_.velocities[2],
-    joint_command_.velocities[3],
-    joint_command_.velocities[4],
-    joint_command_.velocities[5],
-    joint_command_.velocities[6]
-  );
-  */
 
   // write calculated values to joint interfaces
   write_state_to_hardware(joint_command_);
