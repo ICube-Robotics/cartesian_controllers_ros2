@@ -213,14 +213,21 @@ protected:
     fts_state_names_ = sc_fts.get_state_interface_names();
     std::vector<hardware_interface::LoanedStateInterface> state_ifs;
 
-    const size_t num_state_ifs = joint_state_values_.size() + fts_state_names_.size();
+    const size_t num_state_ifs = 2 * joint_state_position_values_.size() + fts_state_names_.size();
     state_itfs_.reserve(num_state_ifs);
     state_ifs.reserve(num_state_ifs);
 
-    for (auto i = 0u; i < joint_state_values_.size(); ++i) {
+    for (auto i = 0u; i < joint_state_position_values_.size(); ++i) {
       state_itfs_.emplace_back(
         hardware_interface::StateInterface(
-          joint_names_[i], state_interface_types_[0], &joint_state_values_[i]));
+          joint_names_[i], state_interface_types_[0], &joint_state_position_values_[i]));
+      state_ifs.emplace_back(state_itfs_.back());
+    }
+
+    for (auto i = 0u; i < joint_state_velocity_values_.size(); ++i) {
+      state_itfs_.emplace_back(
+        hardware_interface::StateInterface(
+          joint_names_[i], state_interface_types_[1], &joint_state_velocity_values_[i]));
       state_ifs.emplace_back(state_itfs_.back());
     }
 
@@ -350,7 +357,8 @@ protected:
     Eigen::Isometry3d robot_reference_pose;
     Eigen::Matrix<double, 6, 1> robot_reference_velocity = Eigen::Matrix<double, 6, 1>::Zero();
 
-    std::vector<double> joint_state_values(joint_state_values_.begin(), joint_state_values_.end());
+    std::vector<double> joint_state_values(joint_state_position_values_.begin(),
+      joint_state_position_values_.end());
     kinematics_->calculate_link_transform(
       joint_state_values,
       tcp_frame,
@@ -402,10 +410,12 @@ protected:
   // TODO(anyone): adjust the members as needed
 
   // Controller-related parameters
-  const std::vector<std::string> joint_names_ = {"joint1", "joint2", "joint3",
-    "joint4", "joint5", "joint6"};
+  const std::vector<std::string> joint_names_ = {
+    "joint_a1", "joint_a2", "joint_a3",
+    "joint_a4", "joint_a5", "joint_a6"
+  };
   const std::vector<std::string> command_interface_types_ = {"position"};
-  const std::vector<std::string> state_interface_types_ = {"position"};
+  const std::vector<std::string> state_interface_types_ = {"position", "velocity"};
   const std::string ft_sensor_name_ = "ft_sensor_name";
 
   bool hardware_state_has_offset_ = false;
@@ -428,7 +438,8 @@ protected:
   std::array<double, 6> admittance_stiffness_ = {214.1, 214.2, 214.3, 214.4, 214.5, 214.6};
 
   std::array<double, 6> joint_command_values_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-  std::array<double, 6> joint_state_values_ = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6};
+  std::array<double, 6> joint_state_position_values_ = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6};
+  std::array<double, 6> joint_state_velocity_values_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
   std::array<double, 6> fts_state_values_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
   std::vector<std::string> fts_state_names_;
 

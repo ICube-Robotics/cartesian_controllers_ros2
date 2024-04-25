@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <gmock/gmock.h>
-
 #include <memory>
 
 #include "controller_manager/controller_manager.hpp"
@@ -35,7 +34,7 @@ TEST(TestLoadAdmittanceController, load_controller)
 
   ASSERT_EQ(
     cm.load_controller(
-      "load_admittance_controller",
+      "test_cartesian_admittance_controller",
       "cartesian_admittance_controller/CartesianAdmittanceController"),
     nullptr);
 }

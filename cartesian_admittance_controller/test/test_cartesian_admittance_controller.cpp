@@ -33,7 +33,7 @@ INSTANTIATE_TEST_SUITE_P(
   AdmittanceControllerTestParameterizedMissingParameters,
   ::testing::Values(
     "admittance.inertia", "admittance.selected_axes", "admittance.stiffness",
-    "chainable_command_interfaces", "command_interfaces", "control.frame.id", "admittance.frame.id",
+    "command_interfaces", "control.frame.id", "admittance.frame.id",
     "fixed_world_frame.frame.id", "ft_sensor.frame.id", "ft_sensor.name",
     "gravity_compensation.CoG.pos", "gravity_compensation.frame.id", "joints", "kinematics.base",
     "kinematics.plugin_name", "kinematics.plugin_package", "kinematics.tip", "state_interfaces"));
@@ -170,11 +170,13 @@ TEST_F(CartesianAdmittanceControllerTest, check_interfaces)
   ASSERT_EQ(command_interfaces.names.size(), joint_command_values_.size());
 
   ASSERT_EQ(
-    controller_->command_interfaces_.size(), command_interface_types_.size() * joint_names_.size());
+    controller_->command_interfaces_.size(),
+    command_interface_types_.size() * joint_names_.size());
 
   auto state_interfaces = controller_->state_interface_configuration();
-  ASSERT_EQ(state_interfaces.names.size(), joint_state_values_.size() + fts_state_values_.size());
-
+  ASSERT_EQ(
+    state_interfaces.names.size(),
+    state_interface_types_.size() * joint_state_position_values_.size() + fts_state_values_.size());
   ASSERT_EQ(
     controller_->state_interfaces_.size(),
     state_interface_types_.size() * joint_names_.size() + fts_state_values_.size());
@@ -274,8 +276,8 @@ TEST_F(CartesianAdmittanceControllerTest, receive_message_and_publish_updated_st
     controller_interface::return_type::OK);
 
   // After first update state, commanded position should be near the start state
-  for (auto i = 0ul; i < joint_state_values_.size(); i++) {
-    ASSERT_NEAR(joint_state_values_[i], joint_command_values_[i], COMMON_THRESHOLD);
+  for (auto i = 0ul; i < joint_state_position_values_.size(); i++) {
+    ASSERT_NEAR(joint_state_position_values_[i], joint_command_values_[i], COMMON_THRESHOLD);
   }
   /*
   //TODO(tpoignonec)
