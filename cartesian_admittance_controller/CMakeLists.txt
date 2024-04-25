@@ -70,7 +70,7 @@ if(BUILD_TESTING)
   # Dynamically loaded during test
   find_package(kinematics_interface_kdl REQUIRED)
 
-  # test loading controller
+  # test controller (loading only)
   add_rostest_with_parameters_gmock(test_load_controller
     test/test_load_controller.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/test_params.yaml
@@ -81,8 +81,7 @@ if(BUILD_TESTING)
     ros2_control_test_assets
   )
 
-  # test controller function
-  ##[===[
+  # test controller
   add_rostest_with_parameters_gmock(test_controller
     test/test_cartesian_admittance_controller.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/test_params.yaml
@@ -94,7 +93,6 @@ if(BUILD_TESTING)
     hardware_interface
     ros2_control_test_assets
   )
-  ##]===]
 endif()
 
 install(
@@ -110,7 +108,7 @@ install(TARGETS cartesian_admittance_controller cartesian_admittance_controller_
 )
 
 install(
-  DIRECTORY launch config
+  DIRECTORY config
   DESTINATION share/${PROJECT_NAME}
 )
 
