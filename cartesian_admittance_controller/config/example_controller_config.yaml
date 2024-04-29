@@ -17,6 +17,7 @@ cartesian_admittance_controller:
     filters:
       state_filter_cuttoff_freq: 100.0
       command_filter_cuttoff_freq: 100.0
+      ft_sensor_filter_cuttoff_freq: 10.0
 
     kinematics:
       plugin_name: kinematics_interface_kdl/KinematicsInterfaceKDL
@@ -30,8 +31,6 @@ cartesian_admittance_controller:
       name: ftsensor
       frame:
         id: ft_sensor  # Wrench measurements are in this frame
-        external: false # force torque frame exists within URDF kinematic chain
-      filter_coefficient: 0.1 # 1 - exp(-Ts/tau) = 1 - exp(-Ts*2*pi*f_cutoff)
 
     control:
       frame:
