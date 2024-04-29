@@ -46,8 +46,8 @@ public:
 protected:
   /// Actual admittance control logic
   bool compute_controls(
-    AdmittanceState & amittance_state,
-    double dt /*period in seconds*/) override;
+    double dt, /*period in seconds*/
+    AdmittanceState & amittance_state) override;
 };
 
 }  // namespace cartesian_admittance_controller

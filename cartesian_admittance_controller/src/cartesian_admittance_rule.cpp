@@ -140,7 +140,7 @@ CartesianAdmittanceRule::init_reference_frame_trajectory(
   geometry_msgs::msg::Wrench dummy_wrench;
 
   // Update state
-  if (!update_internal_state(current_joint_state, dummy_wrench, -1.0)) {
+  if (!update_internal_state(-1.0, current_joint_state, dummy_wrench)) {
     RCLCPP_ERROR(
       rclcpp::get_logger("CartesianAdmittanceRule"),
       "Failed to update internal state in 'init_reference_frame_trajectory()'!");
@@ -340,9 +340,9 @@ CartesianAdmittanceRule::controller_state_to_msg(
 
 controller_interface::return_type
 CartesianAdmittanceRule::update(
+  const rclcpp::Duration & period,
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
   const geometry_msgs::msg::Wrench & measured_wrench,
-  const rclcpp::Duration & period,
   trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
 {
   const double dt = period.seconds();
@@ -353,13 +353,13 @@ CartesianAdmittanceRule::update(
 
   // Update current robot state
   bool success = update_internal_state(
+    dt,
     current_joint_state,
-    measured_wrench,
-    dt
+    measured_wrench
   );
 
   // Compute controls
-  success &= compute_controls(admittance_state_, dt);
+  success &= compute_controls(dt, admittance_state_);
 
   // If an error is detected, set commanded velocity to zero
   if (!success) {
@@ -395,9 +395,9 @@ CartesianAdmittanceRule::update(
 }
 
 bool CartesianAdmittanceRule::update_internal_state(
+  double dt,
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
-  const geometry_msgs::msg::Wrench & measured_wrench,
-  double dt)
+  const geometry_msgs::msg::Wrench & measured_wrench)
 {
   bool success = true;   // return flag
 
@@ -472,12 +472,13 @@ bool CartesianAdmittanceRule::update_internal_state(
   );
 
   // Process wrench measurement
-  success &= process_wrench_measurements(measured_wrench);
+  success &= process_wrench_measurements(dt, measured_wrench);
 
   return true;
 }
 
 bool CartesianAdmittanceRule::process_wrench_measurements(
+  double dt,
   const geometry_msgs::msg::Wrench & measured_wrench)
 {
   // Extract wrench from msg
@@ -514,12 +515,21 @@ bool CartesianAdmittanceRule::process_wrench_measurements(
   );
   */
   // Filter measurement
-  for (size_t i = 0; i < 6; ++i) {
-    wrench_world_(i) = filters::exponentialSmoothing(
-      new_wrench_world(i),
-      wrench_world_(i),
-      parameters_.ft_sensor.filter_coefficient
-    );
+  double cutoff_ft_sensor = parameters_.filters.ft_sensor_filter_cuttoff_freq;
+  if (dt > 0.0 && cutoff_ft_sensor > 0.0) {
+    double cutoff_ft_sensor_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_ft_sensor);
+    for (size_t i = 0; i < 6; ++i) {
+      wrench_world_(i) = filters::exponentialSmoothing(
+        new_wrench_world(i),
+        wrench_world_(i),
+        cutoff_ft_sensor_filter_coefficient
+      );
+    }
+  } else {
+    // No smoothing otherwise
+    for (size_t i = 0; i < 6; ++i) {
+      wrench_world_(i) = new_wrench_world(i);
+    }
   }
 
   // Transform wrench_world_ into base frame

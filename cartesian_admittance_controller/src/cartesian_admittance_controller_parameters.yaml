@@ -35,6 +35,11 @@ cartesian_admittance_controller:
       default_value: -1.0,
       description: "Specifies the cutoff frequency for the command signals. Disabled if frequency <= 0."
     }
+    ft_sensor_filter_cuttoff_freq: {
+      type: double,
+      default_value: -1.0,
+      description: "Specifies the cutoff frequency for the force/torque measurements. Disabled if frequency <= 0."
+    }
 
 #  chainable_command_interfaces:
 #    {
@@ -76,11 +81,6 @@ cartesian_admittance_controller:
         type: string,
         description: "Specifies the frame/link name of the force torque sensor."
       }
-    filter_coefficient: {
-      type: double,
-      default_value: 0.05,
-      description: "Specifies the filter coefficient for the sensor's exponential filter."
-    }
 
   control:
     frame:
