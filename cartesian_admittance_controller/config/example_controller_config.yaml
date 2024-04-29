@@ -15,7 +15,8 @@ cartesian_admittance_controller:
       - joint_a6
 
     filters:
-      state_filter_cuttoff_freq: 100.0
+      state_position_filter_cuttoff_freq: -1.0
+      state_velocity_filter_cuttoff_freq: 80.0
       command_filter_cuttoff_freq: 100.0
       ft_sensor_filter_cuttoff_freq: 10.0
 

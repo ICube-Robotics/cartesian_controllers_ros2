@@ -435,25 +435,35 @@ bool CartesianAdmittanceRule::update_internal_state(
 
   // Update current robot joint states
 
-  // Filter velocity measurement and copy to state
-  double cutoff_jnt_state = parameters_.filters.state_filter_cuttoff_freq;
-  if (dt > 0 && cutoff_jnt_state > 0.0) {
-    double jnt_state_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_jnt_state);
+  // Filter position measurement and copy to state
+  double cutoff_jnt_position = parameters_.filters.state_position_filter_cuttoff_freq;
+  if (dt > 0 && cutoff_jnt_position > 0.0) {
+    double jnt_position_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_jnt_position);
     for (size_t i = 0; i < num_joints_; ++i) {
       admittance_state_.joint_state_position(i) = filters::exponentialSmoothing(
         current_joint_state.positions.at(i),
         admittance_state_.joint_state_position(i),
-        jnt_state_filter_coefficient
-      );
-      admittance_state_.joint_state_velocity(i) = filters::exponentialSmoothing(
-        current_joint_state.velocities.at(i),
-        admittance_state_.joint_state_velocity(i),
-        jnt_state_filter_coefficient
+        jnt_position_filter_coefficient
       );
     }
   } else {
     // Initialization
     vec_to_eigen(current_joint_state.positions, admittance_state_.joint_state_position);
+  }
+
+  // Filter velocity measurement and copy to state
+  double cutoff_jnt_velocity = parameters_.filters.state_velocity_filter_cuttoff_freq;
+  if (dt > 0 && cutoff_jnt_velocity > 0.0) {
+    double jnt_velocity_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_jnt_velocity);
+    for (size_t i = 0; i < num_joints_; ++i) {
+      admittance_state_.joint_state_velocity(i) = filters::exponentialSmoothing(
+        current_joint_state.velocities.at(i),
+        admittance_state_.joint_state_velocity(i),
+        jnt_velocity_filter_coefficient
+      );
+    }
+  } else {
+    // Initialization
     vec_to_eigen(current_joint_state.velocities, admittance_state_.joint_state_velocity);
   }
 
