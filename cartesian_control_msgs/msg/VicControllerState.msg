@@ -1,5 +1,7 @@
 std_msgs/Header  header
 
+std_msgs/String control_mode # admittance / impedance
+
 # Cartesian compliance reference
 geometry_msgs/Pose desired_pose
 geometry_msgs/Twist desired_velocity
@@ -20,10 +22,12 @@ std_msgs/Float64MultiArray rendered_damping  # optional
 std_msgs/Float64MultiArray rendered_stiffness  # optional
 
 # Commands
-geometry_msgs/Twist robot_command_twist
-float64[] joint_command_position
-float64[] joint_command_velocity
-float64[] joint_command_acceleration
+geometry_msgs/Twist robot_command_twist  # optional
+float64[] joint_command_position  # optional
+float64[] joint_command_velocity  # optional
+float64[] joint_command_acceleration  # optional
+float64[] joint_command_effort  # optional
 
 # Misc.
+std_msgs/Float64MultiArray natural_inertia  # optional
 cartesian_control_msgs/KeyValues diagnostic_data

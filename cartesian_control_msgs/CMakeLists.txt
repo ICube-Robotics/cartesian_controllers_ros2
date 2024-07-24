@@ -24,7 +24,7 @@ set(msg_files
   msg/CartesianTrajectory.msg
   msg/CartesianCompliance.msg
   msg/CompliantFrameTrajectory.msg
-  msg/AdmittanceControllerState.msg
+  msg/VicControllerState.msg
   msg/KeyValues.msg
 )
 
