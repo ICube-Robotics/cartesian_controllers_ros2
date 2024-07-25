@@ -106,10 +106,9 @@ protected:
     const Eigen::Matrix<double, 6, 1> & desired_damping
   );
 
-  bool update_internal_state(
+  bool update_kinematics(
     double dt /*period in seconds*/,
-    const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
-    const geometry_msgs::msg::Wrench & measured_wrench);
+    const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state);
 
   bool process_wrench_measurements(
     double dt /*period in seconds*/,

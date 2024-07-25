@@ -100,11 +100,8 @@ CartesianVicRule::init_reference_frame_trajectory(
   use_streamed_interaction_parameters_ = false;
   apply_parameters_update();
 
-  // Assume force is zero
-  geometry_msgs::msg::Wrench dummy_wrench;
-
-  // Update state
-  if (!update_internal_state(-1.0, current_joint_state, dummy_wrench)) {
+  // Update kinematics state
+  if (!update_kinematics(-1.0, current_joint_state)) {
     RCLCPP_ERROR(
       rclcpp::get_logger("CartesianVicRule"),
       "Failed to update internal state in 'init_reference_frame_trajectory()'!");
@@ -339,12 +336,17 @@ CartesianVicRule::update(
     apply_parameters_update();
   }
 
-  // Update current robot state
-  bool success = update_internal_state(
+  // Update current robot kinematic state
+  bool success = update_kinematics(
     dt,
-    current_joint_state,
-    measured_wrench
+    current_joint_state
   );
+
+  // Process wrench measurement
+  success &= process_wrench_measurements(dt, measured_wrench);
+
+  // Process external torques
+  // TODO(tpoignonec): success &= process_external_torques(dt, measured_external_torques);
 
   // Compute controls
   success &= compute_controls(dt, vic_state_);
@@ -382,10 +384,9 @@ CartesianVicRule::update(
   return controller_interface::return_type::OK;
 }
 
-bool CartesianVicRule::update_internal_state(
+bool CartesianVicRule::update_kinematics(
   double dt,
-  const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
-  const geometry_msgs::msg::Wrench & measured_wrench)
+  const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state)
 {
   bool success = true;   // return flag
 
@@ -467,10 +468,6 @@ bool CartesianVicRule::update_internal_state(
     vic_state_.control_frame,
     vic_state_.robot_current_velocity
   );
-
-  // Process wrench measurement
-  success &= process_wrench_measurements(dt, measured_wrench);
-
   return true;
 }
 

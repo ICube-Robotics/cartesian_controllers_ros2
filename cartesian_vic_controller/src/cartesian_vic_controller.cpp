@@ -329,7 +329,9 @@ controller_interface::CallbackReturn CartesianVicController::on_configure(
   // Initialize external torque sensor semantic_component
   if (vic_->parameters_.external_torque_sensor.is_enabled) {
     RCLCPP_INFO(get_node()->get_logger(), "External torque sensor is enabled");
-    if(external_torque_interfaces_names_.empty() && vic_->parameters_.external_torque_sensor.name.empty()) {
+    if (external_torque_interfaces_names_.empty() &&
+      vic_->parameters_.external_torque_sensor.name.empty())
+    {
       RCLCPP_ERROR(
         get_node()->get_logger(),
         "External torque sensor is enabled, but sensor and interfaces names are empty!");

@@ -53,6 +53,9 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
 {
   const CompliantFrame & reference_compliant_frame =
     vic_state.reference_compliant_frames.get_compliant_frame(0);
+  vic_state.inertia = reference_compliant_frame.inertia;
+  vic_state.stiffness = reference_compliant_frame.stiffness;
+  vic_state.damping = reference_compliant_frame.damping;
 
   // auto rot_base_control = vic_transforms_.base_control_.rotation();
   auto rot_base_admittance = vic_transforms_.base_vic_.rotation();
@@ -61,31 +64,31 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   Eigen::Matrix<double, 6, 6> K = Eigen::Matrix<double, 6, 6>::Zero();
   K.block<3, 3>(0, 0) =
     rot_base_admittance * \
-    reference_compliant_frame.stiffness.block<3, 3>(0, 0) * \
+    vic_state.stiffness.block<3, 3>(0, 0) * \
     rot_base_admittance.transpose();
   K.block<3, 3>(3, 3) =
     rot_base_admittance * \
-    reference_compliant_frame.stiffness.block<3, 3>(3, 3) * \
+    vic_state.stiffness.block<3, 3>(3, 3) * \
     rot_base_admittance.transpose();
 
   Eigen::Matrix<double, 6, 6> D = Eigen::Matrix<double, 6, 6>::Zero();
   D.block<3, 3>(0, 0) =
     rot_base_admittance * \
-    reference_compliant_frame.damping.block<3, 3>(0, 0) * \
+    vic_state.damping.block<3, 3>(0, 0) * \
     rot_base_admittance.transpose();
   D.block<3, 3>(3, 3) =
     rot_base_admittance * \
-    reference_compliant_frame.damping.block<3, 3>(3, 3) * \
+    vic_state.damping.block<3, 3>(3, 3) * \
     rot_base_admittance.transpose();
 
   Eigen::Matrix<double, 6, 6> M = Eigen::Matrix<double, 6, 6>::Zero();
   M.block<3, 3>(0, 0) =
     rot_base_admittance * \
-    reference_compliant_frame.inertia.block<3, 3>(0, 0) * \
+    vic_state.inertia.block<3, 3>(0, 0) * \
     rot_base_admittance.transpose();
   M.block<3, 3>(3, 3) =
     rot_base_admittance * \
-    reference_compliant_frame.inertia.block<3, 3>(3, 3) * \
+    vic_state.inertia.block<3, 3>(3, 3) * \
     rot_base_admittance.transpose();
 
   Eigen::Matrix<double, 6, 6> M_inv = M.inverse();
@@ -109,6 +112,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     vic_state.robot_current_velocity;
 
   // External force at interaction frame (assumed to be control frame), expressed in the base frame
+  // (note that this is the measured force, the the generalized wrench used in VIC papers...)
   Eigen::Matrix<double, 6, 1> F_ext = vic_state.robot_current_wrench_at_ft_frame;
 
   // Compute admittance control law in the base frame
@@ -162,6 +166,8 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
       parameters_.admittance.joint_damping * vic_state.joint_state_velocity[i];
   }
   */
+
+  // Logging
 
   return success;
 }
