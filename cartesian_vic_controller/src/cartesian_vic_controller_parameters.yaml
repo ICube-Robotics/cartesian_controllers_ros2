@@ -72,6 +72,7 @@ cartesian_vic_controller:
     }
     name: {
       type: string,
+      default_value: "",
       description: "Specifies the name of the external torque sensor in the robot description which will be used in the vic calculation."
     }
     filter_coefficient: {

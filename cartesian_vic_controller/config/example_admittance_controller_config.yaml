@@ -18,12 +18,13 @@ cartesian_vic_controller:
       state_filter_cuttoff_freq: 100.0
       command_filter_cuttoff_freq: 100.0
 
-    kinematics:
+    dynamics:
       plugin_name: kinematics_interface_kdl/KinematicsInterfaceKDL
       plugin_package: kinematics_interface
       base: base_link # Assumed to be stationary
       tip: interaction_point
       alpha: 0.0005
+      gravity: [0.0, 0.0, -9.81]
 
     ft_sensor:
       name: ftsensor

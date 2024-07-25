@@ -15,7 +15,7 @@ set(DEPENDENCIES
   geometry_msgs
   hardware_interface
   joint_trajectory_controller
-  kinematics_interface
+  dynamics_interface
   pluginlib
   rclcpp
   rclcpp_lifecycle

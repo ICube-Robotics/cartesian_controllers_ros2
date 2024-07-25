@@ -26,7 +26,7 @@
 #include <vector>
 
 #include "controller_interface/controller_interface.hpp"
-#include "kinematics_interface/kinematics_interface.hpp"
+#include "dynamics_interface/dynamics_interface.hpp"
 #include "pluginlib/class_loader.hpp"
 
 // msgs
