@@ -1,9 +1,0 @@
-<library path="cartesian_admittance_controller">
-  <class name="cartesian_admittance_controller/VanillaCartesianAdmittanceRule"
-         type="cartesian_admittance_controller::VanillaCartesianAdmittanceRule"
-         base_class_type="cartesian_admittance_controller::CartesianAdmittanceRule">
-    <description>
-      Classical admittance control law.
-    </description>
-  </class>
-</library>
