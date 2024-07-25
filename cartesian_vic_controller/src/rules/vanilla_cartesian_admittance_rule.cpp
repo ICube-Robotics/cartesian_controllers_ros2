@@ -53,9 +53,9 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   const CompliantFrame & reference_compliant_frame =
     vic_state.reference_compliant_frames.get_compliant_frame(0);
 
-  auto rot_base_control = admittance_transforms_.base_control_.rotation();
-  auto rot_base_admittance = admittance_transforms_.base_vic_.rotation();
-  // Express M, K, D matrices in base (provided as diagonal terms in control frame)
+  // auto rot_base_control = vic_transforms_.base_control_.rotation();
+  auto rot_base_admittance = vic_transforms_.base_vic_.rotation();
+  // Express M, K, D matrices in base (provided in base_vic frame)
 
   Eigen::Matrix<double, 6, 6> K = Eigen::Matrix<double, 6, 6>::Zero();
   K.block<3, 3>(0, 0) =

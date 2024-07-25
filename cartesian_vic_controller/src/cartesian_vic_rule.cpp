@@ -16,7 +16,7 @@
 
 // Based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
 
-#include "cartesian_vic_controller/cartesian_admittance_rule.hpp"
+#include "cartesian_vic_controller/cartesian_vic_rule.hpp"
 #include "cartesian_vic_controller/utils.hpp"
 
 #include "kinematics_interface/kinematics_interface.hpp"
@@ -30,6 +30,14 @@
 
 namespace cartesian_vic_controller
 {
+
+CartesianVicRule::CartesianVicRule()
+: num_joints_(0),
+  vic_state_(0, ControlMode::INVALID),
+  kinematics_loader_(nullptr)
+{
+  // Nothing to do, see init().
+}
 
 controller_interface::return_type
 CartesianVicRule::init(
@@ -157,7 +165,7 @@ void CartesianVicRule::apply_parameters_update()
     parameters_ = parameter_handler_->get_params();
   }
   // update param values
-  vic_state_.admittance_frame = parameters_.vic.frame.id;
+  vic_state_.vic_frame = parameters_.vic.frame.id;
   vic_state_.control_frame = parameters_.control.frame.id;
   vic_state_.ft_sensor_frame = parameters_.ft_sensor.frame.id;
 
@@ -267,15 +275,14 @@ CartesianVicRule::controller_state_to_msg(
   matrixEigenToMsg(vic_state_.damping, vic_state_msg.rendered_damping);
 
   // Fill commands
-  if (vic_state_.control_mode == ControlMode::ADMITTANCE)
-  {
+  if (vic_state_.control_mode == ControlMode::ADMITTANCE) {
     vic_state_msg.control_mode.data = "admittance";
 
     vic_state_msg.robot_command_twist = Eigen::toMsg(vic_state_.robot_command_twist);
     vic_state_msg.joint_command_position.resize(num_joints_);
     vic_state_msg.joint_command_velocity.resize(num_joints_);
     vic_state_msg.joint_command_acceleration.resize(num_joints_);
-    vic_state_msg.joint_command_force.clear();
+    vic_state_msg.joint_command_effort.clear();
 
     for (size_t i = 0; i < num_joints_; i++) {
       vic_state_msg.joint_command_position[i] = vic_state_.joint_command_position[i];
@@ -283,14 +290,13 @@ CartesianVicRule::controller_state_to_msg(
       vic_state_msg.joint_command_acceleration[i] =
         vic_state_.joint_command_acceleration[i];
     }
-  } else if (vic_state_.control_mode == ControlMode::IMPEDANCE)
-  {
+  } else if (vic_state_.control_mode == ControlMode::IMPEDANCE) {
     vic_state_msg.control_mode.data = "impedance";
 
     vic_state_msg.joint_command_position.clear();
     vic_state_msg.joint_command_velocity.clear();
     vic_state_msg.joint_command_acceleration.clear();
-    vic_state_msg.joint_command_force.resize(num_joints_);
+    vic_state_msg.joint_command_effort.resize(num_joints_);
   } else {
     success = false;
     std::cerr << "Error! Unknown control mode!" << std::endl;
@@ -298,7 +304,7 @@ CartesianVicRule::controller_state_to_msg(
     vic_state_msg.joint_command_position.clear();
     vic_state_msg.joint_command_velocity.clear();
     vic_state_msg.joint_command_acceleration.clear();
-    vic_state_msg.joint_command_force.clear();
+    vic_state_msg.joint_command_effort.clear();
   }
 
   // Fill diagnostic data

@@ -42,7 +42,7 @@ template<class Derived>
 void matrixEigenToMsg(const Eigen::MatrixBase<Derived> & e, std_msgs::msg::Float64MultiArray & m);
 
 
-bool fromMsg(const std_msgs::msg::Float64MultiArray & m, Eigen::Matrix<double, 6, 6> & e):
+bool fromMsg(const std_msgs::msg::Float64MultiArray & m, Eigen::Matrix<double, 6, 6> & e);
 
 /**
  * @brief Use to map an upper triangular matrix to a flattened vector

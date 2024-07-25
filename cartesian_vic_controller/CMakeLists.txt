@@ -41,8 +41,10 @@ generate_parameter_library(cartesian_vic_controller_parameters
 
 add_library(cartesian_vic_controller SHARED
   src/cartesian_vic_controller.cpp
-  src/compliance_frame_trajectory.cpp
+  src/cartesian_admittance_controller.cpp
   src/cartesian_vic_rule.cpp
+  src/compliance_frame_trajectory.cpp
+  src/utils.cpp
   src/rules/vanilla_cartesian_admittance_rule.cpp
 )
 target_compile_features(cartesian_vic_controller PUBLIC cxx_std_17)

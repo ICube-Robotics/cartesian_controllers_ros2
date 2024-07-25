@@ -96,5 +96,3 @@ unsigned int flattened_index_from_triangular_index(unsigned int idx_row, unsigne
 }
 
 }  // namespace cartesian_admittance_controller
-
-#endif  // CARTESIAN_ADMITTANCE_CONTROLLER__UTILS_HPP_

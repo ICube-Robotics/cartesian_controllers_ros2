@@ -21,7 +21,7 @@
 
 #include <memory>
 
-#include "cartesian_vic_controller/cartesian_admittance_rule.hpp"
+#include "cartesian_vic_controller/cartesian_vic_rule.hpp"
 
 namespace cartesian_vic_controller
 {

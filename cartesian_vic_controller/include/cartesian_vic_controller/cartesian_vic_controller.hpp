@@ -26,6 +26,7 @@
 
 #include "cartesian_vic_controller/visibility_control.h"
 #include "cartesian_vic_controller/cartesian_vic_rule.hpp"
+#include "cartesian_vic_controller/external_torque_sensor.hpp"
 
 // include generated parameter library
 #include "cartesian_vic_controller_parameters.hpp"
@@ -70,11 +71,13 @@ public:
    * \ref hardware_interface::FORCE.
    */
   CARTESIAN_VIC_CONTROLLER_PUBLIC
-  virtual controller_interface::InterfaceConfiguration command_interface_configuration() const = 0;
+  controller_interface::InterfaceConfiguration command_interface_configuration() const
+  override;
 
   /// Export configuration of required state interfaces.
   CARTESIAN_VIC_CONTROLLER_PUBLIC
-  controller_interface::InterfaceConfiguration state_interface_configuration() const override;
+  controller_interface::InterfaceConfiguration state_interface_configuration() const
+  override;
 
   CARTESIAN_VIC_CONTROLLER_PUBLIC
   controller_interface::return_type update(
@@ -101,9 +104,49 @@ public:
     const rclcpp_lifecycle::State & previous_state) override;
 
 protected:
-  CARTESIAN_VIC_CONTROLLER_PROTECTED
+  /**
+   * @brief Check if the command interfaces are configured correctly. This function
+   * has to be implemented by specialized controllers (e.g., impedance / admittance).
+   */
   virtual bool is_command_interfaces_config_valid() const = 0;
 
+  /**
+   * @brief Write values from joint_state_command to claimed hardware interfaces. This function
+   * has to be implemented by specialized controllers (e.g., impedance / admittance).
+   */
+  virtual bool
+  write_state_to_hardware(trajectory_msgs::msg::JointTrajectoryPoint & joint_state_c) = 0;
+
+  /**
+   * @brief Write values from joint_state_command to claimed hardware interfaces. This function
+   * is used to write the admittance state to the hardware (i.e., position and/or velocity).
+   */
+  bool write_admittance_state_to_hardware(
+    trajectory_msgs::msg::JointTrajectoryPoint & joint_state_c);
+
+  /**
+   * @brief Write values from joint_state_command to claimed hardware interfaces. This function
+   * is used to write the impedance state to the hardware (i.e., force / torques).
+   */
+  bool write_impedance_state_to_hardware(
+    trajectory_msgs::msg::JointTrajectoryPoint & joint_state_c);
+
+  /**
+   * @brief Read values from hardware interfaces and set corresponding fields of joint_state and
+   * ft_values
+   */
+  bool read_state_from_hardware(
+    trajectory_msgs::msg::JointTrajectoryPoint & joint_state,
+    geometry_msgs::msg::Wrench & ft_values,
+    std::vector<double> & external_torques);
+
+
+  /**
+   * @brief Initialize the vic rule
+   */
+  bool initialize_vic_rule(const trajectory_msgs::msg::JointTrajectoryPoint & joint_state);
+
+protected:
   size_t num_joints_ = 0;
   std::vector<std::string> command_joint_names_;
 
@@ -147,6 +190,10 @@ protected:
   // force torque sensor
   std::unique_ptr<semantic_components::ForceTorqueSensor> force_torque_sensor_;
 
+  // external torque sensor
+  std::vector<std::string> external_torque_interfaces_names_;
+  std::unique_ptr<ExternalTorqueSensor> external_torque_sensor_;  // semantic component
+
   // ROS subscribers
   rclcpp::Subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>::SharedPtr
     input_compliant_frame_trajectory_subscriber_;
@@ -177,31 +224,8 @@ protected:
   trajectory_msgs::msg::JointTrajectoryPoint joint_command_, last_commanded_joint_state_;
   // ft_values_: values read from the force torque sensor
   geometry_msgs::msg::Wrench ft_values_;
-
-  /**
-   * @brief Read values from hardware interfaces and set corresponding fields of joint_state and
-   * ft_values
-   */
-  bool read_state_from_hardware(
-    trajectory_msgs::msg::JointTrajectoryPoint & joint_state,
-    geometry_msgs::msg::Wrench & ft_values);
-
-  /**
-   * @brief Set fields of state_reference with values from controllers exported position and
-   * velocity references
-   */
-  // void read_state_reference_interfaces(
-  //  cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory);
-
-  /**
-   * @brief Write values from joint_state_command to claimed hardware interfaces
-   */
-  virtual bool write_state_to_hardware(trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command) = 0;
-
-  /**
-   * @brief Initialize the vic rule
-   */
-  bool initialize_vic_rule(const trajectory_msgs::msg::JointTrajectoryPoint & joint_state);
+  // ext_torque_values_ : values read from the external torque sensor (optional, zero if disabled)
+  std::vector<double> ext_torque_values_;
 };
 
 }  // namespace cartesian_vic_controller

@@ -16,13 +16,14 @@
 
 // Based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
 
-#include "cartesian_vic_controller/cartesian_vic_controller.hpp"
 #include <chrono>
 #include <cmath>
 #include <functional>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "cartesian_vic_controller/cartesian_vic_controller.hpp"
 
 #include "geometry_msgs/msg/wrench.hpp"
 // #include "rcutils/logging_macros.h"
@@ -59,9 +60,8 @@ controller_interface::CallbackReturn CartesianVicController::on_init()
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-controller_interface::InterfaceConfiguration CartesianVicController::
-command_interface_configuration()
-const
+controller_interface::InterfaceConfiguration
+CartesianVicController::command_interface_configuration() const
 {
   std::vector<std::string> command_interfaces_config_names;
   for (const auto & interface : vic_->parameters_.command_interfaces) {
@@ -93,6 +93,13 @@ const
   state_interfaces_config_names.insert(
     state_interfaces_config_names.end(), ft_interfaces.begin(), ft_interfaces.end());
 
+  // Export external torque interfaces if any
+  if (external_torque_sensor_) {
+    auto external_torque_interfaces = external_torque_sensor_->get_state_interface_names();
+    state_interfaces_config_names.insert(
+      state_interfaces_config_names.end(), ft_interfaces.begin(), ft_interfaces.end());
+  }
+
   return {
     controller_interface::interface_configuration_type::INDIVIDUAL, state_interfaces_config_names};
 }
@@ -107,7 +114,7 @@ controller_interface::return_type CartesianVicController::update(
   }
 
   // get all controller inputs
-  bool is_state_valid = read_state_from_hardware(joint_state_, ft_values_);
+  bool is_state_valid = read_state_from_hardware(joint_state_, ft_values_, ext_torque_values_);
 
   bool all_ok = true;
   // make sure impedance was initialized
@@ -116,7 +123,7 @@ controller_interface::return_type CartesianVicController::update(
     return controller_interface::return_type::OK;
   } else if (!is_vic_initialized_ && is_state_valid) {
     // Init current desired pose from current joint position
-    if (!initialize_impedance_rule(joint_state_)) {
+    if (!initialize_vic_rule(joint_state_)) {
       return controller_interface::return_type::ERROR;
     }
   } else if (!is_state_valid) {
@@ -319,6 +326,19 @@ controller_interface::CallbackReturn CartesianVicController::on_configure(
   force_torque_sensor_ = std::make_unique<semantic_components::ForceTorqueSensor>(
     semantic_components::ForceTorqueSensor(vic_->parameters_.ft_sensor.name));
 
+  // Initialize FTS semantic semantic_component
+  if (vic_->parameters_.external_torque_sensor.is_enabled) {
+    RCLCPP_INFO(get_node()->get_logger(), "External torque sensor is enabled");
+    if (!external_torque_interfaces_names_.empty()) {
+      external_torque_sensor_ = std::make_unique<cartesian_vic_controller::ExternalTorqueSensor>(
+        cartesian_vic_controller::ExternalTorqueSensor(external_torque_interfaces_names_));
+    } else {
+      external_torque_sensor_ = std::make_unique<cartesian_vic_controller::ExternalTorqueSensor>(
+        cartesian_vic_controller::ExternalTorqueSensor(
+          vic_->parameters_.external_torque_sensor.name, num_joints_));
+    }
+  }
+
   // configure vic rule
   if (vic_->configure(get_node(), num_joints_) == controller_interface::return_type::ERROR) {
     return controller_interface::CallbackReturn::ERROR;
@@ -370,8 +390,13 @@ controller_interface::CallbackReturn CartesianVicController::on_activate(
   // initialize interface of the FTS semantic component
   force_torque_sensor_->assign_loaned_state_interfaces(state_interfaces_);
 
+  // initialize interface of the external_torque_sensor semantic component
+  if (external_torque_sensor_) {
+    external_torque_sensor_->assign_loaned_state_interfaces(state_interfaces_);
+  }
+
   // initialize states
-  read_state_from_hardware(joint_state_, ft_values_);
+  read_state_from_hardware(joint_state_, ft_values_, ext_torque_values_);
   for (auto val : joint_state_.positions) {
     if (std::isnan(val)) {
       RCLCPP_ERROR(get_node()->get_logger(), "Failed to read joint positions from the hardware.\n");
@@ -394,6 +419,11 @@ controller_interface::CallbackReturn CartesianVicController::on_deactivate(
 
   // release force torque sensor interface
   force_torque_sensor_->release_interfaces();
+
+  // if needed, release external_torque_sensor interface
+  if (external_torque_sensor_) {
+    external_torque_sensor_->release_interfaces();
+  }
 
   // reset to prevent stale references
   for (size_t index = 0; index < allowed_interface_types_.size(); ++index) {
@@ -424,7 +454,8 @@ controller_interface::CallbackReturn CartesianVicController::on_error(
 
 bool CartesianVicController::read_state_from_hardware(
   trajectory_msgs::msg::JointTrajectoryPoint & state_current,
-  geometry_msgs::msg::Wrench & ft_values)
+  geometry_msgs::msg::Wrench & ft_values,
+  std::vector<double> & external_torques)
 {
   // if any interface has nan values, assume state_current is the last command state
   bool all_ok = true;
@@ -480,11 +511,132 @@ bool CartesianVicController::read_state_from_hardware(
     all_ok &= false;
     ft_values = geometry_msgs::msg::Wrench();
   }
+
+  // if any external_torques are nan, assume values are zero
+  if (external_torque_sensor_ && vic_->parameters_.external_torque_sensor.is_enabled) {
+    external_torques = external_torque_sensor_->get_torques();
+  } else {
+    external_torques = std::vector<double>(num_joints_, 0.0);
+  }
+  if (!external_torque_sensor_ && vic_->parameters_.external_torque_sensor.is_enabled) {
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(), *clock, 1000, "External torque sensor unavailable!");
+    all_ok &= false;
+  }
+  if (vic_->parameters_.external_torque_sensor.is_enabled &&
+    external_torques.size() != num_joints_)
+  {
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(), *clock, 1000,
+      "External torque sensor has incorrect size! Expected %lu, got %lu. Setting to zero",
+      num_joints_, external_torques.size());
+    external_torques = std::vector<double>(num_joints_, 0.0);
+    all_ok &= false;
+  }
+  bool ext_torque_has_nan = false;
+  for (size_t i = 0; i < num_joints_; ++i) {
+    ext_torque_has_nan |= std::isnan(external_torques[i]);
+  }
+  if (ext_torque_has_nan) {
+    all_ok &= false;
+    external_torques = std::vector<double>(num_joints_, 0.0);
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(), *clock, 1000, "External torque contains one or more NaN!");
+  }
+
   return all_ok;
 }
 
+bool CartesianVicController::write_impedance_state_to_hardware(
+  trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
+{
+  bool all_ok = true;
+  // Check command interface validity
+  if (!has_effort_command_interface_) {
+    auto clock = get_node()->get_clock();
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(), *clock, 1000, "Missing effort command interface!");
+    all_ok = false;
+  }
+  if (!is_command_interfaces_config_valid()) {
+    auto clock = get_node()->get_clock();
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(), *clock, 1000, "Invalid command interface configuration!");
+    all_ok = false;
+  }
+  bool has_nan = false;
+  for (size_t joint_ind = 0; joint_ind < num_joints_; ++joint_ind) {
+    if (std::isnan(joint_state_command.effort[joint_ind])) {
+      has_nan |= true;
+    }
+  }
+  if (has_nan) {
+    auto clock = get_node()->get_clock();
+    RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *clock, 1000, "Joint command has NaN value(s)!");
+    all_ok = false;
+  }
+  // not ok, assume state_commanded is the last command state
+  if (!all_ok) {
+    return false;
+  }
 
-bool CartesianVicController::initialize_impedance_rule(
+  for (size_t joint_ind = 0; joint_ind < num_joints_; ++joint_ind) {
+    command_interfaces_[joint_ind].set_value(
+      joint_state_command.effort[joint_ind]);
+  }
+  last_commanded_joint_state_ = joint_state_command;
+  return true;
+}
+
+bool CartesianVicController::write_admittance_state_to_hardware(
+  trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
+{
+  // if any interface has nan values, assume state_commanded is the last command state
+  size_t pos_ind = 0;
+  size_t vel_ind = pos_ind + (has_velocity_command_interface_ && has_position_command_interface_);
+  size_t acc_ind = vel_ind + has_acceleration_state_interface_;
+  // You never know...
+  bool has_nan = false;
+  for (size_t joint_ind = 0; joint_ind < num_joints_; ++joint_ind) {
+    if (has_position_command_interface_) {
+      if (std::isnan(joint_state_command.positions[joint_ind])) {
+        has_nan |= true;
+      }
+    } else if (has_velocity_command_interface_) {
+      if (std::isnan(joint_state_command.velocities[joint_ind])) {
+        has_nan |= true;
+      }
+    } else if (has_acceleration_command_interface_) {
+      if (std::isnan(joint_state_command.accelerations[joint_ind])) {
+        has_nan |= true;
+      }
+    }
+  }
+  if (has_nan) {
+    auto clock = get_node()->get_clock();
+    RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *clock, 1000, "Joint command has NaN value(s)!");
+    return false;
+  }
+
+  for (size_t joint_ind = 0; joint_ind < num_joints_; ++joint_ind) {
+    if (has_position_command_interface_) {
+      command_interfaces_[pos_ind * num_joints_ + joint_ind].set_value(
+        joint_state_command.positions[joint_ind]);
+    }
+    if (has_velocity_command_interface_) {
+      command_interfaces_[vel_ind * num_joints_ + joint_ind].set_value(
+        joint_state_command.velocities[joint_ind]);
+    }
+    if (has_acceleration_command_interface_) {
+      command_interfaces_[acc_ind * num_joints_ + joint_ind].set_value(
+        joint_state_command.accelerations[joint_ind]);
+    }
+  }
+  last_commanded_joint_state_ = joint_state_command;
+  return true;
+}
+
+bool CartesianVicController::initialize_vic_rule(
   const trajectory_msgs::msg::JointTrajectoryPoint & joint_state)
 {
   bool all_ok = true;
@@ -516,10 +668,3 @@ bool CartesianVicController::initialize_impedance_rule(
 }
 
 }  // namespace cartesian_vic_controller
-
-#include "pluginlib/class_list_macros.hpp"
-
-PLUGINLIB_EXPORT_CLASS(
-  cartesian_vic_controller::CartesianVicController,
-  controller_interface::ControllerInterface
-)

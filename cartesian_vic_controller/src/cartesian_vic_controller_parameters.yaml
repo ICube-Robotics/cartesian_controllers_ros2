@@ -69,12 +69,10 @@ cartesian_vic_controller:
   dynamics:
     plugin_name: {
       type: string,
-      default: "",
       description: "Specifies the name of the dynamics plugin to load."
     }
     plugin_package: {
       type: string,
-      default_value: "",
       description: "Specifies the package name that contains the dynamics plugin."
     }
     base: {
@@ -94,6 +92,22 @@ cartesian_vic_controller:
       type: double,
       default_value: 0.01,
       description: "Specifies the damping coefficient for the Jacobian pseudo inverse."
+    }
+
+  external_torque_sensor:
+    is_enabled: {
+      type: bool,
+      default_value: false,
+      description: "Specifies if the external torque sensor is enabled."
+    }
+    name: {
+      type: string,
+      description: "Specifies the name of the external torque sensor in the robot description which will be used in the vic calculation."
+    }
+    filter_coefficient: {
+      type: double,
+      default_value: 0.05,
+      description: "Specifies the filter coefficient for the sensor's exponential filter."
     }
 
   ft_sensor:
