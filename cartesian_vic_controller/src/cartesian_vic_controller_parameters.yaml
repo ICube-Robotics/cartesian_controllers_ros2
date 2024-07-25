@@ -79,6 +79,17 @@ cartesian_vic_controller:
       description: "Specifies the damping coefficient for the Jacobian pseudo inverse."
     }
 
+  ft_sensor:
+    name: {
+      type: string,
+      description: "Specifies the name of the force torque sensor in the robot description which will be used in the vic calculation."
+    }
+    frame:
+      id: {
+        type: string,
+        description: "Specifies the frame/link name of the force torque sensor."
+      }
+
   external_torque_sensor:
     is_enabled: {
       type: bool,
@@ -95,17 +106,6 @@ cartesian_vic_controller:
       default_value: 0.05,
       description: "Specifies the filter coefficient for the sensor's exponential filter."
     }
-
-  ft_sensor:
-    name: {
-      type: string,
-      description: "Specifies the name of the force torque sensor in the robot description which will be used in the vic calculation."
-    }
-    frame:
-      id: {
-        type: string,
-        description: "Specifies the frame/link name of the force torque sensor."
-      }
 
   control:
     frame:
@@ -178,7 +178,8 @@ cartesian_vic_controller:
       description: "Specifies damping ratio values for x, y, z, rx, ry, and rz used in the vic calculation.
       The damping ratio is defined as: zeta = D / (2 * sqrt( M * S )).",
       validation: {
-        fixed_size<>: 6
+        fixed_size<>: 6,
+        element_bounds<>: [ 0.0, 1.2 ]
       }
     }
     stiffness: {

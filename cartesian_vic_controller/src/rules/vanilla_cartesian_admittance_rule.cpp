@@ -29,8 +29,9 @@ namespace cartesian_vic_controller
 controller_interface::return_type VanillaCartesianAdmittanceRule::init(
   const std::shared_ptr<cartesian_vic_controller::ParamListener> & parameter_handler)
 {
-  auto ret = CartesianVicRule::init(parameter_handler);
+  // Initialize CartesianVicRule
   control_mode_ = ControlMode::ADMITTANCE;
+  auto ret = CartesianVicRule::init(parameter_handler);
   return ret;
 }
 

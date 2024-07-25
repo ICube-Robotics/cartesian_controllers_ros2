@@ -39,8 +39,25 @@ geometry_msgs::msg::Accel AccelToMsg(const Eigen::Matrix<double, 6, 1> & in);
 geometry_msgs::msg::Wrench WrenchToMsg(const Eigen::Matrix<double, 6, 1> & in);
 
 template<class Derived>
-void matrixEigenToMsg(const Eigen::MatrixBase<Derived> & e, std_msgs::msg::Float64MultiArray & m);
-
+void matrixEigenToMsg(const Eigen::MatrixBase<Derived> & e, std_msgs::msg::Float64MultiArray & m)
+{
+  if (m.layout.dim.size() != 2) {
+    m.layout.dim.resize(2);
+  }
+  m.layout.dim[0].stride = e.rows() * e.cols();
+  m.layout.dim[0].size = e.rows();
+  m.layout.dim[1].stride = e.cols();
+  m.layout.dim[1].size = e.cols();
+  if (static_cast<int>(m.data.size()) != e.size()) {
+    m.data.resize(e.size());
+  }
+  int ii = 0;
+  for (int i = 0; i < e.rows(); ++i) {
+    for (int j = 0; j < e.cols(); ++j) {
+      m.data[ii++] = e.coeff(i, j);
+    }
+  }
+}
 
 bool fromMsg(const std_msgs::msg::Float64MultiArray & m, Eigen::Matrix<double, 6, 6> & e);
 
