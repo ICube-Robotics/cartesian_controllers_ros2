@@ -1,5 +1,5 @@
 repositories:
-    ros-controls/kinematics_interface:
+    external/dynamics_interface:
         type: git
-        url: https://github.com/ros-controls/kinematics_interface.git
-        version: master
+        url: https://github.com/tpoignonec/dynamics_interface.git
+        version: main
