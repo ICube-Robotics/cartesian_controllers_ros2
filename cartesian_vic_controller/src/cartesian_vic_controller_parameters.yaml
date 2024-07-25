@@ -36,36 +36,6 @@ cartesian_vic_controller:
       description: "Specifies the cutoff frequency for the command signals. Disabled if frequency <= 0."
     }
 
-#  chainable_command_interfaces:
-#    {
-#      type: string_array,
-#      description: "Specifies which reference interfaces the controller will export. Normally, the position and velocity are used.",
-#      read_only: true
-#    }
-
-  kinematics:
-    plugin_name: {
-      type: string,
-      description: "Specifies the name of the kinematics plugin to load."
-    }
-    plugin_package: {
-      type: string,
-      description: "Specifies the package name that contains the kinematics plugin."
-    }
-    base: {
-      type: string,
-      description: "Specifies the base link of the robot description used by the kinematics plugin."
-    }
-    tip: {
-      type: string,
-      description: "Specifies the end effector link of the robot description used by the kinematics plugin."
-    }
-    alpha: {
-      type: double,
-      default_value: 0.01,
-      description: "Specifies the damping coefficient for the Jacobian pseudo inverse."
-    }
-
   dynamics:
     plugin_name: {
       type: string,

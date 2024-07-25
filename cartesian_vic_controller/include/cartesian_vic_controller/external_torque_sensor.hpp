@@ -60,51 +60,44 @@ public:
       state_interfaces, interface_names_, "", state_interfaces_);
   }
 
-  void release_interfaces() { state_interfaces_.clear(); }
+  void release_interfaces() {state_interfaces_.clear();}
 
   bool get_values(std::vector<double> & values) const
-   {
-     // check we have sufficient memory
-     if (values.capacity() != state_interfaces_.size())
-     {
-       return false;
-     }
-     // insert all the values
-     for (size_t i = 0; i < state_interfaces_.size(); ++i)
-     {
-       values.emplace_back(state_interfaces_[i].get().get_value());
-     }
-     return true;
-   }
+  {
+    // check we have sufficient memory
+    if (values.capacity() != state_interfaces_.size()) {
+      return false;
+    }
+    // insert all the values
+    for (size_t i = 0; i < state_interfaces_.size(); ++i) {
+      values.emplace_back(state_interfaces_[i].get().get_value());
+    }
+    return true;
+  }
 
   std::vector<std::string> get_state_interface_names()
-   {
-     if (interface_names_.empty())
-     {
-       for (auto i = 0u; i < interface_names_.capacity(); ++i)
-       {
-         interface_names_.emplace_back(name_ + "/" + std::to_string(i + 1));
-       }
-     }
-     return interface_names_;
-   }
+  {
+    if (interface_names_.empty()) {
+      for (auto i = 0u; i < interface_names_.capacity(); ++i) {
+        interface_names_.emplace_back(name_ + "/" + std::to_string(i + 1));
+      }
+    }
+    return interface_names_;
+  }
 
-  ExternalTorqueSensor(const std::vector<std::string> & interfaces_external_torque)
+  explicit ExternalTorqueSensor(const std::vector<std::string> & interfaces_external_torque)
   {
     name_ = "";
     num_joints_ = interfaces_external_torque.size();
 
     auto check_and_add_interface = [this](const std::string & interface_name, const int index) {
-    if (!interface_name.empty())
-    {
-        interface_names_.emplace_back(interface_name);
-        existing_axes_[index] = true;
-    }
-    else
-    {
-        existing_axes_[index] = false;
-    }
-    };
+        if (!interface_name.empty()) {
+          interface_names_.emplace_back(interface_name);
+          existing_axes_[index] = true;
+        } else {
+          existing_axes_[index] = false;
+        }
+      };
     for (size_t i = 0; i < num_joints_; ++i) {
       check_and_add_interface(interfaces_external_torque[i], i);
     }

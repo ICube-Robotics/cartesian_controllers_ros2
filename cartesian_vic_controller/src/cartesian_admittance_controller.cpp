@@ -24,8 +24,8 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_init()
   // initialize controller config
   if (CartesianVicController::on_init() != controller_interface::CallbackReturn::SUCCESS) {
     RCLCPP_ERROR(
-        get_node()->get_logger(),
-        "Failed to initialize CartesianAdmittanceController");
+      get_node()->get_logger(),
+      "Failed to initialize CartesianAdmittanceController");
     return controller_interface::CallbackReturn::ERROR;
   }
   return controller_interface::CallbackReturn::SUCCESS;
@@ -36,15 +36,15 @@ controller_interface::return_type CartesianAdmittanceController::update(
 {
   if (vic_->get_control_mode() != ControlMode::ADMITTANCE) {
     RCLCPP_ERROR(
-        get_node()->get_logger(),
-        "Invalid control mode for CartesianAdmittanceController (expected ADMITTANCE)");
+      get_node()->get_logger(),
+      "Invalid control mode for CartesianAdmittanceController (expected ADMITTANCE)");
     return controller_interface::return_type::ERROR;
   }
   auto ret = CartesianVicController::update(time, period);
   if (ret != controller_interface::return_type::OK) {
     RCLCPP_ERROR(
-        get_node()->get_logger(),
-        "Failed to update CartesianAdmittanceController");
+      get_node()->get_logger(),
+      "Failed to update CartesianAdmittanceController");
   }
   return ret;
 }
@@ -55,8 +55,8 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_configure
   auto ret = CartesianVicController::on_configure(previous_state);
   if (ret != controller_interface::CallbackReturn::SUCCESS) {
     RCLCPP_ERROR(
-        get_node()->get_logger(),
-        "Failed to configure CartesianAdmittanceController");
+      get_node()->get_logger(),
+      "Failed to configure CartesianAdmittanceController");
   }
   return ret;
 }
@@ -67,8 +67,8 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_activate(
   auto ret = CartesianVicController::on_activate(previous_state);
   if (ret != controller_interface::CallbackReturn::SUCCESS) {
     RCLCPP_ERROR(
-        get_node()->get_logger(),
-        "Failed to activate CartesianAdmittanceController");
+      get_node()->get_logger(),
+      "Failed to activate CartesianAdmittanceController");
   }
   return ret;
 }
@@ -79,8 +79,8 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_deactivat
   auto ret = CartesianVicController::on_deactivate(previous_state);
   if (ret != controller_interface::CallbackReturn::SUCCESS) {
     RCLCPP_ERROR(
-        get_node()->get_logger(),
-        "Failed to deactivate CartesianAdmittanceController");
+      get_node()->get_logger(),
+      "Failed to deactivate CartesianAdmittanceController");
   }
   return ret;
 }
@@ -91,8 +91,8 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_cleanup(
   auto ret = CartesianVicController::on_cleanup(previous_state);
   if (ret != controller_interface::CallbackReturn::SUCCESS) {
     RCLCPP_ERROR(
-        get_node()->get_logger(),
-        "Failed to cleanup CartesianAdmittanceController");
+      get_node()->get_logger(),
+      "Failed to cleanup CartesianAdmittanceController");
   }
   return ret;
 }
@@ -103,8 +103,8 @@ controller_interface::CallbackReturn CartesianAdmittanceController::on_error(
   auto ret = CartesianVicController::on_error(previous_state);
   if (ret != controller_interface::CallbackReturn::SUCCESS) {
     RCLCPP_ERROR(
-        get_node()->get_logger(),
-        "CartesianAdmittanceController failed to recover from error!");
+      get_node()->get_logger(),
+      "CartesianAdmittanceController failed to recover from error!");
   }
   return ret;
 }
@@ -130,14 +130,16 @@ bool CartesianAdmittanceController::is_command_interfaces_config_valid() const
   if (vic_->get_control_mode() != ControlMode::ADMITTANCE) {
     RCLCPP_ERROR(
       get_node()->get_logger(),
-      "CartesianAdmittanceController: Vic rule has the invalid control mode (expected ADMITTANCE)!");
+      "CartesianAdmittanceController: invalid VIC rule control mode (expected ADMITTANCE)!");
     all_ok = false;
   }
 
   return all_ok;
 }
 
-bool CartesianAdmittanceController::write_state_to_hardware(trajectory_msgs::msg::JointTrajectoryPoint & joint_state_c) {
+bool CartesianAdmittanceController::write_state_to_hardware(
+  trajectory_msgs::msg::JointTrajectoryPoint & joint_state_c)
+{
   return write_admittance_state_to_hardware(joint_state_c);
 }
 

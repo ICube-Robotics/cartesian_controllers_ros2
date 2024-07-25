@@ -60,7 +60,6 @@ public:
   controller_interface::CallbackReturn on_error(
     const rclcpp_lifecycle::State & previous_state) override;
 
-
 protected:
   /**
    * @brief Check if the command interfaces are configured correctly. This function
@@ -72,7 +71,8 @@ protected:
    * @brief Write values from joint_state_command to claimed hardware interfaces. This function
    * has to be implemented by specialized controllers (e.g., impedance / admittance).
    */
-  virtual bool write_state_to_hardware(trajectory_msgs::msg::JointTrajectoryPoint & joint_state_c) override;
+  bool write_state_to_hardware(trajectory_msgs::msg::JointTrajectoryPoint & joint_state_c)
+  override;
 };
 
 }  // namespace cartesian_vic_controller
