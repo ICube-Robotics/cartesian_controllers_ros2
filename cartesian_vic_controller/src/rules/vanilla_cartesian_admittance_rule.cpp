@@ -122,7 +122,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
 
   auto previous_jnt_cmd_velocity = vic_state.joint_command_velocity;
 
-  bool success = kinematics_->convert_cartesian_deltas_to_joint_deltas(
+  bool success = dynamics_->convert_cartesian_deltas_to_joint_deltas(
     vic_state.joint_state_position,
     vic_state.robot_command_twist,
     vic_state.control_frame,

@@ -19,7 +19,7 @@
 #include "cartesian_vic_controller/cartesian_vic_rule.hpp"
 #include "cartesian_vic_controller/utils.hpp"
 
-#include "kinematics_interface/kinematics_interface.hpp"
+#include "dynamics_interface/dynamics_interface.hpp"
 
 #include "rclcpp/duration.hpp"
 #include "control_toolbox/filters.hpp"
@@ -34,7 +34,7 @@ namespace cartesian_vic_controller
 CartesianVicRule::CartesianVicRule()
 : num_joints_(0),
   vic_state_(0, ControlMode::INVALID),
-  kinematics_loader_(nullptr)
+  dynamics_loader_(nullptr)
 {
   // Nothing to do, see init().
 }
@@ -59,17 +59,17 @@ CartesianVicRule::configure(
   num_joints_ = num_joints;
   // reset vic state
   reset(num_joints);
-  // Load the differential IK plugin
-  if (!parameters_.kinematics.plugin_name.empty()) {
+  // Load the dynamics (also used for IK) plugin
+  if (!parameters_.dynamics.plugin_name.empty()) {
     try {
-      kinematics_loader_ =
-        std::make_shared<pluginlib::ClassLoader<kinematics_interface::KinematicsInterface>>(
-        parameters_.kinematics.plugin_package,
-        "kinematics_interface::KinematicsInterface");
-      kinematics_ = std::unique_ptr<kinematics_interface::KinematicsInterface>(
-        kinematics_loader_->createUnmanagedInstance(parameters_.kinematics.plugin_name));
-      if (!kinematics_->initialize(
-          node->get_node_parameters_interface(), parameters_.kinematics.tip))
+      dynamics_loader_ =
+        std::make_shared<pluginlib::ClassLoader<dynamics_interface::DynamicsInterface>>(
+        parameters_.dynamics.plugin_package,
+        "dynamics_interface::DynamicsInterface");
+      dynamics_ = std::unique_ptr<dynamics_interface::DynamicsInterface>(
+        dynamics_loader_->createUnmanagedInstance(parameters_.dynamics.plugin_name));
+      if (!dynamics_->initialize(
+          node->get_node_parameters_interface(), parameters_.dynamics.tip))
       {
         return controller_interface::return_type::ERROR;
       }
@@ -77,7 +77,7 @@ CartesianVicRule::configure(
       RCLCPP_ERROR(
         rclcpp::get_logger("CartesianVicRule"),
         "Exception while loading the IK plugin '%s': '%s'",
-        parameters_.kinematics.plugin_name.c_str(), ex.what()
+        parameters_.dynamics.plugin_name.c_str(), ex.what()
       );
       return controller_interface::return_type::ERROR;
     }
@@ -390,32 +390,32 @@ bool CartesianVicRule::update_internal_state(
   bool success = true;   // return flag
 
   // Pre-compute commonly used transformations
-  success &= kinematics_->calculate_link_transform(
+  success &= dynamics_->calculate_link_transform(
     current_joint_state.positions,
     vic_state_.ft_sensor_frame,
     vic_transforms_.base_ft_
   );
-  success &= kinematics_->calculate_link_transform(
+  success &= dynamics_->calculate_link_transform(
     current_joint_state.positions,
-    parameters_.kinematics.tip,
+    parameters_.dynamics.tip,
     vic_transforms_.base_tip_
   );
-  success &= kinematics_->calculate_link_transform(
+  success &= dynamics_->calculate_link_transform(
     current_joint_state.positions,
     parameters_.fixed_world_frame.frame.id,
     vic_transforms_.world_base_
   );
-  success &= kinematics_->calculate_link_transform(
+  success &= dynamics_->calculate_link_transform(
     current_joint_state.positions,
     parameters_.gravity_compensation.frame.id,
     vic_transforms_.base_cog_
   );
-  success &= kinematics_->calculate_link_transform(
+  success &= dynamics_->calculate_link_transform(
     current_joint_state.positions,
     parameters_.control.frame.id,
     vic_transforms_.base_control_
   );
-  success &= kinematics_->calculate_link_transform(
+  success &= dynamics_->calculate_link_transform(
     current_joint_state.positions,
     parameters_.control.frame.id,
     vic_transforms_.base_vic_
@@ -446,13 +446,13 @@ bool CartesianVicRule::update_internal_state(
   }
 
   // Update current cartesian pose and velocity from robot joint states
-  success &= kinematics_->calculate_link_transform(
+  success &= dynamics_->calculate_link_transform(
     vic_state_.joint_state_position,
     vic_state_.control_frame,
     vic_state_.robot_current_pose
   );
 
-  success = kinematics_->convert_joint_deltas_to_cartesian_deltas(
+  success = dynamics_->convert_joint_deltas_to_cartesian_deltas(
     vic_state_.joint_state_position,
     vic_state_.joint_state_velocity,
     vic_state_.control_frame,

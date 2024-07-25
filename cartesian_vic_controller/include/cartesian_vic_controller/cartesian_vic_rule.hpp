@@ -146,12 +146,12 @@ protected:
   /// If true, the parameters values are ignored (use "set_interaction_parameters()" instead)
   bool use_streamed_interaction_parameters_ = false;
 
-  // Kinematics interface plugin loader
-  std::shared_ptr<pluginlib::ClassLoader<kinematics_interface::KinematicsInterface>>
-  kinematics_loader_;
+  /// Dynamics interface plugin loader
+  std::shared_ptr<pluginlib::ClassLoader<dynamics_interface::DynamicsInterface>>
+  dynamics_loader_;
 
-  /// Kinematics interface
-  std::unique_ptr<kinematics_interface::KinematicsInterface> kinematics_;
+  /// Dynamics interface
+  std::unique_ptr<dynamics_interface::DynamicsInterface> dynamics_;
 };
 
 }  // namespace cartesian_vic_controller
