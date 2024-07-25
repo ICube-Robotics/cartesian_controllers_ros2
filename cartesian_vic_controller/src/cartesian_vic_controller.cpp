@@ -142,9 +142,9 @@ controller_interface::return_type CartesianVicController::update(
     }
     // apply vic control to reference to determine desired state
     auto ret_vic = vic_->update(
+      period,
       joint_state_,
       ft_values_,
-      period,
       joint_command_
     );
     if (ret_vic != controller_interface::return_type::OK) {

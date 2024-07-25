@@ -25,15 +25,30 @@ cartesian_vic_controller:
     }
 
   filters:
-    state_filter_cuttoff_freq: {
+    state_position_filter_cuttoff_freq: {
       type: double,
       default_value: 100.0,
-      description: "Specifies the cutoff frequency for the state measurements (position / velocity). Disabled if frequency <= 0."
+      description: "Specifies the cutoff frequency for the state measurements (position). Disabled if frequency <= 0."
+    }
+    state_velocity_filter_cuttoff_freq: {
+      type: double,
+      default_value: 100.0,
+      description: "Specifies the cutoff frequency for the state measurements (velocity). Disabled if frequency <= 0."
     }
     command_filter_cuttoff_freq: {
       type: double,
       default_value: -1.0,
       description: "Specifies the cutoff frequency for the command signals. Disabled if frequency <= 0."
+    }
+    ft_sensor_filter_cuttoff_freq: {
+      type: double,
+      default_value: -1.0,
+      description: "Specifies the cutoff frequency for the f/t signals. Disabled if frequency <= 0."
+    }
+    external_torque_sensor_filter_cuttoff_freq: {
+      type: double,
+      default_value: -1.0,
+      description: "Specifies the cutoff frequency for the ext. torques signals. Disabled if frequency <= 0."
     }
 
   dynamics:
@@ -91,11 +106,6 @@ cartesian_vic_controller:
         type: string,
         description: "Specifies the frame/link name of the force torque sensor."
       }
-    filter_coefficient: {
-      type: double,
-      default_value: 0.05,
-      description: "Specifies the filter coefficient for the sensor's exponential filter."
-    }
 
   control:
     frame:
@@ -182,7 +192,7 @@ cartesian_vic_controller:
     joint_damping: {
       type: double,
       description: "Specifies the joint damping applied used in the vic calculation.",
-      default_value: 5,
+      default_value: 0.5,
       validation: {
         gt_eq: [ 0.0 ]
       }

@@ -84,15 +84,15 @@ public:
   * Compute joint (velocity) command from the current cartesian tracking errors
   * and the desired interaction parameters (M, K, D).
   *
+  * \param[in] period time in seconds since last controller update
   * \param[in] current_joint_state current joint state of the robot
   * \param[in] measured_wrench most recent measured wrench from force torque sensor
-  * \param[in] period time in seconds since last controller update
   * \param[out] joint_state_command computed joint state command
   */
   controller_interface::return_type update(
+    const rclcpp::Duration & period,
     const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
     const geometry_msgs::msg::Wrench & measured_wrench,
-    const rclcpp::Duration & period,
     trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command
   );
 
@@ -107,17 +107,18 @@ protected:
   );
 
   bool update_internal_state(
+    double dt /*period in seconds*/,
     const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
-    const geometry_msgs::msg::Wrench & measured_wrench,
-    double dt /*period in seconds*/);
+    const geometry_msgs::msg::Wrench & measured_wrench);
 
   bool process_wrench_measurements(
+    double dt /*period in seconds*/,
     const geometry_msgs::msg::Wrench & measured_wrench);
 
   /// Actual vic control logic
   virtual bool compute_controls(
-    VicState & vic_state,
-    double dt /*period in seconds*/) = 0;
+    double dt /*period in seconds*/,
+    VicState & vic_state) = 0;
 
 public:
   // Parameters management

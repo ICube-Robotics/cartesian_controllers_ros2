@@ -104,7 +104,7 @@ CartesianVicRule::init_reference_frame_trajectory(
   geometry_msgs::msg::Wrench dummy_wrench;
 
   // Update state
-  if (!update_internal_state(current_joint_state, dummy_wrench, -1.0)) {
+  if (!update_internal_state(-1.0, current_joint_state, dummy_wrench)) {
     RCLCPP_ERROR(
       rclcpp::get_logger("CartesianVicRule"),
       "Failed to update internal state in 'init_reference_frame_trajectory()'!");
@@ -328,9 +328,9 @@ CartesianVicRule::controller_state_to_msg(
 
 controller_interface::return_type
 CartesianVicRule::update(
+  const rclcpp::Duration & period,
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
   const geometry_msgs::msg::Wrench & measured_wrench,
-  const rclcpp::Duration & period,
   trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
 {
   const double dt = period.seconds();
@@ -341,13 +341,13 @@ CartesianVicRule::update(
 
   // Update current robot state
   bool success = update_internal_state(
+    dt,
     current_joint_state,
-    measured_wrench,
-    dt
+    measured_wrench
   );
 
   // Compute controls
-  success &= compute_controls(vic_state_, dt);
+  success &= compute_controls(dt, vic_state_);
 
   // If an error is detected, set commanded velocity to zero
   if (!success) {
@@ -383,9 +383,9 @@ CartesianVicRule::update(
 }
 
 bool CartesianVicRule::update_internal_state(
+  double dt,
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
-  const geometry_msgs::msg::Wrench & measured_wrench,
-  double dt)
+  const geometry_msgs::msg::Wrench & measured_wrench)
 {
   bool success = true;   // return flag
 
@@ -424,24 +424,33 @@ bool CartesianVicRule::update_internal_state(
   // Update current robot joint states
 
   // Filter velocity measurement and copy to state
-  double cutoff_jnt_state = parameters_.filters.state_filter_cuttoff_freq;
-  if (dt > 0 && cutoff_jnt_state > 0.0) {
-    double jnt_state_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_jnt_state);
+  double cutoff_jnt_position = parameters_.filters.state_position_filter_cuttoff_freq;
+  double cutoff_jnt_velocity = parameters_.filters.state_velocity_filter_cuttoff_freq;
+  if (dt > 0 && cutoff_jnt_position > 0.0) {
+    double jnt_position_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_jnt_position);
     for (size_t i = 0; i < num_joints_; ++i) {
       vic_state_.joint_state_position(i) = filters::exponentialSmoothing(
         current_joint_state.positions.at(i),
         vic_state_.joint_state_position(i),
-        jnt_state_filter_coefficient
-      );
-      vic_state_.joint_state_velocity(i) = filters::exponentialSmoothing(
-        current_joint_state.velocities.at(i),
-        vic_state_.joint_state_velocity(i),
-        jnt_state_filter_coefficient
+        jnt_position_filter_coefficient
       );
     }
   } else {
     // Initialization
     vec_to_eigen(current_joint_state.positions, vic_state_.joint_state_position);
+  }
+
+  if (dt > 0 && cutoff_jnt_velocity > 0.0) {
+    double jnt_velocity_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_jnt_velocity);
+    for (size_t i = 0; i < num_joints_; ++i) {
+      vic_state_.joint_state_velocity(i) = filters::exponentialSmoothing(
+        current_joint_state.velocities.at(i),
+        vic_state_.joint_state_velocity(i),
+        jnt_velocity_filter_coefficient
+      );
+    }
+  } else {
+    // Initialization
     vec_to_eigen(current_joint_state.velocities, vic_state_.joint_state_velocity);
   }
 
@@ -460,13 +469,13 @@ bool CartesianVicRule::update_internal_state(
   );
 
   // Process wrench measurement
-  success &= process_wrench_measurements(measured_wrench);
+  success &= process_wrench_measurements(dt, measured_wrench);
 
   return true;
 }
 
 bool CartesianVicRule::process_wrench_measurements(
-  const geometry_msgs::msg::Wrench & measured_wrench)
+  double dt, const geometry_msgs::msg::Wrench & measured_wrench)
 {
   // Extract wrench from msg
   Eigen::Matrix<double, 3, 2, Eigen::ColMajor> new_wrench;
@@ -501,14 +510,24 @@ bool CartesianVicRule::process_wrench_measurements(
     // TODO(tpoignonec): ACTUAL wrench tensor transformation from ft to control frame...
   );
   */
+
   // Filter measurement
-  for (size_t i = 0; i < 6; ++i) {
-    wrench_world_(i) = filters::exponentialSmoothing(
-      new_wrench_world(i),
-      wrench_world_(i),
-      parameters_.ft_sensor.filter_coefficient
-    );
+  double cutoff_ft = parameters_.filters.ft_sensor_filter_cuttoff_freq;
+  if (cutoff_ft > 0.0) {
+    double ft_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_ft);
+    for (size_t i = 0; i < 6; ++i) {
+      wrench_world_(i) = filters::exponentialSmoothing(
+        new_wrench_world(i),
+        wrench_world_(i),
+        ft_filter_coefficient);
+    }
+  } else {
+    // Initialization
+    for (size_t i = 0; i < 6; ++i) {
+      wrench_world_(i) = new_wrench_world(i);
+    }
   }
+
 
   // Transform wrench_world_ into base frame
   vic_state_.robot_current_wrench_at_ft_frame.head(3) =

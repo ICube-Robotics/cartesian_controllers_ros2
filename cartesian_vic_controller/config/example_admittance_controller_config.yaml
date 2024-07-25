@@ -15,8 +15,10 @@ cartesian_vic_controller:
       - joint_a6
 
     filters:
-      state_filter_cuttoff_freq: 100.0
-      command_filter_cuttoff_freq: 100.0
+      state_position_filter_cuttoff_freq: 100.0
+      state_velocity_filter_cuttoff_freq: 100.0
+      command_filter_cuttoff_freq: -1.0
+      ft_sensor_filter_cuttoff_freq: 30.0
 
     dynamics:
       plugin_name: kinematics_interface_kdl/KinematicsInterfaceKDL
@@ -31,6 +33,10 @@ cartesian_vic_controller:
       frame:
         id: ft_sensor  # Wrench measurements are in this frame
         external: false # force torque frame exists within URDF kinematic chain
+
+    external_torque_sensor:
+      is_enabled: false
+      name: ""
       filter_coefficient: 0.1 # 1 - exp(-Ts/tau) = 1 - exp(-Ts*2*pi*f_cutoff)
 
     control:
@@ -95,3 +101,5 @@ cartesian_vic_controller:
         - 2.0
         - 2.0
         - 2.0
+
+      joint_damping: 0.5

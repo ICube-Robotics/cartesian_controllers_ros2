@@ -45,8 +45,8 @@ public:
 protected:
   /// Actual vic (admittance) control logic
   bool compute_controls(
-    VicState & vic_state,
-    double dt /*period in seconds*/) override;
+    double dt /*period in seconds*/,
+    VicState & vic_state) override;
 };
 
 }  // namespace cartesian_vic_controller

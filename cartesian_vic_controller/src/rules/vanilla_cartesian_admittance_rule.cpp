@@ -47,8 +47,8 @@ controller_interface::return_type VanillaCartesianAdmittanceRule::reset(const si
 }
 
 bool VanillaCartesianAdmittanceRule::compute_controls(
-  VicState & vic_state,
-  double dt /*period in seconds*/)
+  double dt /*period in seconds*/,
+  VicState & vic_state)
 {
   const CompliantFrame & reference_compliant_frame =
     vic_state.reference_compliant_frames.get_compliant_frame(0);
