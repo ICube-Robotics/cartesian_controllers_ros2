@@ -46,7 +46,8 @@ protected:
   /// Actual vic (admittance) control logic
   bool compute_controls(
     double dt /*period in seconds*/,
-    VicState & vic_state) override;
+    const VicInputData & vic_input_data,
+    VicCommandData & vic_command_data) override;
 
   bool reset_rule__internal_storage(const size_t num_joints);
 

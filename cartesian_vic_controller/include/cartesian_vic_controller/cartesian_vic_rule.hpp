@@ -117,7 +117,8 @@ protected:
   /// Actual vic control logic
   virtual bool compute_controls(
     double dt /*period in seconds*/,
-    VicState & vic_state) = 0;
+    const VicInputData & vic_input_data,
+    VicCommandData & vic_command_data) = 0;
 
 public:
   // Parameters management

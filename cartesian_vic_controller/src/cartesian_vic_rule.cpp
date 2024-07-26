@@ -287,7 +287,7 @@ CartesianVicRule::update(
   // TODO(tpoignonec): success &= process_external_torques(dt, measured_external_torques);
 
   // Compute controls
-  success &= compute_controls(dt, vic_state_);
+  success &= compute_controls(dt, vic_state_.input_data, vic_state_.command_data);
 
   // If an error is detected, set commanded velocity to zero
   if (!success) {

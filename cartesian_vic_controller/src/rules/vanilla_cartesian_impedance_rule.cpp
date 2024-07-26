@@ -49,15 +49,16 @@ controller_interface::return_type VanillaCartesianImpedanceRule::reset(const siz
 
 bool VanillaCartesianImpedanceRule::compute_controls(
   double dt /*period in seconds*/,
-  VicState & vic_state)
+  const VicInputData & vic_input_data,
+  VicCommandData & vic_command_data)
 {
   const CompliantFrame & reference_compliant_frame =
-    vic_state.input_data.reference_compliant_frames.get_compliant_frame(0);
+    vic_input_data.reference_compliant_frames.get_compliant_frame(0);
 
   // No passivation of impedance parameters
-  vic_state.command_data.inertia = reference_compliant_frame.inertia;
-  vic_state.command_data.stiffness = reference_compliant_frame.stiffness;
-  vic_state.command_data.damping = reference_compliant_frame.damping;
+  vic_command_data.inertia = reference_compliant_frame.inertia;
+  vic_command_data.stiffness = reference_compliant_frame.stiffness;
+  vic_command_data.damping = reference_compliant_frame.damping;
 
   // Prepare data
   // --------------------------------
@@ -69,31 +70,31 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   Eigen::Matrix<double, 6, 6> K = Eigen::Matrix<double, 6, 6>::Zero();
   K.block<3, 3>(0, 0) =
     rot_base_impedance * \
-    vic_state.command_data.stiffness.block<3, 3>(0, 0) * \
+    vic_command_data.stiffness.block<3, 3>(0, 0) * \
     rot_base_impedance.transpose();
   K.block<3, 3>(3, 3) =
     rot_base_impedance * \
-    vic_state.command_data.stiffness.block<3, 3>(3, 3) * \
+    vic_command_data.stiffness.block<3, 3>(3, 3) * \
     rot_base_impedance.transpose();
 
   Eigen::Matrix<double, 6, 6> D = Eigen::Matrix<double, 6, 6>::Zero();
   D.block<3, 3>(0, 0) =
     rot_base_impedance * \
-    vic_state.command_data.damping.block<3, 3>(0, 0) * \
+    vic_command_data.damping.block<3, 3>(0, 0) * \
     rot_base_impedance.transpose();
   D.block<3, 3>(3, 3) =
     rot_base_impedance * \
-    vic_state.command_data.damping.block<3, 3>(3, 3) * \
+    vic_command_data.damping.block<3, 3>(3, 3) * \
     rot_base_impedance.transpose();
 
   Eigen::Matrix<double, 6, 6> M = Eigen::Matrix<double, 6, 6>::Zero();
   M.block<3, 3>(0, 0) =
     rot_base_impedance * \
-    vic_state.command_data.inertia.block<3, 3>(0, 0) * \
+    vic_command_data.inertia.block<3, 3>(0, 0) * \
     rot_base_impedance.transpose();
   M.block<3, 3>(3, 3) =
     rot_base_impedance * \
-    vic_state.command_data.inertia.block<3, 3>(3, 3) * \
+    vic_command_data.inertia.block<3, 3>(3, 3) * \
     rot_base_impedance.transpose();
 
   Eigen::Matrix<double, 6, 6> M_inv = M.inverse();
@@ -102,11 +103,11 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   Eigen::Matrix<double, 6, 1> error_pose;
   error_pose.head(3) =
     reference_compliant_frame.pose.translation() - \
-    vic_state.input_data.robot_current_pose.translation();
+    vic_input_data.robot_current_pose.translation();
 
   auto R_angular_error = \
     reference_compliant_frame.pose.rotation() * \
-    vic_state.input_data.robot_current_pose.rotation().transpose();
+    vic_input_data.robot_current_pose.rotation().transpose();
   auto angle_axis = Eigen::AngleAxisd(R_angular_error);
 
   error_pose.tail(3) = angle_axis.angle() * angle_axis.axis();
@@ -114,11 +115,11 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   // Compute velocity tracking errors in ft frame
   Eigen::Matrix<double, 6, 1> error_velocity =
     reference_compliant_frame.velocity - \
-    vic_state.input_data.robot_current_velocity;
+    vic_input_data.robot_current_velocity;
 
   // External force at interaction frame (assumed to be control frame), expressed in the base frame
   // (note that this is the measured force, the the generalized wrench used in VIC papers...)
-  Eigen::Matrix<double, 6, 1> F_ext = vic_state.input_data.robot_current_wrench_at_ft_frame;
+  Eigen::Matrix<double, 6, 1> F_ext = vic_input_data.robot_current_wrench_at_ft_frame;
 
   // Compute impedance control law in the base frame
   // ------------------------------------------------
@@ -129,36 +130,36 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     M_inv * (K * error_pose + D * error_velocity + F_ext);
   // std::cerr << "commanded_cartesian_acc = " << commanded_cartesian_acc.transpose() << std::endl;
 
-  auto num_joints = vic_state.input_data.joint_state_position.size();
+  auto num_joints = vic_input_data.joint_state_position.size();
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> M_joint_space =
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
   Eigen::Matrix<double, 6, Eigen::Dynamic> J_dot =
     Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
 
   bool success = dynamics_->calculate_inertia(
-    vic_state.input_data.joint_state_position,
+    vic_input_data.joint_state_position,
     M_joint_space
   );
 
   success &= dynamics_->calculate_jacobian_derivative(
-    vic_state.input_data.joint_state_position,
-    vic_state.input_data.joint_state_velocity,
-    vic_state.input_data.control_frame,
+    vic_input_data.joint_state_position,
+    vic_input_data.joint_state_velocity,
+    vic_input_data.control_frame,
     J_dot
   );
   Eigen::Matrix<double, 6, 1> corrected_cartesian_acc = \
-    commanded_cartesian_acc - J_dot * vic_state.input_data.joint_state_velocity;
+    commanded_cartesian_acc - J_dot * vic_input_data.joint_state_velocity;
 
   success &= dynamics_->convert_cartesian_deltas_to_joint_deltas(
-    vic_state.input_data.joint_state_position,
+    vic_input_data.joint_state_position,
     corrected_cartesian_acc,
-    vic_state.input_data.control_frame,
-    vic_state.command_data.joint_command_acceleration
+    vic_input_data.control_frame,
+    vic_command_data.joint_command_acceleration
   );
 
   // Compute joint command effort from desired joint acc.
   raw_joint_command_effort_ = M_joint_space.diagonal().asDiagonal() * \
-    vic_state.command_data.joint_command_acceleration;
+    vic_command_data.joint_command_acceleration;
 
   // Filter joint command effort
   double cutoff_freq_cmd = parameters_.filters.command_filter_cuttoff_freq;
@@ -166,10 +167,10 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     double cmd_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_freq_cmd);
 
     for (size_t i = 0; i < static_cast<size_t>(
-        vic_state.command_data.joint_command_effort.size()); i++)
+        vic_command_data.joint_command_effort.size()); i++)
     {
-      vic_state.command_data.joint_command_effort(i) = filters::exponentialSmoothing(
-        vic_state.command_data.joint_command_effort(i),
+      vic_command_data.joint_command_effort(i) = filters::exponentialSmoothing(
+        vic_command_data.joint_command_effort(i),
         raw_joint_command_effort_(i),
         cmd_filter_coefficient
       );
@@ -177,16 +178,16 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   }
 
   // Set flags for available commands
-  vic_state.command_data.has_position_command = false;
-  vic_state.command_data.has_velocity_command = false;
-  vic_state.command_data.has_acceleration_command = true;
-  vic_state.command_data.has_effort_command = true;
+  vic_command_data.has_position_command = false;
+  vic_command_data.has_velocity_command = false;
+  vic_command_data.has_acceleration_command = true;
+  vic_command_data.has_effort_command = true;
 
   // Just to be safe
-  vic_state.command_data.joint_command_position = \
-    vic_state.input_data.joint_state_position;
-  vic_state.command_data.joint_command_velocity.setZero();
-  vic_state.command_data.joint_command_acceleration.setZero();
+  vic_command_data.joint_command_position = \
+    vic_input_data.joint_state_position;
+  vic_command_data.joint_command_velocity.setZero();
+  vic_command_data.joint_command_acceleration.setZero();
 
   // Logging
 
