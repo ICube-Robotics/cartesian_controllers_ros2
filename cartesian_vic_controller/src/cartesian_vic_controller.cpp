@@ -14,8 +14,6 @@
 //
 /// \authors: Thibault Poignonec
 
-// Based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
-
 #include <chrono>
 #include <cmath>
 #include <functional>

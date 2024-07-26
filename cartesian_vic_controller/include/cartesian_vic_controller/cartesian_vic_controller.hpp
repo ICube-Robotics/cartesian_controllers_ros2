@@ -14,8 +14,6 @@
 //
 /// \authors: Thibault Poignonec <thibault.poignonec@gmail.com>
 
-// Based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
-
 #ifndef CARTESIAN_VIC_CONTROLLER__CARTESIAN_VIC_CONTROLLER_HPP_
 #define CARTESIAN_VIC_CONTROLLER__CARTESIAN_VIC_CONTROLLER_HPP_
 

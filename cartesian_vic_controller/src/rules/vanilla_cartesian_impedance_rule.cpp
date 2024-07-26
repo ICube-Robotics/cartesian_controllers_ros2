@@ -60,7 +60,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   vic_command_data.stiffness = reference_compliant_frame.stiffness;
   vic_command_data.damping = reference_compliant_frame.damping;
 
-  // Prepare data
+  // Prepare VIC data
   // --------------------------------
 
   // auto rot_base_control = vic_transforms_.base_control_.rotation();
