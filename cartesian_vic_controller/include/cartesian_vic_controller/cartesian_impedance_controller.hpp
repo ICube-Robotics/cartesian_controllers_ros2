@@ -14,8 +14,8 @@
 //
 /// \authors: Thibault Poignonec <thibault.poignonec@gmail.com>
 
-#ifndef CARTESIAN_VIC_CONTROLLER__CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
-#define CARTESIAN_VIC_CONTROLLER__CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
+#ifndef CARTESIAN_VIC_CONTROLLER__CARTESIAN_IMPEDANCE_CONTROLLER_HPP_
+#define CARTESIAN_VIC_CONTROLLER__CARTESIAN_IMPEDANCE_CONTROLLER_HPP_
 
 #include <chrono>
 #include <memory>
@@ -28,7 +28,7 @@
 namespace cartesian_vic_controller
 {
 
-class CartesianAdmittanceController : public CartesianVicController
+class CartesianImpedanceController : public CartesianVicController
 {
 public:
   CARTESIAN_VIC_CONTROLLER_PUBLIC
@@ -75,4 +75,4 @@ protected:
 
 }  // namespace cartesian_vic_controller
 
-#endif  // CARTESIAN_VIC_CONTROLLER__CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
+#endif  // CARTESIAN_VIC_CONTROLLER__CARTESIAN_IMPEDANCE_CONTROLLER_HPP_

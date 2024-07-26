@@ -6,4 +6,11 @@
       Classical admittance control law.
     </description>
   </class>
+  <class name="cartesian_vic_controller/VanillaCartesianImpedanceRule"
+         type="cartesian_vic_controller::VanillaCartesianImpedanceRule"
+         base_class_type="cartesian_vic_controller::CartesianVicRule">
+    <description>
+      Classical impedance control law.
+    </description>
+  </class>
 </library>
