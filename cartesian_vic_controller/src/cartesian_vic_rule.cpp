@@ -14,8 +14,6 @@
 //
 /// \authors: Thibault Poignonec
 
-// Based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
-
 #include "cartesian_vic_controller/cartesian_vic_rule.hpp"
 #include "cartesian_vic_controller/utils.hpp"
 
@@ -110,19 +108,21 @@ CartesianVicRule::init_reference_frame_trajectory(
 
   // Reset robot command
   // TODO(tpoignonec): move elsewhere?
-  vic_state_.joint_command_position = vic_state_.joint_state_position;
-  vic_state_.joint_command_velocity = vic_state_.joint_state_velocity;
+  vic_state_.command_data.joint_command_position = vic_state_.input_data.joint_state_position;
+  vic_state_.command_data.joint_command_velocity.setZero();
+  vic_state_.command_data.joint_command_acceleration.setZero();
 
   // Set current pose as cartesian ref
-  auto N = vic_state_.reference_compliant_frames.N();
+  auto N = vic_state_.input_data.reference_compliant_frames.N();
   Eigen::Matrix<double, 6, 1> null_vector_6D = Eigen::Matrix<double, 6, 1>::Zero();
 
   bool success = true;
   for (unsigned int i = 0; i < N; i++) {
     // TODO(tpoignonec): Check the frame is correct (i.e., control w.r.t. base)!
-    success &= vic_state_.reference_compliant_frames.fill_desired_desired_robot_state(
+    success &= \
+    vic_state_.input_data.reference_compliant_frames.fill_desired_desired_robot_state(
       i,
-      vic_state_.robot_current_pose,
+      vic_state_.input_data.robot_current_pose,
       null_vector_6D,
       null_vector_6D,
       null_vector_6D
@@ -162,9 +162,9 @@ void CartesianVicRule::apply_parameters_update()
     parameters_ = parameter_handler_->get_params();
   }
   // update param values
-  vic_state_.vic_frame = parameters_.vic.frame.id;
-  vic_state_.control_frame = parameters_.control.frame.id;
-  vic_state_.ft_sensor_frame = parameters_.ft_sensor.frame.id;
+  vic_state_.input_data.vic_frame = parameters_.vic.frame.id;
+  vic_state_.input_data.control_frame = parameters_.control.frame.id;
+  vic_state_.input_data.ft_sensor_frame = parameters_.ft_sensor.frame.id;
 
   if (!use_streamed_interaction_parameters_) {
     Eigen::Matrix<double, 6, 1> desired_inertia =
@@ -177,7 +177,7 @@ void CartesianVicRule::apply_parameters_update()
       desired_damping[i] = parameters_.vic.damping_ratio[i] * \
         2 * sqrt(desired_inertia[i] * desired_stiffness[i]);
     }
-    vic_state_.reference_compliant_frames.fill_desired_compliance(
+    vic_state_.input_data.reference_compliant_frames.fill_desired_compliance(
       desired_inertia,
       desired_stiffness,
       desired_damping
@@ -191,12 +191,11 @@ void CartesianVicRule::set_interaction_parameters(
   const Eigen::Matrix<double, 6, 1> & desired_damping)
 {
   use_streamed_interaction_parameters_ = true;
-  vic_state_.reference_compliant_frames.fill_desired_compliance(
+  vic_state_.input_data.reference_compliant_frames.fill_desired_compliance(
     desired_inertia,
     desired_stiffness,
     desired_damping);
 }
-
 
 controller_interface::return_type
 CartesianVicRule::update_compliant_frame_trajectory(
@@ -204,12 +203,12 @@ CartesianVicRule::update_compliant_frame_trajectory(
 {
   // Check cartesian ref trajectory validity
   auto N = compliant_frame_trajectory.cartesian_trajectory_points.size();
-  if (vic_state_.reference_compliant_frames.N() != N) {
+  if (vic_state_.input_data.reference_compliant_frames.N() != N) {
     std::cerr \
       << "Warning! 'compliant_frame_trajectory.cartesian_trajectory_points.size() != N'" \
       << " and will be resized..." \
       << std::endl;
-    if (!vic_state_.reference_compliant_frames.resize(N)) {
+    if (!vic_state_.input_data.reference_compliant_frames.resize(N)) {
       return controller_interface::return_type::ERROR;
     }
   }
@@ -229,12 +228,14 @@ CartesianVicRule::update_compliant_frame_trajectory(
   bool success = true;
   for (unsigned int i = 0; i < N; i++) {
     // TODO(tpoignonec): Check the frame is correct (i.e., control w.r.t. base)!
-    success &= vic_state_.reference_compliant_frames.fill_desired_robot_state_from_msg(
+    success &= \
+    vic_state_.input_data.reference_compliant_frames.fill_desired_robot_state_from_msg(
       i,
       compliant_frame_trajectory.cartesian_trajectory_points[i]
     );
     if (use_streamed_interaction_parameters_) {
-      success &= vic_state_.reference_compliant_frames.fill_desired_compliance_from_msg(
+      success &= \
+      vic_state_.input_data.reference_compliant_frames.fill_desired_compliance_from_msg(
         i,
         compliant_frame_trajectory.compliance_at_points[i]
       );
@@ -252,70 +253,7 @@ controller_interface::return_type
 CartesianVicRule::controller_state_to_msg(
   cartesian_control_msgs::msg::VicControllerState & vic_state_msg)
 {
-  bool success = true;
-  // Fill desired compliance
-  auto desired_frame_0 = \
-    vic_state_.reference_compliant_frames.get_compliant_frame(0);
-  vic_state_msg.desired_pose = Eigen::toMsg(desired_frame_0.pose);
-  vic_state_msg.desired_velocity = Eigen::toMsg(desired_frame_0.velocity);
-  vic_state_msg.desired_acceleration = AccelToMsg(desired_frame_0.acceleration);
-  matrixEigenToMsg(desired_frame_0.inertia, vic_state_msg.desired_inertia);
-  matrixEigenToMsg(desired_frame_0.stiffness, vic_state_msg.desired_stiffness);
-  matrixEigenToMsg(desired_frame_0.damping, vic_state_msg.desired_damping);
-
-  // Fill robot state
-  vic_state_msg.pose = Eigen::toMsg(vic_state_.robot_current_pose);
-  vic_state_msg.velocity = Eigen::toMsg(vic_state_.robot_current_velocity);
-  vic_state_msg.wrench = WrenchToMsg(vic_state_.robot_current_wrench_at_ft_frame);
-  matrixEigenToMsg(vic_state_.inertia, vic_state_msg.rendered_inertia);
-  matrixEigenToMsg(vic_state_.stiffness, vic_state_msg.rendered_stiffness);
-  matrixEigenToMsg(vic_state_.damping, vic_state_msg.rendered_damping);
-
-  // Fill commands
-  if (vic_state_.control_mode == ControlMode::ADMITTANCE) {
-    vic_state_msg.control_mode.data = "admittance";
-
-    vic_state_msg.robot_command_twist = Eigen::toMsg(vic_state_.robot_command_twist);
-    vic_state_msg.joint_command_position.resize(num_joints_);
-    vic_state_msg.joint_command_velocity.resize(num_joints_);
-    vic_state_msg.joint_command_acceleration.resize(num_joints_);
-    vic_state_msg.joint_command_effort.clear();
-
-    for (size_t i = 0; i < num_joints_; i++) {
-      vic_state_msg.joint_command_position[i] = vic_state_.joint_command_position[i];
-      vic_state_msg.joint_command_velocity[i] = vic_state_.joint_command_velocity[i];
-      vic_state_msg.joint_command_acceleration[i] =
-        vic_state_.joint_command_acceleration[i];
-    }
-  } else if (vic_state_.control_mode == ControlMode::IMPEDANCE) {
-    vic_state_msg.control_mode.data = "impedance";
-
-    vic_state_msg.joint_command_position.clear();
-    vic_state_msg.joint_command_velocity.clear();
-    vic_state_msg.joint_command_acceleration.clear();
-    vic_state_msg.joint_command_effort.resize(num_joints_);
-  } else {
-    success = false;
-    std::cerr << "Error! Unknown control mode!" << std::endl;
-
-    vic_state_msg.joint_command_position.clear();
-    vic_state_msg.joint_command_velocity.clear();
-    vic_state_msg.joint_command_acceleration.clear();
-    vic_state_msg.joint_command_effort.clear();
-  }
-
-  // Fill diagnostic data
-  matrixEigenToMsg(vic_state_.natural_inertia, vic_state_msg.natural_inertia);
-  vic_state_msg.diagnostic_data.keys.clear();
-  vic_state_msg.diagnostic_data.values.clear();
-
-  for (const auto & [key, value] : vic_state_.diagnostic_data) {
-    vic_state_msg.diagnostic_data.keys.push_back(key);
-    vic_state_msg.diagnostic_data.values.push_back(value);
-  }
-
-  // Return
-  if (success) {
+  if (vic_state_.to_msg(vic_state_msg)) {
     return controller_interface::return_type::OK;
   } else {
     return controller_interface::return_type::ERROR;
@@ -359,6 +297,7 @@ CartesianVicRule::update(
     );
     // Set commanded position to the previous one
     joint_state_command.positions = current_joint_state.positions;
+
     // Set commanded velocity/acc to zero
     std::fill(
       joint_state_command.velocities.begin(),
@@ -370,16 +309,42 @@ CartesianVicRule::update(
       joint_state_command.accelerations.end(),
       0
     );
+
+    // Set efforts to zero
+    std::fill(
+      joint_state_command.effort.begin(),
+      joint_state_command.effort.end(),
+      0
+    );
+    // TODO(tpoignonec): set effort to zero only if direct effort control
+    // is enabled. Otherwise, the robot might fall down!!!
+    //
+    // On the Kuka iiwa and Franka it's OK, but still...
+    // A fall-back strategy should be implemented for impedance control.
+    // For instance, one could implement joint impedance control to maintain the robot in place.
+    // Or, we could just set the effort to NaN and let the controller take care of it.
+    // But that is a bit dangerous, as the controller might not be able to react properly...
+
     return controller_interface::return_type::ERROR;
   }
   // Otherwise, set joint command and return
   for (size_t i = 0; i < parameters_.joints.size(); ++i) {
-    joint_state_command.positions[i] =
-      vic_state_.joint_command_position[i];
-    joint_state_command.velocities[i] =
-      vic_state_.joint_command_velocity[i];
-    joint_state_command.accelerations[i] =
-      vic_state_.joint_command_acceleration[i];
+    if (vic_state_.command_data.has_position_command) {
+      joint_state_command.positions[i] =
+        vic_state_.command_data.joint_command_position[i];
+    }
+    if (vic_state_.command_data.has_velocity_command) {
+      joint_state_command.velocities[i] =
+        vic_state_.command_data.joint_command_velocity[i];
+    }
+    if (vic_state_.command_data.has_acceleration_command) {
+      joint_state_command.accelerations[i] =
+        vic_state_.command_data.joint_command_acceleration[i];
+    }
+    if (vic_state_.command_data.has_effort_command) {
+      joint_state_command.effort[i] =
+        vic_state_.command_data.joint_command_effort[i];
+    }
   }
   return controller_interface::return_type::OK;
 }
@@ -390,83 +355,83 @@ bool CartesianVicRule::update_kinematics(
 {
   bool success = true;   // return flag
 
-  // Pre-compute commonly used transformations
-  success &= dynamics_->calculate_link_transform(
-    current_joint_state.positions,
-    vic_state_.ft_sensor_frame,
-    vic_transforms_.base_ft_
-  );
-  success &= dynamics_->calculate_link_transform(
-    current_joint_state.positions,
-    parameters_.dynamics.tip,
-    vic_transforms_.base_tip_
-  );
-  success &= dynamics_->calculate_link_transform(
-    current_joint_state.positions,
-    parameters_.fixed_world_frame.frame.id,
-    vic_transforms_.world_base_
-  );
-  success &= dynamics_->calculate_link_transform(
-    current_joint_state.positions,
-    parameters_.gravity_compensation.frame.id,
-    vic_transforms_.base_cog_
-  );
-  success &= dynamics_->calculate_link_transform(
-    current_joint_state.positions,
-    parameters_.control.frame.id,
-    vic_transforms_.base_control_
-  );
-  success &= dynamics_->calculate_link_transform(
-    current_joint_state.positions,
-    parameters_.control.frame.id,
-    vic_transforms_.base_vic_
-  );
 
-  // Update current robot joint states
-
-  // Filter velocity measurement and copy to state
+  // Update current robot joint position
   double cutoff_jnt_position = parameters_.filters.state_position_filter_cuttoff_freq;
-  double cutoff_jnt_velocity = parameters_.filters.state_velocity_filter_cuttoff_freq;
   if (dt > 0 && cutoff_jnt_position > 0.0) {
     double jnt_position_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_jnt_position);
     for (size_t i = 0; i < num_joints_; ++i) {
-      vic_state_.joint_state_position(i) = filters::exponentialSmoothing(
+      vic_state_.input_data.joint_state_position(i) = filters::exponentialSmoothing(
         current_joint_state.positions.at(i),
-        vic_state_.joint_state_position(i),
+        vic_state_.input_data.joint_state_position(i),
         jnt_position_filter_coefficient
       );
     }
   } else {
     // Initialization
-    vec_to_eigen(current_joint_state.positions, vic_state_.joint_state_position);
+    vec_to_eigen(current_joint_state.positions, vic_state_.input_data.joint_state_position);
   }
 
+  // Update current robot joint velocity
+  double cutoff_jnt_velocity = parameters_.filters.state_velocity_filter_cuttoff_freq;
   if (dt > 0 && cutoff_jnt_velocity > 0.0) {
     double jnt_velocity_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_jnt_velocity);
     for (size_t i = 0; i < num_joints_; ++i) {
-      vic_state_.joint_state_velocity(i) = filters::exponentialSmoothing(
+      vic_state_.input_data.joint_state_velocity(i) = filters::exponentialSmoothing(
         current_joint_state.velocities.at(i),
-        vic_state_.joint_state_velocity(i),
+        vic_state_.input_data.joint_state_velocity(i),
         jnt_velocity_filter_coefficient
       );
     }
   } else {
     // Initialization
-    vec_to_eigen(current_joint_state.velocities, vic_state_.joint_state_velocity);
+    vec_to_eigen(current_joint_state.velocities, vic_state_.input_data.joint_state_velocity);
   }
 
   // Update current cartesian pose and velocity from robot joint states
   success &= dynamics_->calculate_link_transform(
-    vic_state_.joint_state_position,
-    vic_state_.control_frame,
-    vic_state_.robot_current_pose
+    vic_state_.input_data.joint_state_position,
+    vic_state_.input_data.control_frame,
+    vic_state_.input_data.robot_current_pose
   );
 
   success = dynamics_->convert_joint_deltas_to_cartesian_deltas(
-    vic_state_.joint_state_position,
-    vic_state_.joint_state_velocity,
-    vic_state_.control_frame,
-    vic_state_.robot_current_velocity
+    vic_state_.input_data.joint_state_position,
+    vic_state_.input_data.joint_state_velocity,
+    vic_state_.input_data.control_frame,
+    vic_state_.input_data.robot_current_velocity
+  );
+
+  // Pre-compute commonly used transformations
+  success &= dynamics_->calculate_link_transform(
+    vic_state_.input_data.joint_state_position,
+    vic_state_.input_data.ft_sensor_frame,
+    vic_transforms_.base_ft_
+  );
+  success &= dynamics_->calculate_link_transform(
+    vic_state_.input_data.joint_state_position,
+    parameters_.dynamics.tip,
+    vic_transforms_.base_tip_
+  );
+  success &= dynamics_->calculate_link_transform(
+    vic_state_.input_data.joint_state_position,
+    parameters_.fixed_world_frame.frame.id,
+    vic_transforms_.world_base_
+  );
+  success &= dynamics_->calculate_link_transform(
+    vic_state_.input_data.joint_state_position,
+    parameters_.gravity_compensation.frame.id,
+    vic_transforms_.base_cog_
+  );
+  success &= dynamics_->calculate_link_transform(
+    vic_state_.input_data.joint_state_position,
+    parameters_.control.frame.id,
+    vic_transforms_.base_control_
+  );
+  success &= dynamics_->calculate_link_transform(
+    vic_state_.input_data.joint_state_position,
+    parameters_.control.frame.id,
+    vic_transforms_.base_vic_
   );
   return true;
 }
@@ -525,11 +490,10 @@ bool CartesianVicRule::process_wrench_measurements(
     }
   }
 
-
   // Transform wrench_world_ into base frame
-  vic_state_.robot_current_wrench_at_ft_frame.head(3) =
+  vic_state_.input_data.robot_current_wrench_at_ft_frame.head(3) =
     vic_transforms_.world_base_.rotation().transpose() * wrench_world_.head(3);
-  vic_state_.robot_current_wrench_at_ft_frame.tail(3) =
+  vic_state_.input_data.robot_current_wrench_at_ft_frame.tail(3) =
     vic_transforms_.world_base_.rotation().transpose() * wrench_world_.tail(3);
   /*
   std::cerr << "raw wrench = " << new_wrench.transpose() << std::endl;

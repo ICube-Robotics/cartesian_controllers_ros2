@@ -37,11 +37,23 @@ controller_interface::return_type VanillaCartesianAdmittanceRule::configure(
   const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
   const size_t num_joints)
 {
-  return CartesianVicRule::configure(node, num_joints);
+  // Configure CartesianVicRule
+  auto ret = CartesianVicRule::configure(node, num_joints);
+
+  // Reset internal data
+  reset_rule__internal_storage(num_joints);
+
+  // Check if we still are in impedance mode
+  if (control_mode_ != ControlMode::ADMITTANCE ||
+      vic_state_.control_mode != ControlMode::ADMITTANCE) {
+    return controller_interface::return_type::ERROR;
+  }
+  return ret;
 }
 
 controller_interface::return_type VanillaCartesianAdmittanceRule::reset(const size_t num_joints)
 {
+  reset_rule__internal_storage(num_joints);
   return CartesianVicRule::reset(num_joints);
 }
 
@@ -50,43 +62,48 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   VicState & vic_state)
 {
   const CompliantFrame & reference_compliant_frame =
-    vic_state.reference_compliant_frames.get_compliant_frame(0);
-  vic_state.inertia = reference_compliant_frame.inertia;
-  vic_state.stiffness = reference_compliant_frame.stiffness;
-  vic_state.damping = reference_compliant_frame.damping;
+    vic_state.input_data.reference_compliant_frames.get_compliant_frame(0);
+
+  // No passivation of impedance parameters
+  vic_state.command_data.inertia = reference_compliant_frame.inertia;
+  vic_state.command_data.stiffness = reference_compliant_frame.stiffness;
+  vic_state.command_data.damping = reference_compliant_frame.damping;
+
+  // Prepare data
+  // --------------------------------
 
   // auto rot_base_control = vic_transforms_.base_control_.rotation();
   auto rot_base_admittance = vic_transforms_.base_vic_.rotation();
-  // Express M, K, D matrices in base (provided in base_vic frame)
 
+  // Express M, K, D matrices in base (provided in base_vic frame)
   Eigen::Matrix<double, 6, 6> K = Eigen::Matrix<double, 6, 6>::Zero();
   K.block<3, 3>(0, 0) =
     rot_base_admittance * \
-    vic_state.stiffness.block<3, 3>(0, 0) * \
+    vic_state.command_data.stiffness.block<3, 3>(0, 0) * \
     rot_base_admittance.transpose();
   K.block<3, 3>(3, 3) =
     rot_base_admittance * \
-    vic_state.stiffness.block<3, 3>(3, 3) * \
+    vic_state.command_data.stiffness.block<3, 3>(3, 3) * \
     rot_base_admittance.transpose();
 
   Eigen::Matrix<double, 6, 6> D = Eigen::Matrix<double, 6, 6>::Zero();
   D.block<3, 3>(0, 0) =
     rot_base_admittance * \
-    vic_state.damping.block<3, 3>(0, 0) * \
+    vic_state.command_data.damping.block<3, 3>(0, 0) * \
     rot_base_admittance.transpose();
   D.block<3, 3>(3, 3) =
     rot_base_admittance * \
-    vic_state.damping.block<3, 3>(3, 3) * \
+    vic_state.command_data.damping.block<3, 3>(3, 3) * \
     rot_base_admittance.transpose();
 
   Eigen::Matrix<double, 6, 6> M = Eigen::Matrix<double, 6, 6>::Zero();
   M.block<3, 3>(0, 0) =
     rot_base_admittance * \
-    vic_state.inertia.block<3, 3>(0, 0) * \
+    vic_state.command_data.inertia.block<3, 3>(0, 0) * \
     rot_base_admittance.transpose();
   M.block<3, 3>(3, 3) =
     rot_base_admittance * \
-    vic_state.inertia.block<3, 3>(3, 3) * \
+    vic_state.command_data.inertia.block<3, 3>(3, 3) * \
     rot_base_admittance.transpose();
 
   Eigen::Matrix<double, 6, 6> M_inv = M.inverse();
@@ -95,11 +112,11 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   Eigen::Matrix<double, 6, 1> error_pose;
   error_pose.head(3) =
     reference_compliant_frame.pose.translation() - \
-    vic_state.robot_current_pose.translation();
+    vic_state.input_data.robot_current_pose.translation();
 
   auto R_angular_error = \
     reference_compliant_frame.pose.rotation() * \
-    vic_state.robot_current_pose.rotation().transpose();
+    vic_state.input_data.robot_current_pose.rotation().transpose();
   auto angle_axis = Eigen::AngleAxisd(R_angular_error);
 
   error_pose.tail(3) = angle_axis.angle() * angle_axis.axis();
@@ -107,29 +124,30 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   // Compute velocity tracking errors in ft frame
   Eigen::Matrix<double, 6, 1> error_velocity =
     reference_compliant_frame.velocity - \
-    vic_state.robot_current_velocity;
+    vic_state.input_data.robot_current_velocity;
 
   // External force at interaction frame (assumed to be control frame), expressed in the base frame
   // (note that this is the measured force, the the generalized wrench used in VIC papers...)
-  Eigen::Matrix<double, 6, 1> F_ext = vic_state.robot_current_wrench_at_ft_frame;
+  Eigen::Matrix<double, 6, 1> F_ext = vic_state.input_data.robot_current_wrench_at_ft_frame;
 
   // Compute admittance control law in the base frame
+  // ------------------------------------------------
   // commanded_acc = p_ddot_desired + inv(M) * (K * err_p + D * err_p_dot + f_ext)
+  // where err_p = p_desired - p_current
+
   Eigen::Matrix<double, 6, 1> commanded_cartesian_acc =
     reference_compliant_frame.acceleration + \
     M_inv * (K * error_pose + D * error_velocity + F_ext);
-  // std::cerr << "commanded_cartesian_acc = " << commanded_cartesian_acc.transpose() << std::endl;
 
-  vic_state.robot_command_twist += vic_state.last_robot_commanded_twist +
-    commanded_cartesian_acc * dt;
+  robot_command_twist_ += last_robot_commanded_twist_ + commanded_cartesian_acc * dt;
 
-  auto previous_jnt_cmd_velocity = vic_state.joint_command_velocity;
+  auto previous_jnt_cmd_velocity = vic_state.command_data.joint_command_velocity;
 
   bool success = dynamics_->convert_cartesian_deltas_to_joint_deltas(
-    vic_state.joint_state_position,
-    vic_state.robot_command_twist,
-    vic_state.control_frame,
-    vic_state.joint_command_velocity
+    vic_state.input_data.joint_state_position,
+    robot_command_twist_,
+    vic_state.input_data.control_frame,
+    vic_state.command_data.joint_command_velocity
   );
 
   // Filter joint command velocity
@@ -138,10 +156,10 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     double cmd_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_freq_cmd);
 
     for (size_t i = 0; i < static_cast<size_t>(
-        vic_state.joint_command_velocity.size()); i++)
+        vic_state.command_data.joint_command_velocity.size()); i++)
     {
-      vic_state.joint_command_velocity(i) = filters::exponentialSmoothing(
-        vic_state.joint_command_velocity(i),
+      vic_state.command_data.joint_command_velocity(i) = filters::exponentialSmoothing(
+        vic_state.command_data.joint_command_velocity(i),
         previous_jnt_cmd_velocity(i),
         cmd_filter_coefficient
       );
@@ -149,25 +167,26 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   }
 
   // Integrate motion in joint space
-  vic_state.joint_command_position += vic_state.joint_command_velocity * dt;
+  vic_state.command_data.joint_command_position += \
+    vic_state.command_data.joint_command_velocity * dt;
 
   // Estimate joint command acceleration
   // TODO(tpoigonec): simply set to zero or NaN ?!
-  vic_state.joint_command_acceleration.setZero();
-  //  (vic_state.joint_command_velocity - previous_jnt_cmd_velocity) / dt;
-
-  /*
-  // add damping if cartesian velocity falls below threshold
-  for (int64_t i = 0; i < vic_state.joint_acc.size(); ++i)
-  {
-    vic_state.joint_command_acceleration[i] -=
-      parameters_.admittance.joint_damping * vic_state.joint_state_velocity[i];
-  }
-  */
+  vic_state.command_data.joint_command_acceleration.setZero();
+  //  (vic_state.command_data.joint_command_velocity - previous_jnt_cmd_velocity) / dt;
 
   // Logging
+  // --------------------------------
+  // Nothing to log...
 
   return success;
+}
+
+bool VanillaCartesianAdmittanceRule::reset_rule__internal_storage(const size_t num_joints)
+{
+  robot_command_twist_.setZero();
+  last_robot_commanded_twist_.setZero();
+  return true;
 }
 
 

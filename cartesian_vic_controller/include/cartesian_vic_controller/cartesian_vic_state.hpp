@@ -38,31 +38,24 @@ enum class ControlMode
   IMPEDANCE = 2
 };
 
-// VicState is the internal state of the VIC controller
-struct VicState
+class VicInputData
 {
-  explicit VicState(size_t num_joints, ControlMode mode, size_t trajectory_lenght = 1)
+public:
+  explicit VicInputData(size_t num_joints, size_t trajectory_lenght = 1)
   : reference_compliant_frames(trajectory_lenght)
   {
-    control_mode = mode;
-
     // Allocate joint state
     joint_state_position = Eigen::VectorXd::Zero(num_joints);
     joint_state_velocity = Eigen::VectorXd::Zero(num_joints);
+    joint_external_torque_sensor = Eigen::VectorXd::Zero(num_joints);
 
-    // Allocate and reset command
-    robot_command_twist.setZero();
-    joint_command_position = Eigen::VectorXd::Zero(num_joints);
-    joint_command_velocity = Eigen::VectorXd::Zero(num_joints);
-    joint_command_acceleration = Eigen::VectorXd::Zero(num_joints);
-    joint_command_effort = Eigen::VectorXd::Zero(num_joints);
-
-    // Allocate and reset history
-    last_robot_commanded_twist.setZero();
+    // Allocate cartesian state
+    /*
+    natural_joint_space_inertia = \
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
+    */
   }
-
-  ControlMode control_mode;
-
+public:
   // General parameters
   //------------------------
   /// Name of the robot base frame
@@ -78,6 +71,33 @@ struct VicState
   //----------------------------
   CompliantFrameTrajectory reference_compliant_frames;
 
+  // Measured robot state
+  //-----------------------
+  Eigen::VectorXd joint_state_position;
+  Eigen::VectorXd joint_state_velocity;
+  Eigen::VectorXd joint_external_torque_sensor;
+
+  // Cartesian state (control frame w.r.t. robot base frame)
+  Eigen::Isometry3d robot_current_pose;
+  Eigen::Matrix<double, 6, 1> robot_current_velocity;
+  Eigen::Matrix<double, 6, 1> robot_current_wrench_at_ft_frame;  // ft_frame w.r.t. base
+
+  /// Natural inertia matrix (from dynamic model)
+  // Eigen::Matrix<double, 6, 6> natural_cartesian_inertia;
+  // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> natural_joint_space_inertia;
+};
+
+class VicCommandData {
+public:
+  explicit VicCommandData(size_t num_joints)
+  {
+    // Allocate and reset command
+    joint_command_position = Eigen::VectorXd::Zero(num_joints);
+    joint_command_velocity = Eigen::VectorXd::Zero(num_joints);
+    joint_command_acceleration = Eigen::VectorXd::Zero(num_joints);
+    joint_command_effort = Eigen::VectorXd::Zero(num_joints);
+  }
+public:
   // Rendered compliance
   //----------------------------
   /// Rendered inertia matrix
@@ -87,35 +107,46 @@ struct VicState
   /// Rendered damping matrix
   Eigen::Matrix<double, 6, 6> damping;
 
-  // Measured robot state
-  //-----------------------
-  Eigen::VectorXd joint_state_position;
-  Eigen::VectorXd joint_state_velocity;
-  // Cartesian state (control frame w.r.t. robot base frame)
-  Eigen::Isometry3d robot_current_pose;
-  Eigen::Matrix<double, 6, 1> robot_current_velocity;
-  Eigen::Matrix<double, 6, 1> robot_current_wrench_at_ft_frame;  // ft_frame w.r.t. base
-
   // Computed command
   //------------------------
-  // Commanded twist (control frame w.r.t. robot base frame)
-  Eigen::Matrix<double, 6, 1> robot_command_twist;
-  // Last commanded twist
-  Eigen::Matrix<double, 6, 1> last_robot_commanded_twist;
-
   // Commanded joint state computed from "robot_command_twist"
   Eigen::VectorXd joint_command_position;
   Eigen::VectorXd joint_command_velocity;
   Eigen::VectorXd joint_command_acceleration;
   Eigen::VectorXd joint_command_effort;
 
-  // Additional data
+  // Command availability
   //------------------------
-  /// Natural inertia matrix (from dynamic model)
-  Eigen::Matrix<double, 6, 6> natural_inertia;
+  bool has_position_command = false;
+  bool has_velocity_command = false;
+  bool has_acceleration_command = false;
+  bool has_effort_command = false;
+};
 
-  // Diagnostics
+// VicState is the internal state of the VIC controller
+class VicState {
+public:
+  explicit VicState(
+    size_t num_joints,
+    ControlMode mode,
+    size_t trajectory_lenght = 1);
+
+  ~VicState() = default;
+
+  bool to_msg(cartesian_control_msgs::msg::VicControllerState & vic_state_msg);
+public:
+  /// VIC control mode: INVALID / ADMITTANCE / IMPEDANCE
+  ControlMode control_mode;
+
+  /// Input data used for VIC: reference compliant frame(s) and robot measurements
+  VicInputData input_data;
+
+  /// Output data computed by the VIC controller: robot joint commands
+  VicCommandData command_data;
+
+  // Diagnostics data
   std::map<std::string, double> diagnostic_data;
+public:
 };
 
 /// Transforms between frames used in the Vic controller

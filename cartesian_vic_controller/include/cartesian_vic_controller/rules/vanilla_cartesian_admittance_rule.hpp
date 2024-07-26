@@ -47,6 +47,12 @@ protected:
   bool compute_controls(
     double dt /*period in seconds*/,
     VicState & vic_state) override;
+
+  bool reset_rule__internal_storage(const size_t num_joints);
+
+  // Internal data for this rule
+  Eigen::Matrix<double, 6, 1> robot_command_twist_;
+  Eigen::Matrix<double, 6, 1> last_robot_commanded_twist_;
 };
 
 }  // namespace cartesian_vic_controller

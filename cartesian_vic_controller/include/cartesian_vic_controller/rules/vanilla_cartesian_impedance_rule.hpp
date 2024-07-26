@@ -47,6 +47,13 @@ protected:
   bool compute_controls(
     double dt /*period in seconds*/,
     VicState & vic_state) override;
+
+private:
+  bool reset_rule__internal_storage(const size_t num_joints);
+
+  // Internal data for this rule
+  Eigen::Matrix<double, 6, Eigen::Dynamic> J_dot_;
+  Eigen::VectorXd raw_joint_command_effort_;
 };
 
 }  // namespace cartesian_vic_controller
