@@ -120,13 +120,13 @@ CartesianVicRule::init_reference_frame_trajectory(
   for (unsigned int i = 0; i < N; i++) {
     // TODO(tpoignonec): Check the frame is correct (i.e., control w.r.t. base)!
     success &= \
-    vic_state_.input_data.reference_compliant_frames.fill_desired_desired_robot_state(
+      vic_state_.input_data.reference_compliant_frames.fill_desired_desired_robot_state(
       i,
       vic_state_.input_data.robot_current_pose,
       null_vector_6D,
       null_vector_6D,
       null_vector_6D
-    );
+      );
     if (!success) {
       RCLCPP_ERROR(
         rclcpp::get_logger("CartesianVicRule"),
@@ -229,16 +229,16 @@ CartesianVicRule::update_compliant_frame_trajectory(
   for (unsigned int i = 0; i < N; i++) {
     // TODO(tpoignonec): Check the frame is correct (i.e., control w.r.t. base)!
     success &= \
-    vic_state_.input_data.reference_compliant_frames.fill_desired_robot_state_from_msg(
+      vic_state_.input_data.reference_compliant_frames.fill_desired_robot_state_from_msg(
       i,
       compliant_frame_trajectory.cartesian_trajectory_points[i]
-    );
+      );
     if (use_streamed_interaction_parameters_) {
       success &= \
-      vic_state_.input_data.reference_compliant_frames.fill_desired_compliance_from_msg(
+        vic_state_.input_data.reference_compliant_frames.fill_desired_compliance_from_msg(
         i,
         compliant_frame_trajectory.compliance_at_points[i]
-      );
+        );
     }
   }
 

@@ -45,7 +45,8 @@ controller_interface::return_type VanillaCartesianAdmittanceRule::configure(
 
   // Check if we still are in impedance mode
   if (control_mode_ != ControlMode::ADMITTANCE ||
-      vic_state_.control_mode != ControlMode::ADMITTANCE) {
+    vic_state_.control_mode != ControlMode::ADMITTANCE)
+  {
     return controller_interface::return_type::ERROR;
   }
   return ret;
@@ -182,7 +183,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   return success;
 }
 
-bool VanillaCartesianAdmittanceRule::reset_rule__internal_storage(const size_t num_joints)
+bool VanillaCartesianAdmittanceRule::reset_rule__internal_storage(const size_t /*num_joints*/)
 {
   robot_command_twist_.setZero();
   last_robot_commanded_twist_.setZero();

@@ -55,6 +55,7 @@ public:
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
     */
   }
+
 public:
   // General parameters
   //------------------------
@@ -87,7 +88,8 @@ public:
   // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> natural_joint_space_inertia;
 };
 
-class VicCommandData {
+class VicCommandData
+{
 public:
   explicit VicCommandData(size_t num_joints)
   {
@@ -97,6 +99,7 @@ public:
     joint_command_acceleration = Eigen::VectorXd::Zero(num_joints);
     joint_command_effort = Eigen::VectorXd::Zero(num_joints);
   }
+
 public:
   // Rendered compliance
   //----------------------------
@@ -124,7 +127,8 @@ public:
 };
 
 // VicState is the internal state of the VIC controller
-class VicState {
+class VicState
+{
 public:
   explicit VicState(
     size_t num_joints,
@@ -134,6 +138,7 @@ public:
   ~VicState() = default;
 
   bool to_msg(cartesian_control_msgs::msg::VicControllerState & vic_state_msg);
+
 public:
   /// VIC control mode: INVALID / ADMITTANCE / IMPEDANCE
   ControlMode control_mode;
@@ -146,6 +151,7 @@ public:
 
   // Diagnostics data
   std::map<std::string, double> diagnostic_data;
+
 public:
 };
 

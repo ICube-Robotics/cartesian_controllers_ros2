@@ -26,7 +26,7 @@ VicState::VicState(size_t num_joints, ControlMode mode, size_t trajectory_lenght
   command_data(num_joints),
   control_mode(mode)
 {
-    // Nothing to do here
+  // Nothing to do here
 }
 
 bool
@@ -66,7 +66,7 @@ VicState::to_msg()
   vic_state_msg.pose = Eigen::toMsg(input_data.robot_current_pose);
   vic_state_msg.velocity = Eigen::toMsg(input_data.robot_current_velocity);
   vic_state_msg.wrench = WrenchToMsg(input_data.robot_current_wrench_at_ft_frame);
-  //matrixEigenToMsg(input_data.natural_cartesian_inertia, vic_state_msg.natural_inertia);
+  // matrixEigenToMsg(input_data.natural_cartesian_inertia, vic_state_msg.natural_inertia);
 
   // Fill rendered impedance
   matrixEigenToMsg(command_data.inertia, vic_state_msg.rendered_inertia);
@@ -79,8 +79,7 @@ VicState::to_msg()
     for (size_t i = 0; i < num_joints_; i++) {
       vic_state_msg.joint_command_position[i] = command_data.joint_command_position[i];
     }
-  }
-  else {
+  } else {
     vic_state_msg.joint_command_position.clear();
   }
   // Fill velocity commands
@@ -89,8 +88,7 @@ VicState::to_msg()
     for (size_t i = 0; i < num_joints_; i++) {
       vic_state_msg.joint_command_velocity[i] = command_data.joint_command_velocity[i];
     }
-  }
-  else {
+  } else {
     vic_state_msg.joint_command_velocity.clear();
   }
   // Fill acceleration commands
@@ -99,8 +97,7 @@ VicState::to_msg()
     for (size_t i = 0; i < num_joints_; i++) {
       vic_state_msg.joint_command_acceleration[i] = command_data.joint_command_acceleration[i];
     }
-  }
-  else {
+  } else {
     vic_state_msg.joint_command_acceleration.clear();
   }
   // Fill effort commands
@@ -109,8 +106,7 @@ VicState::to_msg()
     for (size_t i = 0; i < num_joints_; i++) {
       vic_state_msg.joint_command_effort[i] = command_data.joint_command_effort[i];
     }
-  }
-  else {
+  } else {
     vic_state_msg.joint_command_effort.clear();
   }
 
