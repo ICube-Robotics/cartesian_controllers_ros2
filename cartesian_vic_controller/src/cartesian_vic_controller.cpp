@@ -52,7 +52,7 @@ controller_interface::CallbackReturn CartesianVicController::on_init()
     } else {
       rclcpp::Parameter robot_description_param("robot_description", urdf_string);
       get_node()->set_parameter(robot_description_param);
-      RCLCPP_INFO(get_node()->get_logger(), "URDF: %s", urdf_string.c_str());
+      // RCLCPP_INFO(get_node()->get_logger(), "URDF: %s", urdf_string.c_str());
     }
   }
 
@@ -108,10 +108,11 @@ const
       state_interfaces_config_names.push_back(full_name);
     }
   }
-
-  auto ft_interfaces = force_torque_sensor_->get_state_interface_names();
-  state_interfaces_config_names.insert(
-    state_interfaces_config_names.end(), ft_interfaces.begin(), ft_interfaces.end());
+  if (force_torque_sensor_) {
+    auto ft_interfaces = force_torque_sensor_->get_state_interface_names();
+    state_interfaces_config_names.insert(
+      state_interfaces_config_names.end(), ft_interfaces.begin(), ft_interfaces.end());
+  }
 
   // Export external torque interfaces if any
   if (external_torque_sensor_) {
@@ -416,7 +417,9 @@ controller_interface::CallbackReturn CartesianVicController::on_activate(
   vic_->apply_parameters_update();
 
   // initialize interface of the FTS semantic component
-  force_torque_sensor_->assign_loaned_state_interfaces(state_interfaces_);
+  if (force_torque_sensor_) {
+    force_torque_sensor_->assign_loaned_state_interfaces(state_interfaces_);
+  }
 
   // initialize interface of the external_torque_sensor semantic component
   if (external_torque_sensor_) {
@@ -446,8 +449,9 @@ controller_interface::CallbackReturn CartesianVicController::on_deactivate(
   }
 
   // release force torque sensor interface
-  force_torque_sensor_->release_interfaces();
-
+  if (force_torque_sensor_) {
+    force_torque_sensor_->release_interfaces();
+  }
   // if needed, release external_torque_sensor interface
   if (external_torque_sensor_) {
     external_torque_sensor_->release_interfaces();
@@ -612,6 +616,7 @@ bool CartesianVicController::write_impedance_state_to_hardware(
     command_interfaces_[joint_ind].set_value(
       joint_state_command.effort[joint_ind]);
   }
+  // Update last command state
   last_commanded_joint_state_ = joint_state_command;
   return true;
 }
@@ -645,7 +650,15 @@ bool CartesianVicController::write_admittance_state_to_hardware(
     RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *clock, 1000, "Joint command has NaN value(s)!");
     return false;
   }
-
+  /*
+  RCLCPP_INFO(
+    get_node()->get_logger(),
+    "Joint position command: [%.3f, %.3f, %.3f, %.3f, %.3f, %.3f]",
+    joint_state_command.positions[0], joint_state_command.positions[1],
+    joint_state_command.positions[2], joint_state_command.positions[3],
+    joint_state_command.positions[4], joint_state_command.positions[5],
+    joint_state_command.positions[6]);
+  */
   for (size_t joint_ind = 0; joint_ind < num_joints_; ++joint_ind) {
     if (has_position_command_interface_) {
       command_interfaces_[pos_ind * num_joints_ + joint_ind].set_value(
