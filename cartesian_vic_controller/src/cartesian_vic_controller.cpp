@@ -17,6 +17,7 @@
 #include <chrono>
 #include <cmath>
 #include <functional>
+#include <future>
 #include <memory>
 #include <string>
 #include <vector>
@@ -34,10 +35,24 @@ namespace cartesian_vic_controller
 {
 controller_interface::CallbackReturn CartesianVicController::on_init()
 {
-  // Test retrieve urdf
+  // Try to retrieve urdf (used by kinematics / dynamics plugin)
   std::string urdf_string;
   get_node()->get_parameter("robot_description", urdf_string);
-  // RCLCPP_INFO(get_node()->get_logger(), "urdf_string: %s", urdf_string.c_str());
+  if (urdf_string.empty()) {
+    RCLCPP_ERROR(
+      get_node()->get_logger(),
+      "Could not find 'robot_description' parameter! Trying to retrieve URDF from param server...");
+    /*
+    // TODO(tpoignonec): get URDF from param server
+    urdf_string = getUrdfFromServer();
+    if (urdf_string.empty()) {
+      RCLCPP_ERROR(
+        get_node()->get_logger(), "Could not retrieve URDF from param server!");
+      return controller_interface::CallbackReturn::ERROR;
+    }
+    */
+  }
+
   // initialize controller config
   try {
     parameter_handler_ =
@@ -675,6 +690,67 @@ bool CartesianVicController::initialize_vic_rule(
   last_commanded_joint_state_ = joint_state;
   is_vic_initialized_ = all_ok;
   return all_ok;
+}
+
+std::string CartesianVicController::getUrdfFromServer() const
+{
+  std::string urdf_string;
+
+  using namespace std::chrono_literals;
+
+  auto parameters_client = std::make_shared<rclcpp::AsyncParametersClient>(
+    get_node(), robot_description_node_);
+  while (!parameters_client->wait_for_service(0.5s)) {
+    if (!rclcpp::ok()) {
+      RCLCPP_ERROR(
+        get_node()->get_logger(), "Interrupted while waiting for %s service. Exiting.",
+        robot_description_node_.c_str());
+      return 0;
+    }
+    RCLCPP_ERROR(
+      get_node()->get_logger(), "%s service not available, waiting again...",
+      robot_description_node_.c_str());
+  }
+
+  std::string robot_description_param = "robot_description";
+  RCLCPP_INFO(
+    get_node()->get_logger(), "connected to service (%s), asking for '%s'...",
+    robot_description_node_.c_str(),
+    robot_description_param.c_str());
+
+  // search and wait for robot_description on param server
+  while (urdf_string.empty()) {
+    RCLCPP_DEBUG(
+      get_node()->get_logger(), "param_name = '%s'",
+      robot_description_param.c_str());
+
+    // get parameters
+    try {
+      auto results = parameters_client->get_parameters({robot_description_param});
+      RCLCPP_INFO(
+        get_node()->get_logger(), "Waiting for and answer from param server...");
+      if (results.wait_for(5s) != std::future_status::ready) {
+        RCLCPP_INFO(get_node()->get_logger(), "No answer from param server, trying again...");
+        continue;
+      }
+      std::vector<rclcpp::Parameter> values = results.get();
+      urdf_string = values[0].as_string();
+    } catch (const std::exception & e) {
+      RCLCPP_ERROR(get_node()->get_logger(), "%s", e.what());
+    }
+    if (!urdf_string.empty()) {
+      break;
+    } else {
+      RCLCPP_ERROR(
+        get_node()->get_logger(),
+        "Waiting for model URDF in parameter [%s] on the ROS param server.",
+        robot_description_param.c_str());
+    }
+    // std::this_thread::sleep_for(std::chrono::microseconds(100000));
+  }
+  RCLCPP_INFO(get_node()->get_logger(), "Received URDF from param server");
+
+  return urdf_string;
 }
 
 }  // namespace cartesian_vic_controller

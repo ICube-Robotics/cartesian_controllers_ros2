@@ -144,6 +144,14 @@ protected:
    */
   bool initialize_vic_rule(const trajectory_msgs::msg::JointTrajectoryPoint & joint_state);
 
+  /**
+   * @brief Try to retrieve the URDF from the parameter server. If this fails, it will
+   * try to retrieve it from the 'robot_state_publisher'.
+   *
+   * @return std::string
+   */
+  std::string getUrdfFromServer() const;
+
 protected:
   size_t num_joints_ = 0;
   std::vector<std::string> command_joint_names_;
@@ -195,6 +203,10 @@ protected:
 
   // vic parameters
   std::shared_ptr<cartesian_vic_controller::ParamListener> parameter_handler_;
+
+  /// fallback for robot description ROS parameters
+  // TODO(tpoignonec): make this a parameter
+  std::string robot_description_node_ = "robot_state_publisher";
 
   // ROS messages
   std::shared_ptr<cartesian_control_msgs::msg::CompliantFrameTrajectory>
