@@ -172,10 +172,15 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   vic_command_data.joint_command_position += \
     vic_command_data.joint_command_velocity * dt;
 
-  // Estimate joint command acceleration
-  // TODO(tpoigonec): simply set to zero or NaN ?!
+  // Set flags for available commands
+  vic_command_data.has_position_command = true;
+  vic_command_data.has_velocity_command = true;
+  vic_command_data.has_acceleration_command = false;
+  vic_command_data.has_effort_command = false;
+
+  // Just to be safe
   vic_command_data.joint_command_acceleration.setZero();
-  //  (vic_command_data.joint_command_velocity - previous_jnt_cmd_velocity) / dt;
+  vic_command_data.joint_command_effort.setZero();
 
   // Logging
   // --------------------------------
