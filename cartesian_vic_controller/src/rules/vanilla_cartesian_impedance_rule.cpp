@@ -166,14 +166,13 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   );
 
   // Compute joint command effort from desired joint acc.
+  // vic_command_data.joint_command_acceleration.setZero(); // test gravity compensation...
   raw_joint_command_effort_ = M_joint_space_.diagonal().asDiagonal() * \
     vic_command_data.joint_command_acceleration - coriolis_ - gravity_;
-
   // Filter joint command effort
   double cutoff_freq_cmd = parameters_.filters.command_filter_cuttoff_freq;
-  if (cutoff_freq_cmd > 0.0) {  // No smoothing otherwise
+  if (cutoff_freq_cmd > 0.0) {
     double cmd_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_freq_cmd);
-
     for (size_t i = 0; i < static_cast<size_t>(
         vic_command_data.joint_command_effort.size()); i++)
     {
@@ -183,6 +182,10 @@ bool VanillaCartesianImpedanceRule::compute_controls(
         cmd_filter_coefficient
       );
     }
+  }
+  else {
+    // No smoothing otherwise
+    vic_command_data.joint_command_effort = raw_joint_command_effort_;
   }
 
   // Set flags for available commands
