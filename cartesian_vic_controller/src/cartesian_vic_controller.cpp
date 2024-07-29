@@ -34,6 +34,10 @@ namespace cartesian_vic_controller
 {
 controller_interface::CallbackReturn CartesianVicController::on_init()
 {
+  // Test retrieve urdf
+  std::string urdf_string;
+  get_node()->get_parameter("robot_description", urdf_string);
+  // RCLCPP_INFO(get_node()->get_logger(), "urdf_string: %s", urdf_string.c_str());
   // initialize controller config
   try {
     parameter_handler_ =
@@ -288,10 +292,10 @@ controller_interface::CallbackReturn CartesianVicController::on_configure(
     get_interface_list(vic_->parameters_.command_interfaces).c_str(),
     get_interface_list(vic_->parameters_.state_interfaces).c_str());
 
-  if (!has_position_command_interface_ && !has_velocity_command_interface_) {
+  if (!is_command_interfaces_config_valid()) {
     RCLCPP_ERROR(
       get_node()->get_logger(),
-      "At least the position or velocity command interface must be available!");
+      "Invalid command interface configuration!");
     return CallbackReturn::FAILURE;
   }
 
