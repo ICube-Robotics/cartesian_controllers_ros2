@@ -14,6 +14,7 @@
 //
 /// \authors: Thibault Poignonec
 
+#include <cstdlib>
 #include <chrono>
 #include <cmath>
 #include <functional>
@@ -42,15 +43,17 @@ controller_interface::CallbackReturn CartesianVicController::on_init()
     RCLCPP_ERROR(
       get_node()->get_logger(),
       "Could not find 'robot_description' parameter! Trying to retrieve URDF from param server...");
-    /*
     // TODO(tpoignonec): get URDF from param server
     urdf_string = getUrdfFromServer();
     if (urdf_string.empty()) {
       RCLCPP_ERROR(
         get_node()->get_logger(), "Could not retrieve URDF from param server!");
       return controller_interface::CallbackReturn::ERROR;
+    } else {
+      rclcpp::Parameter robot_description_param("robot_description", urdf_string);
+      get_node()->set_parameter(robot_description_param);
+      RCLCPP_INFO(get_node()->get_logger(), "URDF: %s", urdf_string.c_str());
     }
-    */
   }
 
   // initialize controller config
@@ -698,8 +701,30 @@ std::string CartesianVicController::getUrdfFromServer() const
 
   using namespace std::chrono_literals;
 
+  // Setup internal node for parameter client
+  rclcpp::executors::SingleThreadedExecutor executor;
+  rclcpp::Node::SharedPtr async_node;
+  std::unique_ptr<std::thread> node_thread;
+
+  RCLCPP_INFO(
+    get_node()->get_logger(),
+    "Setting up internal parameters client... please wait...");
+  rclcpp::NodeOptions options;
+  std::string node_name =
+    "cartesian_vic_controller_internal_parameters_client_" + std::to_string(std::rand());
+  RCLCPP_INFO(get_node()->get_logger(), "Internal node name: %s", node_name.c_str());
+  options.arguments({"--ros-args", "-r", "__node:=" + node_name});
+  async_node = rclcpp::Node::make_shared("_", options);
+  node_thread = std::make_unique<std::thread>(
+    [&]()
+    {
+      executor.add_node(async_node);
+      executor.spin();
+      executor.remove_node(async_node);
+    });
+
   auto parameters_client = std::make_shared<rclcpp::AsyncParametersClient>(
-    get_node(), robot_description_node_);
+    async_node, robot_description_node_);
   while (!parameters_client->wait_for_service(0.5s)) {
     if (!rclcpp::ok()) {
       RCLCPP_ERROR(
@@ -749,6 +774,11 @@ std::string CartesianVicController::getUrdfFromServer() const
     // std::this_thread::sleep_for(std::chrono::microseconds(100000));
   }
   RCLCPP_INFO(get_node()->get_logger(), "Received URDF from param server");
+
+  executor.cancel();
+  node_thread->join();
+  node_thread.reset();
+  async_node.reset();
 
   return urdf_string;
 }
