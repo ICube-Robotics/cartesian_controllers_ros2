@@ -118,7 +118,9 @@ const
   if (external_torque_sensor_) {
     auto external_torque_interfaces = external_torque_sensor_->get_state_interface_names();
     state_interfaces_config_names.insert(
-      state_interfaces_config_names.end(), ft_interfaces.begin(), ft_interfaces.end());
+      state_interfaces_config_names.end(),
+      external_torque_interfaces.begin(),
+      external_torque_interfaces.end());
   }
 
   return {
