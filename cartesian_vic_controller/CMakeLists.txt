@@ -40,11 +40,16 @@ generate_parameter_library(cartesian_vic_controller_parameters
 )
 
 add_library(cartesian_vic_controller SHARED
+  # core library
   src/cartesian_vic_controller.cpp
-  src/cartesian_admittance_controller.cpp
   src/cartesian_vic_rule.cpp
+  src/cartesian_vic_state.cpp
   src/compliance_frame_trajectory.cpp
   src/utils.cpp
+  # controllers
+  src/cartesian_admittance_controller.cpp
+  src/cartesian_impedance_controller.cpp
+  # rules
   src/rules/vanilla_cartesian_admittance_rule.cpp
   src/rules/vanilla_cartesian_impedance_rule.cpp
 )

@@ -28,6 +28,9 @@
 // include data structures
 #include "cartesian_vic_controller/compliance_frame_trajectory.hpp"
 
+// custom msgs
+#include "cartesian_control_msgs/msg/vic_controller_state.hpp"
+
 namespace cartesian_vic_controller
 {
 
@@ -151,8 +154,6 @@ public:
 
   // Diagnostics data
   std::map<std::string, double> diagnostic_data;
-
-public:
 };
 
 /// Transforms between frames used in the Vic controller

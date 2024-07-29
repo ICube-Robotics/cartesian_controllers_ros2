@@ -17,20 +17,22 @@
 #include "cartesian_vic_controller/cartesian_vic_state.hpp"
 #include "cartesian_vic_controller/utils.hpp"
 
+#include "tf2_eigen/tf2_eigen.hpp"
+#include "tf2_kdl/tf2_kdl.hpp"
+
 
 namespace cartesian_vic_controller
 {
 
 VicState::VicState(size_t num_joints, ControlMode mode, size_t trajectory_lenght)
 : input_data(num_joints, trajectory_lenght),
-  command_data(num_joints),
-  control_mode(mode)
+  command_data(num_joints)
 {
-  // Nothing to do here
+  control_mode = mode;
 }
 
 bool
-VicState::to_msg()
+VicState::to_msg(cartesian_control_msgs::msg::VicControllerState & vic_state_msg)
 {
   bool success = true;
 
@@ -73,10 +75,11 @@ VicState::to_msg()
   matrixEigenToMsg(command_data.stiffness, vic_state_msg.rendered_stiffness);
   matrixEigenToMsg(command_data.damping, vic_state_msg.rendered_damping);
 
+  size_t num_joints = input_data.joint_state_position.size();
   // Fill position commands
   if (command_data.has_position_command) {
-    vic_state_msg.joint_command_position.resize(num_joints_);
-    for (size_t i = 0; i < num_joints_; i++) {
+    vic_state_msg.joint_command_position.resize(num_joints);
+    for (size_t i = 0; i < num_joints; i++) {
       vic_state_msg.joint_command_position[i] = command_data.joint_command_position[i];
     }
   } else {
@@ -84,8 +87,8 @@ VicState::to_msg()
   }
   // Fill velocity commands
   if (command_data.has_velocity_command) {
-    vic_state_msg.joint_command_velocity.resize(num_joints_);
-    for (size_t i = 0; i < num_joints_; i++) {
+    vic_state_msg.joint_command_velocity.resize(num_joints);
+    for (size_t i = 0; i < num_joints; i++) {
       vic_state_msg.joint_command_velocity[i] = command_data.joint_command_velocity[i];
     }
   } else {
@@ -93,8 +96,8 @@ VicState::to_msg()
   }
   // Fill acceleration commands
   if (command_data.has_acceleration_command) {
-    vic_state_msg.joint_command_acceleration.resize(num_joints_);
-    for (size_t i = 0; i < num_joints_; i++) {
+    vic_state_msg.joint_command_acceleration.resize(num_joints);
+    for (size_t i = 0; i < num_joints; i++) {
       vic_state_msg.joint_command_acceleration[i] = command_data.joint_command_acceleration[i];
     }
   } else {
@@ -102,8 +105,8 @@ VicState::to_msg()
   }
   // Fill effort commands
   if (command_data.has_effort_command) {
-    vic_state_msg.joint_command_effort.resize(num_joints_);
-    for (size_t i = 0; i < num_joints_; i++) {
+    vic_state_msg.joint_command_effort.resize(num_joints);
+    for (size_t i = 0; i < num_joints; i++) {
       vic_state_msg.joint_command_effort[i] = command_data.joint_command_effort[i];
     }
   } else {

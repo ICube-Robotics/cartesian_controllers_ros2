@@ -113,24 +113,24 @@ bool CartesianImpedanceController::is_command_interfaces_config_valid() const
 {
   bool all_ok = true;
 
-  if (!has_position_command_interface_ && !has_velocity_command_interface_) {
+  if (!has_effort_command_interface_) {
     RCLCPP_ERROR(
       get_node()->get_logger(),
-      "CartesianImpedanceController: No position or velocity command interface specified!");
+      "CartesianImpedanceController: effort command interface not specified!");
     all_ok = false;
   }
 
-  if (has_effort_command_interface_) {
+  if (has_position_command_interface_ || has_velocity_command_interface_) {
     RCLCPP_ERROR(
       get_node()->get_logger(),
-      "CartesianImpedanceController: unsupported effort command interface specified!");
+      "CartesianImpedanceController: unsupported position or velocity command interface specified!");
     all_ok = false;
   }
 
-  if (vic_->get_control_mode() != ControlMode::ADMITTANCE) {
+  if (vic_->get_control_mode() != ControlMode::IMPEDANCE) {
     RCLCPP_ERROR(
       get_node()->get_logger(),
-      "CartesianImpedanceController: invalid VIC rule control mode (expected ADMITTANCE)!");
+      "CartesianImpedanceController: invalid VIC rule control mode (expected IMPEDANCE)!");
     all_ok = false;
   }
 
