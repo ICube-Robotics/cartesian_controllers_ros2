@@ -131,24 +131,32 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   // std::cerr << "commanded_cartesian_acc = " << commanded_cartesian_acc.transpose() << std::endl;
 
   auto num_joints = vic_input_data.joint_state_position.size();
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> M_joint_space =
-    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
-  Eigen::Matrix<double, 6, Eigen::Dynamic> J_dot =
-    Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
 
   bool success = dynamics_->calculate_inertia(
     vic_input_data.joint_state_position,
-    M_joint_space
+    M_joint_space_
   );
+  success &= dynamics_->calculate_coriolis(
+    vic_input_data.joint_state_position,
+    vic_input_data.joint_state_velocity,
+    coriolis_
+  );
+  success &= dynamics_->calculate_gravity(
+    vic_input_data.joint_state_position,
+    gravity_
+  );
+  if (!success) {
+    std::cerr << "Failed to calculate dynamic model!" << std::endl;
+  }
 
   success &= dynamics_->calculate_jacobian_derivative(
     vic_input_data.joint_state_position,
     vic_input_data.joint_state_velocity,
     vic_input_data.control_frame,
-    J_dot
+    J_dot_
   );
   Eigen::Matrix<double, 6, 1> corrected_cartesian_acc = \
-    commanded_cartesian_acc - J_dot * vic_input_data.joint_state_velocity;
+    commanded_cartesian_acc - J_dot_ * vic_input_data.joint_state_velocity;
 
   success &= dynamics_->convert_cartesian_deltas_to_joint_deltas(
     vic_input_data.joint_state_position,
@@ -158,8 +166,8 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   );
 
   // Compute joint command effort from desired joint acc.
-  raw_joint_command_effort_ = M_joint_space.diagonal().asDiagonal() * \
-    vic_command_data.joint_command_acceleration;
+  raw_joint_command_effort_ = M_joint_space_.diagonal().asDiagonal() * \
+    vic_command_data.joint_command_acceleration - coriolis_ - gravity_;
 
   // Filter joint command effort
   double cutoff_freq_cmd = parameters_.filters.command_filter_cuttoff_freq;
@@ -196,8 +204,12 @@ bool VanillaCartesianImpedanceRule::compute_controls(
 
 bool VanillaCartesianImpedanceRule::reset_rule__internal_storage(const size_t num_joints)
 {
+  M_joint_space_ = \
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
   J_dot_ = Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
-  raw_joint_command_effort_.setZero(num_joints);
+  raw_joint_command_effort_ = Eigen::VectorXd::Zero(num_joints);
+  coriolis_ = Eigen::VectorXd::Zero(num_joints);
+  gravity_ = Eigen::VectorXd::Zero(num_joints);
   return true;
 }
 

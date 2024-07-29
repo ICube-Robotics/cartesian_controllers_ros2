@@ -53,7 +53,10 @@ private:
   bool reset_rule__internal_storage(const size_t num_joints);
 
   // Internal data for this rule
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> M_joint_space_;
   Eigen::Matrix<double, 6, Eigen::Dynamic> J_dot_;
+  Eigen::VectorXd gravity_;
+  Eigen::VectorXd coriolis_;
   Eigen::VectorXd raw_joint_command_effort_;
 };
 
