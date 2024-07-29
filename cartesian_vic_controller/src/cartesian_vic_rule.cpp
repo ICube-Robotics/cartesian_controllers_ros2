@@ -333,17 +333,26 @@ CartesianVicRule::update(
       joint_state_command.positions[i] =
         vic_state_.command_data.joint_command_position[i];
     }
+
     if (vic_state_.command_data.has_velocity_command) {
+      joint_state_command.velocities.resize(num_joints_);
       joint_state_command.velocities[i] =
         vic_state_.command_data.joint_command_velocity[i];
     }
+
     if (vic_state_.command_data.has_acceleration_command) {
+      joint_state_command.accelerations.resize(num_joints_);
       joint_state_command.accelerations[i] =
         vic_state_.command_data.joint_command_acceleration[i];
     }
+
     if (vic_state_.command_data.has_effort_command) {
+      joint_state_command.effort.resize(num_joints_);
       joint_state_command.effort[i] =
         vic_state_.command_data.joint_command_effort[i];
+    }
+    else {
+      joint_state_command.effort.clear();
     }
   }
   return controller_interface::return_type::OK;
