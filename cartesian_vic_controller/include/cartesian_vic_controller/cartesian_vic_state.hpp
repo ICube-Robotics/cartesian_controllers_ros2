@@ -52,6 +52,12 @@ public:
     joint_state_velocity = Eigen::VectorXd::Zero(num_joints);
     joint_external_torque_sensor = Eigen::VectorXd::Zero(num_joints);
 
+    // Allocate nullspace parameters
+    nullspace_desired_joint_positions = Eigen::VectorXd::Zero(num_joints);
+    nullspace_joint_inertia = Eigen::VectorXd::Zero(num_joints);
+    nullspace_joint_stiffness = Eigen::VectorXd::Zero(num_joints);
+    nullspace_joint_damping = Eigen::VectorXd::Zero(num_joints);
+
     // Allocate cartesian state
     /*
     natural_joint_space_inertia = \
@@ -62,6 +68,10 @@ public:
 public:
   // General parameters
   //------------------------
+  // Flags
+  bool activate_nullspace_control = false;
+  bool activate_gravity_compensation = false;
+
   /// Name of the robot base frame
   std::string base_frame;
   /// Name of the compliance (i.e., vic) frame in which compliance parameters are specified
@@ -74,6 +84,13 @@ public:
   // Desired compliant frame(s)
   //----------------------------
   CompliantFrameTrajectory reference_compliant_frames;
+
+  // Nullspace control parameters
+  //------------------------------
+  Eigen::VectorXd nullspace_desired_joint_positions;
+  Eigen::VectorXd nullspace_joint_inertia;
+  Eigen::VectorXd nullspace_joint_stiffness;
+  Eigen::VectorXd nullspace_joint_damping;
 
   // Measured robot state
   //-----------------------

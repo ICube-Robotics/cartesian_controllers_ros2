@@ -684,6 +684,18 @@ bool CartesianVicController::initialize_vic_rule(
 {
   bool all_ok = true;
 
+  RCLCPP_INFO(
+    get_node()->get_logger(),
+    "Initializing VIC rule with joint positions: [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f]\n",
+    joint_state.positions[0],
+    joint_state.positions[1],
+    joint_state.positions[2],
+    joint_state.positions[3],
+    joint_state.positions[4],
+    joint_state.positions[5],
+    joint_state.positions[6]
+  );
+
   // Use current joint_state as a default reference
   auto ret = vic_->init_reference_frame_trajectory(joint_state);
   if (ret != controller_interface::return_type::OK) {
@@ -693,17 +705,6 @@ bool CartesianVicController::initialize_vic_rule(
       "Failed to initialize the reference compliance frame trajectory.\n");
     return false;
   }
-  RCLCPP_INFO(
-    get_node()->get_logger(),
-    "Joint position initialization: [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f]\n",
-    joint_state.positions[0],
-    joint_state.positions[1],
-    joint_state.positions[2],
-    joint_state.positions[3],
-    joint_state.positions[4],
-    joint_state.positions[5],
-    joint_state.positions[6]
-  );
   joint_command_ = joint_state;
   last_commanded_joint_state_ = joint_state;
   is_vic_initialized_ = all_ok;

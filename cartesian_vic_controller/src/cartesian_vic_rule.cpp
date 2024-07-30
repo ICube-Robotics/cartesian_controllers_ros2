@@ -96,6 +96,8 @@ CartesianVicRule::init_reference_frame_trajectory(
 {
   // Load parameters
   use_streamed_interaction_parameters_ = false;
+
+  // Update parameters
   apply_parameters_update();
 
   // Update kinematics state
@@ -111,6 +113,20 @@ CartesianVicRule::init_reference_frame_trajectory(
   vic_state_.command_data.joint_command_position = vic_state_.input_data.joint_state_position;
   vic_state_.command_data.joint_command_velocity.setZero();
   vic_state_.command_data.joint_command_acceleration.setZero();
+
+  // Reset inital desired robot joint state
+  initial_joint_positions_ = vic_state_.input_data.joint_state_position;
+  RCLCPP_INFO(
+    rclcpp::get_logger("CartesianVicRule"),
+    "Initial joint positions set to : %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f",
+    initial_joint_positions_[0],
+    initial_joint_positions_[1],
+    initial_joint_positions_[2],
+    initial_joint_positions_[3],
+    initial_joint_positions_[4],
+    initial_joint_positions_[5],
+    initial_joint_positions_[6]
+  );
 
   // Set current pose as cartesian ref
   auto N = vic_state_.input_data.reference_compliant_frames.N();
@@ -135,6 +151,10 @@ CartesianVicRule::init_reference_frame_trajectory(
       return controller_interface::return_type::ERROR;
     }
   }
+
+  // Refresh parameters
+  apply_parameters_update();
+
   return controller_interface::return_type::OK;
 }
 
@@ -162,6 +182,11 @@ void CartesianVicRule::apply_parameters_update()
     parameters_ = parameter_handler_->get_params();
   }
   // update param values
+  vic_state_.input_data.activate_nullspace_control = \
+    parameters_.vic.activate_nullspace_control;
+  vic_state_.input_data.activate_gravity_compensation = \
+    parameters_.vic.activate_gravity_compensation;
+
   vic_state_.input_data.vic_frame = parameters_.vic.frame.id;
   vic_state_.input_data.control_frame = parameters_.control.frame.id;
   vic_state_.input_data.ft_sensor_frame = parameters_.ft_sensor.frame.id;
@@ -182,6 +207,71 @@ void CartesianVicRule::apply_parameters_update()
       desired_stiffness,
       desired_damping
     );
+  }
+
+  // nullspace control parameters
+
+  double default_nullspace_inertia = 10.0;
+  double default_nullspace_stiffness = 0.0;
+  double default_nullspace_damping = 1.0;
+
+  for (size_t i = 0; i < num_joints_; i++) {
+    // Fill M
+    if (parameters_.nullspace_control.joint_inertia.size() == 1) {
+      vic_state_.input_data.nullspace_joint_inertia(i) = \
+        parameters_.nullspace_control.joint_inertia[0];
+    } else if (parameters_.nullspace_control.joint_inertia.size() == num_joints_) {
+      vic_state_.input_data.nullspace_joint_inertia(i) = \
+        parameters_.nullspace_control.joint_inertia[i];
+    } else{
+      RCLCPP_ERROR(
+        rclcpp::get_logger("CartesianVicRule"),
+        "Invalid size for nullspace_inertia vector!");
+      vic_state_.input_data.nullspace_joint_inertia(i) = default_nullspace_inertia;
+    }
+    // Fill K
+    if (parameters_.nullspace_control.joint_stiffness.size() == 1) {
+      vic_state_.input_data.nullspace_joint_stiffness(i) = \
+        parameters_.nullspace_control.joint_stiffness[0];
+    } else if (parameters_.nullspace_control.joint_stiffness.size() == num_joints_) {
+      vic_state_.input_data.nullspace_joint_stiffness(i) = \
+        parameters_.nullspace_control.joint_stiffness[i];
+    }
+    else {
+      RCLCPP_ERROR(
+        rclcpp::get_logger("CartesianVicRule"),
+        "Invalid size for nullspace_stiffness vector!");
+      vic_state_.input_data.nullspace_joint_stiffness(i) = default_nullspace_inertia;
+    }
+    // Fill D
+    if (parameters_.nullspace_control.joint_damping.size() == 1) {
+      vic_state_.input_data.nullspace_joint_damping(i) = \
+        parameters_.nullspace_control.joint_damping[0];
+    } else if (parameters_.nullspace_control.joint_damping.size() == num_joints_) {
+      vic_state_.input_data.nullspace_joint_damping(i) = \
+        parameters_.nullspace_control.joint_damping[i];
+    }
+    else {
+      RCLCPP_ERROR(
+        rclcpp::get_logger("CartesianVicRule"),
+        "Invalid size for nullspace_damping vector!");
+      vic_state_.input_data.nullspace_joint_damping(i) = default_nullspace_damping;
+    }
+  }
+  // Fill desired joint positions
+  if (parameters_.nullspace_control.desired_joint_positions.empty()) {
+    vic_state_.input_data.nullspace_desired_joint_positions = \
+      initial_joint_positions_;
+  } else if (parameters_.nullspace_control.desired_joint_positions.size() == num_joints_) {
+    vec_to_eigen(
+      parameters_.nullspace_control.desired_joint_positions,
+      vic_state_.input_data.nullspace_desired_joint_positions
+    );
+  } else {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("CartesianVicRule"),
+      "Invalid size for desired_joint_position vector!");
+    vic_state_.input_data.nullspace_desired_joint_positions = initial_joint_positions_;
   }
 }
 

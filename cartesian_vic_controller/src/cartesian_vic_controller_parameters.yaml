@@ -212,25 +212,28 @@ cartesian_vic_controller:
     joint_inertia: {
       type: double_array,
       description: "Specifies the nullspace joint stiffness applied used in the vic calculation.",
-      default_value: [],
+      default_value: [10.0],
       validation: {
+        size_gt<>: [0],
         element_bounds<>: [ 0.0, 100.0 ]
       }
     }
     joint_stiffness: {
       type: double_array,
       description: "Specifies the nullspace joint inertia applied used in the vic calculation.",
-      default_value: [],
+      default_value: [10.0],
       validation: {
+        size_gt<>: [0],
         element_bounds<>: [ 0.0, 100.0 ]
       }
     }
-    damping_ratio: {
-      type: double,
+    joint_damping: {
+      type: double_array,
       description: "Specifies the nullspace joint damping ratio applied used in the vic calculation.",
-      default_value: 0.9,
+      default_value: [2.0],
       validation: {
-        gt_eq: [ 0.0 ]
+        size_gt<>: [0],
+        element_bounds<>: [ 0.0, 100.0 ]
       }
     }
 

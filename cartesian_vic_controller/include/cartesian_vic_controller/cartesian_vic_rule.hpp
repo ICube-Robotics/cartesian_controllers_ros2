@@ -132,6 +132,9 @@ protected:
   /// Number of robot joints
   size_t num_joints_;
 
+  /// Initial robot joint positions
+  Eigen::VectorXd initial_joint_positions_;
+
   /// Control mode (admittance / impedance)
   ControlMode control_mode_ = ControlMode::INVALID;
 
