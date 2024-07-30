@@ -16,6 +16,7 @@
 
 #include "cartesian_vic_controller/rules/vanilla_cartesian_impedance_rule.hpp"
 
+#include <cmath>
 #include <iostream>  // for debug purposes...
 
 #include "control_toolbox/filters.hpp"
@@ -132,7 +133,20 @@ bool VanillaCartesianImpedanceRule::compute_controls(
 
   auto num_joints = vic_input_data.joint_state_position.size();
 
-  bool success = dynamics_->calculate_inertia(
+  bool success = dynamics_->calculate_jacobian(
+    vic_input_data.joint_state_position,
+    vic_input_data.control_frame,
+    J_
+  );
+  success &= dynamics_->calculate_jacobian_derivative(
+    vic_input_data.joint_state_position,
+    vic_input_data.joint_state_velocity,
+    vic_input_data.control_frame,
+    J_dot_
+  );
+  J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).inverse() * J_.transpose();
+
+  success &= dynamics_->calculate_inertia(
     vic_input_data.joint_state_position,
     M_joint_space_
   );
@@ -149,15 +163,10 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     std::cerr << "Failed to calculate dynamic model!" << std::endl;
   }
 
-  success &= dynamics_->calculate_jacobian_derivative(
-    vic_input_data.joint_state_position,
-    vic_input_data.joint_state_velocity,
-    vic_input_data.control_frame,
-    J_dot_
-  );
   Eigen::Matrix<double, 6, 1> corrected_cartesian_acc = \
     commanded_cartesian_acc - J_dot_ * vic_input_data.joint_state_velocity;
 
+  // Compute joint command acceleration
   success &= dynamics_->convert_cartesian_deltas_to_joint_deltas(
     vic_input_data.joint_state_position,
     corrected_cartesian_acc,
@@ -165,10 +174,34 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     vic_command_data.joint_command_acceleration
   );
 
+  // Nullspace objective for stability
+  if (parameters_.vic.activate_nullspace_control) {
+    nullspace_projection_ = I_joint_space_ - J_pinv_ * J_;
+    auto error_position_nullspace = \
+        0. * vic_input_data.joint_state_position;
+    //  vic_input_data.joint_command_position_nullspace - vic_command_data.joint_command_position;
+    vic_command_data.joint_command_acceleration = vic_command_data.joint_command_acceleration + \
+      nullspace_projection_ * M_inv_nullspace_ * (
+        - D_nullspace_ * vic_command_data.joint_command_velocity
+        - K_nullspace_ * error_position_nullspace
+        // + external_joint_torques_
+      );
+  }
+
   // Compute joint command effort from desired joint acc.
-  // vic_command_data.joint_command_acceleration.setZero(); // test gravity compensation...
   raw_joint_command_effort_ = M_joint_space_.diagonal().asDiagonal() * \
-    vic_command_data.joint_command_acceleration - coriolis_ - gravity_;
+    vic_command_data.joint_command_acceleration;
+
+  // Gravity compensation
+  if (parameters_.vic.activate_gravity_compensation) {
+    raw_joint_command_effort_ = raw_joint_command_effort_ \
+      + coriolis_ + gravity_;
+    // TODO(tpoignonec): investigate Orocos implementation! This should be negative,
+    //  but with "+= - gravity", the robot falls...
+    // std::cout << "gravity = " << gravity_.transpose() << std::endl;
+    // std::cout << "coriolis = " << coriolis_.transpose() << std::endl;
+  }
+
   // Filter joint command effort
   double cutoff_freq_cmd = parameters_.filters.command_filter_cuttoff_freq;
   if (cutoff_freq_cmd > 0.0) {
@@ -207,13 +240,73 @@ bool VanillaCartesianImpedanceRule::compute_controls(
 
 bool VanillaCartesianImpedanceRule::reset_rule__internal_storage(const size_t num_joints)
 {
+  I_ = Eigen::Matrix<double, 6, 6>::Identity();
+  I_joint_space_ = \
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Identity(num_joints, num_joints);
+
   M_joint_space_ = \
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
+
+  J_ = Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
+  J_pinv_ = Eigen::Matrix<double, Eigen::Dynamic, 6>::Zero(num_joints, 6);
   J_dot_ = Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
+  nullspace_projection_ = \
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
+
   raw_joint_command_effort_ = Eigen::VectorXd::Zero(num_joints);
   coriolis_ = Eigen::VectorXd::Zero(num_joints);
   gravity_ = Eigen::VectorXd::Zero(num_joints);
-  return true;
+
+  // Nullspace control
+  bool all_ok = true;
+  if (parameters_.vic.activate_nullspace_control) {
+    std::vector<double> nullspace_inertia_diag = \
+      parameters_.nullspace_control.joint_inertia;
+    std::vector<double> nullspace_stiffness_diag = \
+      parameters_.nullspace_control.joint_stiffness;
+
+    if (nullspace_inertia_diag.size() == 1) {
+      nullspace_inertia_diag = std::vector<double>(num_joints, nullspace_inertia_diag[0]);
+    }
+    if (nullspace_stiffness_diag.size() == 1) {
+      nullspace_stiffness_diag = std::vector<double>(num_joints, nullspace_stiffness_diag[0]);
+    }
+    if (nullspace_inertia_diag.size() != num_joints) {
+      RCLCPP_ERROR(
+        rclcpp::get_logger("VanillaCartesianImpedanceRule"),
+        "nullspace_joint_inertia size must be 1 or the number of joints");
+      all_ok = false;
+    }
+    if (nullspace_stiffness_diag.size() != num_joints) {
+      RCLCPP_ERROR(
+        rclcpp::get_logger("VanillaCartesianImpedanceRule"),
+        "nullspace_joint_stiffness size must be 1 or the number of joints");
+      all_ok = false;
+    }
+
+    M_nullspace_ = \
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
+    M_inv_nullspace_ = \
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
+    K_nullspace_ = \
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
+    D_nullspace_ = \
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
+
+    if (all_ok) {
+      for (size_t i = 0; i < num_joints; i++) {
+        M_nullspace_(i, i) = nullspace_inertia_diag[i];
+        M_inv_nullspace_(i, i) = 1.0 / nullspace_inertia_diag[i];
+        K_nullspace_(i, i) = nullspace_stiffness_diag[i];
+        D_nullspace_(i, i) = 2 * parameters_.nullspace_control.damping_ratio * std::sqrt(
+          nullspace_inertia_diag[i] * nullspace_stiffness_diag[i]);
+      }
+    } else {
+      M_inv_nullspace_.setZero();
+      K_nullspace_.setZero();
+    }
+  }
+  return all_ok;
 }
 
 }  // namespace cartesian_vic_controller

@@ -165,6 +165,18 @@ cartesian_vic_controller:
           fixed_size<>: 6
         }
       }
+    activate_nullspace_control: {
+      type: bool,
+      default_value: false,
+      description: "Specifies if the nullspace control should be activated. See the nullspace_control parameter for more information."
+    }
+    activate_gravity_compensation: {
+      type: bool,
+      default_value: true,
+      read_only: true,
+      description: "Specifies if the coriolis and gravity compensation should be activated."
+    }
+
     inertia: {
       type: double_array,
       description: "Specifies the mass values for x, y, z, rx, ry, and rz used in the vic calculation.",
@@ -187,13 +199,36 @@ cartesian_vic_controller:
       description: "Specifies the stiffness values for x, y, z, rx, ry, and rz used in the vic calculation.",
       validation: {
         fixed_size<>: 6,
-        element_bounds<>: [ 0.0, 100000000.0 ]
+        element_bounds<>: [ 0.0, 1000.0 ]
       }
     }
-    joint_damping: {
+
+  nullspace_control:
+    desired_joint_positions: {
+      type: double_array,
+      description: "Specifies the desired joint positions used in the vic calculation. If empty, the initial joint positions will be used.",
+      default_value: [],
+    }
+    joint_inertia: {
+      type: double_array,
+      description: "Specifies the nullspace joint stiffness applied used in the vic calculation.",
+      default_value: [],
+      validation: {
+        element_bounds<>: [ 0.0, 100.0 ]
+      }
+    }
+    joint_stiffness: {
+      type: double_array,
+      description: "Specifies the nullspace joint inertia applied used in the vic calculation.",
+      default_value: [],
+      validation: {
+        element_bounds<>: [ 0.0, 100.0 ]
+      }
+    }
+    damping_ratio: {
       type: double,
-      description: "Specifies the joint damping applied used in the vic calculation.",
-      default_value: 0.5,
+      description: "Specifies the nullspace joint damping ratio applied used in the vic calculation.",
+      default_value: 0.9,
       validation: {
         gt_eq: [ 0.0 ]
       }
