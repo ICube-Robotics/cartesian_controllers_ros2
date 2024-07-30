@@ -53,6 +53,11 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   const VicInputData & vic_input_data,
   VicCommandData & vic_command_data)
 {
+  bool success = true;
+  auto num_joints = vic_input_data.joint_state_position.size();
+  auto logger = rclcpp::get_logger("VanillaCartesianImpedanceRule");
+
+  // Get reference compliant frame at t_k
   const CompliantFrame & reference_compliant_frame =
     vic_input_data.reference_compliant_frames.get_compliant_frame(0);
 
@@ -110,7 +115,6 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     reference_compliant_frame.pose.rotation() * \
     vic_input_data.robot_current_pose.rotation().transpose();
   auto angle_axis = Eigen::AngleAxisd(R_angular_error);
-
   error_pose.tail(3) = angle_axis.angle() * angle_axis.axis();
 
   // Compute velocity tracking errors in ft frame
@@ -119,26 +123,15 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     vic_input_data.robot_current_velocity;
 
   // External force at interaction frame (assumed to be control frame), expressed in the base frame
-  // (note that this is the measured force, the the generalized wrench used in VIC papers...)
-  Eigen::Matrix<double, 6, 1> F_ext = vic_input_data.robot_current_wrench_at_ft_frame;
+  Eigen::Matrix<double, 6, 1> F_ext = - vic_input_data.robot_current_wrench_at_ft_frame;
 
-  // Compute impedance control law in the base frame
-  // ------------------------------------------------
-  // commanded_acc = p_ddot_desired + inv(M) * (K * err_p + D * err_p_dot + f_ext)
-
-  Eigen::Matrix<double, 6, 1> commanded_cartesian_acc =
-    reference_compliant_frame.acceleration + \
-    M_inv * (K * error_pose + D * error_velocity + F_ext);
-  // std::cerr << "commanded_cartesian_acc = " << commanded_cartesian_acc.transpose() << std::endl;
-
-  auto num_joints = vic_input_data.joint_state_position.size();
-
-  bool success = dynamics_->calculate_jacobian(
+  // Compute Kinematics and Dynamics
+  bool model_is_ok = dynamics_->calculate_jacobian(
     vic_input_data.joint_state_position,
     vic_input_data.control_frame,
     J_
   );
-  success &= dynamics_->calculate_jacobian_derivative(
+  model_is_ok &= dynamics_->calculate_jacobian_derivative(
     vic_input_data.joint_state_position,
     vic_input_data.joint_state_velocity,
     vic_input_data.control_frame,
@@ -146,71 +139,105 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   );
   J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).inverse() * J_.transpose();
 
-  success &= dynamics_->calculate_inertia(
+  model_is_ok &= dynamics_->calculate_inertia(
     vic_input_data.joint_state_position,
     M_joint_space_
   );
-  success &= dynamics_->calculate_coriolis(
+  model_is_ok &= dynamics_->calculate_coriolis(
     vic_input_data.joint_state_position,
     vic_input_data.joint_state_velocity,
     coriolis_
   );
-  success &= dynamics_->calculate_gravity(
+  model_is_ok &= dynamics_->calculate_gravity(
     vic_input_data.joint_state_position,
     gravity_
   );
-  if (!success) {
-    std::cerr << "Failed to calculate dynamic model!" << std::endl;
+  if (!model_is_ok) {
+    success = false;
+    RCLCPP_ERROR(
+      logger,
+      "Failed to calculate kinematic / dynamic model!"
+    );
   }
 
-  Eigen::Matrix<double, 6, 1> corrected_cartesian_acc = \
-    commanded_cartesian_acc - J_dot_ * vic_input_data.joint_state_velocity;
+  // Compute impedance control law in the base frame
+  //  commanded_acc = p_ddot_desired + inv(M) * (K * err_p + D * err_p_dot - f_ext)
+  //  commanded_torques = M_joint_space @ J_pinv @ (commanded_acc - J_dot @ q_dot)
+  // ------------------------------------------------
+  Eigen::Matrix<double, 6, 1> commanded_cartesian_acc = reference_compliant_frame.acceleration + \
+    M_inv * (K * error_pose + D * error_velocity - F_ext);
 
-  // Compute joint command acceleration
-  success &= dynamics_->convert_cartesian_deltas_to_joint_deltas(
-    vic_input_data.joint_state_position,
-    corrected_cartesian_acc,
-    vic_input_data.control_frame,
-    vic_command_data.joint_command_acceleration
-  );
+  // Compute joint command accelerations
+  // ------------------------------------------------
+  vic_command_data.joint_command_acceleration = \
+    J_pinv_ * (commanded_cartesian_acc - J_dot_ * vic_input_data.joint_state_velocity);
 
   // Nullspace objective for stability
+  // ------------------------------------------------
+  M_nullspace_.diagonal() = vic_input_data.nullspace_joint_inertia;
+  K_nullspace_.diagonal() = vic_input_data.nullspace_joint_stiffness;
+  D_nullspace_.diagonal() = vic_input_data.nullspace_joint_damping;
+  M_inv_nullspace_.diagonal() = M_nullspace_.diagonal().cwiseInverse();
+  nullspace_projection_ = I_joint_space_ - J_pinv_ * J_;
+
   if (vic_input_data.activate_nullspace_control) {
-    M_nullspace_.diagonal() = vic_input_data.nullspace_joint_inertia;
-    K_nullspace_.diagonal() = vic_input_data.nullspace_joint_stiffness;
-    D_nullspace_.diagonal() = vic_input_data.nullspace_joint_damping;
-    M_inv_nullspace_.diagonal() = M_nullspace_.diagonal().cwiseInverse();
-    nullspace_projection_ = I_joint_space_ - J_pinv_ * J_;
     auto error_position_nullspace = \
         vic_input_data.nullspace_desired_joint_positions - vic_input_data.joint_state_position;
     // Add nullspace contribution to joint accelerations
-    vic_command_data.joint_command_acceleration = vic_command_data.joint_command_acceleration + \
-      nullspace_projection_ * M_inv_nullspace_ * (
-        K_nullspace_ * error_position_nullspace
-        - D_nullspace_ * vic_command_data.joint_command_velocity
-        // + external_joint_torques_
-      );
+    vic_command_data.joint_command_acceleration += nullspace_projection_ * M_inv_nullspace_ * (
+      - D_nullspace_ * vic_input_data.joint_state_velocity
+      + K_nullspace_ * error_position_nullspace
+      // + external_joint_torques_
+    );
+    // std::cout << std::endl;
+    // std::cout << "nullspace_projection_ = " << nullspace_projection_ << std::endl;
+    // std::cout << "K_nullspace_ = " << K_nullspace_ << std::endl;
+    // std::cout << "D_nullspace_ = " << D_nullspace_ << std::endl;
+    // std::cout << "M_inv_nullspace_ = " << M_inv_nullspace_ << std::endl;
     // std::cout << "external_joint_torques_ = " << external_joint_torques_.transpose() << std::endl;
     // std::cout << std::endl << std::endl << "joint state position = " << vic_input_data.joint_state_position.transpose() << std::endl;
     // std::cout << "nullspace_desired_joint_positions = " << vic_input_data.nullspace_desired_joint_positions.transpose() << std::endl;
     // std::cout << "nullspace error = " << error_position_nullspace.transpose() << std::endl;
   }
+  else {
+    // Pure (small) damping in nullspace for stability
+    RCLCPP_WARN_THROTTLE(
+      logger,
+      internal_clock_,
+      10000,  // every 10 seconds
+      "WARNING! nullspace impedance control is disabled!"
+    );
+    vic_command_data.joint_command_acceleration += nullspace_projection_ * M_joint_space_ * (
+      - 1.0 * vic_input_data.joint_state_velocity);
+  }
 
   // Compute joint command effort from desired joint acc.
-  raw_joint_command_effort_ = M_joint_space_.diagonal().asDiagonal() * \
-    vic_command_data.joint_command_acceleration;
+  // ------------------------------------------------
+  raw_joint_command_effort_ = \
+    M_joint_space_.diagonal().asDiagonal() * vic_command_data.joint_command_acceleration \
+    - J_.transpose() * F_ext;
 
   // Gravity compensation
+  // ------------------------------------------------
   if (vic_input_data.activate_gravity_compensation) {
-    raw_joint_command_effort_ = raw_joint_command_effort_ \
-      + coriolis_ + gravity_;
+    raw_joint_command_effort_ += coriolis_;
+    raw_joint_command_effort_ += gravity_;
     // TODO(tpoignonec): investigate Orocos implementation! This should be negative,
     //  but with "+= - gravity", the robot falls...
     // std::cout << "gravity = " << gravity_.transpose() << std::endl;
     // std::cout << "coriolis = " << coriolis_.transpose() << std::endl;
   }
+  else {
+    RCLCPP_WARN_THROTTLE(
+      logger,
+      internal_clock_,
+      10000,  // every 10 seconds
+      "WARNING! gravity compensation is disabled!"
+    );
+  }
 
   // Filter joint command effort
+  // ------------------------------------------------
   double cutoff_freq_cmd = parameters_.filters.command_filter_cuttoff_freq;
   if (cutoff_freq_cmd > 0.0) {
     double cmd_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_freq_cmd);
@@ -230,6 +257,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   }
 
   // Set flags for available commands
+  // ------------------------------------------------
   vic_command_data.has_position_command = false;
   vic_command_data.has_velocity_command = false;
   vic_command_data.has_acceleration_command = true;
@@ -242,6 +270,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   vic_command_data.joint_command_acceleration.setZero();
 
   // Logging
+  // ------------------------------------------------
 
   return success;
 }
