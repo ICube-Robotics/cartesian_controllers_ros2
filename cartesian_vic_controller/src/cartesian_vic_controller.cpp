@@ -37,8 +37,7 @@ namespace cartesian_vic_controller
 controller_interface::CallbackReturn CartesianVicController::on_init()
 {
   // Try to retrieve urdf (used by kinematics / dynamics plugin)
-  std::string urdf_string;
-  get_node()->get_parameter("robot_description", urdf_string);
+  std::string urdf_string = this->get_robot_description();
   if (urdf_string.empty()) {
     RCLCPP_ERROR(
       get_node()->get_logger(),
