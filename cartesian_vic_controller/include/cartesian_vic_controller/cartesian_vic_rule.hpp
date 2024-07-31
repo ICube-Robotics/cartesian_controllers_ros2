@@ -114,6 +114,10 @@ protected:
     double dt /*period in seconds*/,
     const geometry_msgs::msg::Wrench & measured_wrench);
 
+  bool process_external_torques_measurements(
+    double dt /*period in seconds*/,
+    const Eigen::VectorXd & measured_external_torques);
+
   /// Actual vic control logic
   virtual bool compute_controls(
     double dt /*period in seconds*/,

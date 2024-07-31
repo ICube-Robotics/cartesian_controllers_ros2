@@ -241,7 +241,7 @@ void CartesianVicRule::apply_parameters_update()
       RCLCPP_ERROR(
         rclcpp::get_logger("CartesianVicRule"),
         "Invalid size for nullspace_stiffness vector!");
-      vic_state_.input_data.nullspace_joint_stiffness(i) = default_nullspace_inertia;
+      vic_state_.input_data.nullspace_joint_stiffness(i) = default_nullspace_stiffness;
     }
     // Fill D
     if (parameters_.nullspace_control.joint_damping.size() == 1) {
@@ -538,6 +538,8 @@ bool CartesianVicRule::update_kinematics(
 bool CartesianVicRule::process_wrench_measurements(
   double dt, const geometry_msgs::msg::Wrench & measured_wrench)
 {
+  // TODO(tpoignonec): use ft_tools_ros2 package!!!
+
   // Extract wrench from msg
   Eigen::Matrix<double, 3, 2, Eigen::ColMajor> new_wrench;
   new_wrench(0, 0) = measured_wrench.force.x;
@@ -574,7 +576,7 @@ bool CartesianVicRule::process_wrench_measurements(
 
   // Filter measurement
   double cutoff_ft = parameters_.filters.ft_sensor_filter_cuttoff_freq;
-  if (cutoff_ft > 0.0) {
+  if (dt > 0.0 && cutoff_ft > 0.0) {
     double ft_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_ft);
     for (size_t i = 0; i < 6; ++i) {
       wrench_world_(i) = filters::exponentialSmoothing(
@@ -594,14 +596,42 @@ bool CartesianVicRule::process_wrench_measurements(
     vic_transforms_.world_base_.rotation().transpose() * wrench_world_.head(3);
   vic_state_.input_data.robot_current_wrench_at_ft_frame.tail(3) =
     vic_transforms_.world_base_.rotation().transpose() * wrench_world_.tail(3);
-  /*
-  std::cerr << "raw wrench = " << new_wrench.transpose() << std::endl;
-  std::cerr << "new_wrench_world = " << new_wrench_world.transpose() << std::endl;
-  std::cerr << "filter coef = " << parameters_.ft_sensor.filter_coefficient << std::endl;
-  std::cerr << "filtered_wrench_world = " << wrench_world_.transpose() << std::endl;
-  std::cerr << "new_wrench_base = " << vic_state_.robot_current_wrench_at_ft_frame.transpose() << std::endl;
-  */
+
   return true;
+}
+
+bool CartesianVicRule::process_external_torques_measurements(
+    double dt /*period in seconds*/,
+    const Eigen::VectorXd & measured_external_torques)
+{
+  // Check data validity
+  if (static_cast<size_t>(measured_external_torques.size()) != num_joints_) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("CartesianVicRule"),
+      "Invalid size for measured_external_torques vector!");
+    vic_state_.input_data.joint_external_torque_sensor.setZero();
+    return false;
+  }
+
+  // Filter measurement
+  double cutoff_freq = parameters_.filters.external_torque_sensor_filter_cuttoff_freq;
+  if (dt > 0.0 && cutoff_freq > 0.0) {
+    double ext_torques_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_freq);
+    for (size_t i = 0; i < 6; ++i) {
+      vic_state_.input_data.joint_external_torque_sensor(i) = \
+      filters::exponentialSmoothing(
+        measured_external_torques(i),
+        vic_state_.input_data.joint_external_torque_sensor(i),
+        ext_torques_filter_coefficient);
+    }
+  } else {
+    // Initialization
+    for (size_t i = 0; i < 6; ++i) {
+      vic_state_.input_data.joint_external_torque_sensor(i) = \
+        measured_external_torques(i);
+    }
+  }
+  return false;
 }
 
 template<typename T1, typename T2>
