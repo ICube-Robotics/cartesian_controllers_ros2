@@ -158,18 +158,34 @@ controller_interface::return_type CartesianVicController::update(
   // Control logic
   if (all_ok) {
     // update compliant frme(s) reference from ros subscriber message
-    reference_compliant_frame_trajectory_msg_ = *input_compliant_frame_trajectory_msg_.readFromRT();
+    reference_compliant_frame_trajectory_msg_ = \
+      *input_compliant_frame_trajectory_msg_.readFromRT();
     if (reference_compliant_frame_trajectory_msg_.get()) {
       vic_->update_compliant_frame_trajectory(
         *reference_compliant_frame_trajectory_msg_.get());
     }
     // apply vic control to reference to determine desired state
-    auto ret_vic = vic_->update(
-      period,
-      joint_state_,
-      ft_values_,
-      joint_command_
-    );
+
+    controller_interface::return_type ret_vic = controller_interface::return_type::ERROR;
+    if (external_torque_sensor_ && vic_->parameters_.external_torque_sensor.is_enabled) {
+      // Update vic with external torques
+      ret_vic = vic_->update(
+        period,
+        joint_state_,
+        ft_values_,
+        ext_torque_values_,
+        joint_command_
+      );
+    }
+    else {
+      // Update vic WITHOUT external torques
+      ret_vic = vic_->update(
+        period,
+        joint_state_,
+        ft_values_,
+        joint_command_
+      );
+    }
     if (ret_vic != controller_interface::return_type::OK) {
       std::fill(
         joint_command_.accelerations.begin(), joint_command_.accelerations.end(), 0.0);

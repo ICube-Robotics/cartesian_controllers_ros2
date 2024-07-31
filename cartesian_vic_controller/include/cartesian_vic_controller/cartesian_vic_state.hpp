@@ -50,7 +50,7 @@ public:
     // Allocate joint state
     joint_state_position = Eigen::VectorXd::Zero(num_joints);
     joint_state_velocity = Eigen::VectorXd::Zero(num_joints);
-    joint_external_torque_sensor = Eigen::VectorXd::Zero(num_joints);
+    joint_state_external_torques_ = Eigen::VectorXd::Zero(num_joints);
 
     // Allocate nullspace parameters
     nullspace_desired_joint_positions = Eigen::VectorXd::Zero(num_joints);
@@ -63,6 +63,36 @@ public:
     natural_joint_space_inertia = \
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
     */
+  }
+  bool set_joint_state_external_torques(const Eigen::VectorXd & joint_state_external_torques) {
+    if (joint_state_external_torques.size() != joint_state_external_torques_.size()) {
+      has_external_torque_sensor_ = false;
+      return false;
+    }
+    joint_state_external_torques_ = joint_state_external_torques;
+    has_external_torque_sensor_ = true;
+    return true;
+  }
+
+  bool get_joint_state_external_torques(Eigen::VectorXd & joint_state_external_torques) const {
+    if (!has_external_torque_sensor_) {
+      joint_state_external_torques.setZero();
+      return false;
+    }
+    if (joint_state_external_torques.size() != joint_state_external_torques_.size()) {
+      joint_state_external_torques.setZero();
+      return false;
+    }
+    joint_state_external_torques = joint_state_external_torques_;
+    return true;
+  }
+  bool reset_joint_state_external_torques() {
+    has_external_torque_sensor_ = false;
+    return true;
+  }
+  bool has_external_torque_sensor() const
+  {
+    return has_external_torque_sensor_;
   }
 
 public:
@@ -96,7 +126,6 @@ public:
   //-----------------------
   Eigen::VectorXd joint_state_position;
   Eigen::VectorXd joint_state_velocity;
-  Eigen::VectorXd joint_external_torque_sensor;
 
   // Cartesian state (control frame w.r.t. robot base frame)
   Eigen::Isometry3d robot_current_pose;
@@ -106,6 +135,10 @@ public:
   /// Natural inertia matrix (from dynamic model)
   // Eigen::Matrix<double, 6, 6> natural_cartesian_inertia;
   // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> natural_joint_space_inertia;
+
+protected:
+  Eigen::VectorXd joint_state_external_torques_;
+  bool has_external_torque_sensor_ = false;
 };
 
 class VicCommandData

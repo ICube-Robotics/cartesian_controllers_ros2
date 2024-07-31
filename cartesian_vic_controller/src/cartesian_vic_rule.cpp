@@ -17,6 +17,8 @@
 #include "cartesian_vic_controller/cartesian_vic_rule.hpp"
 #include "cartesian_vic_controller/utils.hpp"
 
+#include <sstream>
+
 #include "dynamics_interface/dynamics_interface.hpp"
 
 #include "rclcpp/duration.hpp"
@@ -45,6 +47,7 @@ CartesianVicRule::init(
   parameters_ = parameter_handler_->get_params();
   num_joints_ = parameters_.joints.size();
   wrench_world_.setZero();
+  filtered_external_torques_ = Eigen::VectorXd::Zero(num_joints_);
   use_streamed_interaction_parameters_ = false;
   return reset(num_joints_);
 }
@@ -116,17 +119,12 @@ CartesianVicRule::init_reference_frame_trajectory(
 
   // Reset inital desired robot joint state
   initial_joint_positions_ = vic_state_.input_data.joint_state_position;
+  std::stringstream ss_inital_joint_positions;
+  ss_inital_joint_positions << initial_joint_positions_.transpose();
   RCLCPP_INFO(
     rclcpp::get_logger("CartesianVicRule"),
-    "Initial joint positions set to : %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f",
-    initial_joint_positions_[0],
-    initial_joint_positions_[1],
-    initial_joint_positions_[2],
-    initial_joint_positions_[3],
-    initial_joint_positions_[4],
-    initial_joint_positions_[5],
-    initial_joint_positions_[6]
-  );
+    "Initial joint positions set to : %s",
+    ss_inital_joint_positions.str().c_str());
 
   // Set current pose as cartesian ref
   auto N = vic_state_.input_data.reference_compliant_frames.N();
@@ -356,16 +354,92 @@ CartesianVicRule::update(
   const rclcpp::Duration & period,
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
   const geometry_msgs::msg::Wrench & measured_wrench,
+  const std::vector<double> & measured_external_torques,
   trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
 {
-  const double dt = period.seconds();
-
+  // Update parameters
   if (parameters_.enable_parameter_update_without_reactivation) {
     apply_parameters_update();
   }
 
+  // Process external torques
+  bool has_valid_external_torques = true;
+  if (!process_external_torques_measurements(period.seconds(), measured_external_torques)) {
+    has_valid_external_torques = false;
+    RCLCPP_WARN_THROTTLE(
+      rclcpp::get_logger("CartesianVicRule"),
+      internal_clock_, 1000,
+      "Invalid external torques data!");
+  }
+  // Update VIC and compute joint command
+  auto ret = internal_update(
+    period,
+    current_joint_state,
+    measured_wrench,
+    joint_state_command,
+    has_valid_external_torques);
+  if (ret != controller_interface::return_type::OK) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("CartesianVicRule"),
+      "Failed to update CartesianVicRule");
+  }
+  return ret;
+}
+
+controller_interface::return_type
+CartesianVicRule::update(
+  const rclcpp::Duration & period,
+  const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
+  const geometry_msgs::msg::Wrench & measured_wrench,
+  trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
+{
+  // Update parameters
+  if (parameters_.enable_parameter_update_without_reactivation) {
+    apply_parameters_update();
+  }
+
+  // Update VIC and compute joint command
+  auto ret = internal_update(
+    period,
+    current_joint_state,
+    measured_wrench,
+    joint_state_command,
+    false /*use_external_torques*/);
+  if (ret != controller_interface::return_type::OK) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("CartesianVicRule"),
+      "Failed to update CartesianVicRule");
+  }
+  return ret;
+}
+
+controller_interface::return_type
+CartesianVicRule::internal_update(
+  const rclcpp::Duration & period,
+  const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
+  const geometry_msgs::msg::Wrench & measured_wrench,
+  trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command,
+  bool use_external_torques)
+{
+  bool success = true;   // return flag
+  const double dt = period.seconds();
+
+  // Check external torques availability
+  if (!use_external_torques) {
+    // No external torque sensor, reset flag and set data to zero
+    vic_state_.input_data.reset_joint_state_external_torques();
+  }
+
+  if (use_external_torques && !vic_state_.input_data.has_external_torque_sensor()) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("CartesianVicRule"),
+      "External torque sensor requested, but not available!"
+    );
+    success = false;
+  }
+
   // Update current robot kinematic state
-  bool success = update_kinematics(
+  success &= update_kinematics(
     dt,
     current_joint_state
   );
@@ -602,14 +676,16 @@ bool CartesianVicRule::process_wrench_measurements(
 
 bool CartesianVicRule::process_external_torques_measurements(
     double dt /*period in seconds*/,
-    const Eigen::VectorXd & measured_external_torques)
+    const std::vector<double> & measured_external_torques)
 {
   // Check data validity
   if (static_cast<size_t>(measured_external_torques.size()) != num_joints_) {
     RCLCPP_ERROR(
       rclcpp::get_logger("CartesianVicRule"),
       "Invalid size for measured_external_torques vector!");
-    vic_state_.input_data.joint_external_torque_sensor.setZero();
+    filtered_external_torques_.setZero();
+    vic_state_.input_data.set_joint_state_external_torques(filtered_external_torques_);
+    vic_state_.input_data.reset_joint_state_external_torques();
     return false;
   }
 
@@ -618,20 +694,21 @@ bool CartesianVicRule::process_external_torques_measurements(
   if (dt > 0.0 && cutoff_freq > 0.0) {
     double ext_torques_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_freq);
     for (size_t i = 0; i < 6; ++i) {
-      vic_state_.input_data.joint_external_torque_sensor(i) = \
+      filtered_external_torques_(i) = \
       filters::exponentialSmoothing(
-        measured_external_torques(i),
-        vic_state_.input_data.joint_external_torque_sensor(i),
+        measured_external_torques[i],
+        filtered_external_torques_(i),
         ext_torques_filter_coefficient);
     }
   } else {
     // Initialization
     for (size_t i = 0; i < 6; ++i) {
-      vic_state_.input_data.joint_external_torque_sensor(i) = \
-        measured_external_torques(i);
+      filtered_external_torques_(i) = \
+        measured_external_torques[i];
     }
   }
-  return false;
+  vic_state_.input_data.set_joint_state_external_torques(filtered_external_torques_);
+  return true;
 }
 
 template<typename T1, typename T2>

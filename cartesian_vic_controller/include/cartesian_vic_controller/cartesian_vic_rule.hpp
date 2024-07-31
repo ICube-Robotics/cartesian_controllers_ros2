@@ -81,8 +81,9 @@ public:
     cartesian_control_msgs::msg::VicControllerState & msg);
 
   /**
-  * Compute joint (velocity) command from the current cartesian tracking errors
-  * and the desired interaction parameters (M, K, D).
+  * Compute joint command from the current cartesian tracking errors
+  * and the desired interaction parameters (M, K, D). This function is
+  * to be used when no external torque sensor is available.
   *
   * \param[in] period time in seconds since last controller update
   * \param[in] current_joint_state current joint state of the robot
@@ -96,9 +97,38 @@ public:
     trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command
   );
 
+  /**
+  * Compute joint command from the current cartesian tracking errors
+  * and the desired interaction parameters (M, K, D). This function is
+  * to be used when an external torque sensor is available.
+  *
+  * \param[in] period time in seconds since last controller update
+  * \param[in] current_joint_state current joint state of the robot
+  * \param[in] measured_wrench most recent measured wrench from force torque sensor
+  * \param[in] measured_external_torques most recent measured external torques
+  * \param[out] joint_state_command computed joint state command
+  */
+  controller_interface::return_type update(
+    const rclcpp::Duration & period,
+    const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
+    const geometry_msgs::msg::Wrench & measured_wrench,
+    const std::vector<double> & measured_external_torques,
+    trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command
+  );
+
+  /// Get current control mode (ADMITTANCE / IMPEDANCE / INVALID)
   ControlMode get_control_mode() const {return control_mode_;}
 
 protected:
+  /// Internal wrapper for the VIC logic
+  controller_interface::return_type internal_update(
+    const rclcpp::Duration & period,
+    const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
+    const geometry_msgs::msg::Wrench & measured_wrench,
+    trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command,
+    bool use_external_torques = false
+  );
+
   /// Manual setting of inertia, damping, and stiffness (diagonal matrices)
   void set_interaction_parameters(
     const Eigen::Matrix<double, 6, 1> & desired_inertia,
@@ -116,7 +146,7 @@ protected:
 
   bool process_external_torques_measurements(
     double dt /*period in seconds*/,
-    const Eigen::VectorXd & measured_external_torques);
+    const std::vector<double> & measured_external_torques);
 
   /// Actual vic control logic
   virtual bool compute_controls(
@@ -150,9 +180,6 @@ protected:
   // transforms needed for vic update
   VicTransforms vic_transforms_;
 
-  /// Filtered wrench expressed in world frame
-  Eigen::Matrix<double, 6, 1> wrench_world_;
-
   /// If true, the parameters values are ignored (use "set_interaction_parameters()" instead)
   bool use_streamed_interaction_parameters_ = false;
 
@@ -162,6 +189,13 @@ protected:
 
   /// Dynamics interface
   std::unique_ptr<dynamics_interface::DynamicsInterface> dynamics_;
+
+private:
+  /// Filtered wrench expressed in world frame
+  Eigen::Matrix<double, 6, 1> wrench_world_;
+
+  /// Filtered external torques
+  Eigen::VectorXd filtered_external_torques_;
 };
 
 }  // namespace cartesian_vic_controller

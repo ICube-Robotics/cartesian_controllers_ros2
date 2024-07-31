@@ -54,7 +54,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   VicCommandData & vic_command_data)
 {
   bool success = true;
-  auto num_joints = vic_input_data.joint_state_position.size();
+  // auto num_joints = vic_input_data.joint_state_position.size();
   auto logger = rclcpp::get_logger("VanillaCartesianImpedanceRule");
 
   // Get reference compliant frame at t_k
