@@ -1,16 +1,9 @@
 <library path="cartesian_vic_controller">
-  <class name="cartesian_vic_controller/CartesianAdmittanceController"
-         type="cartesian_vic_controller::CartesianAdmittanceController"
+  <class name="cartesian_vic_controller/CartesianVicController"
+         type="cartesian_vic_controller::CartesianVicController"
          base_class_type="controller_interface::ControllerInterface">
     <description>
-      CartesianAdmittanceController ros2_control controller.
-    </description>
-  </class>
-  <class name="cartesian_vic_controller/CartesianImpedanceController"
-         type="cartesian_vic_controller::CartesianImpedanceController"
-         base_class_type="controller_interface::ControllerInterface">
-    <description>
-      CartesianImpedanceController ros2_control controller.
+      Cartesian VIC ros2_control controller.
     </description>
   </class>
 </library>

@@ -596,6 +596,19 @@ bool CartesianVicController::read_state_from_hardware(
 
   return all_ok;
 }
+bool CartesianVicController::write_state_to_hardware(
+  trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
+{
+  if (vic_->get_control_mode() == cartesian_vic_controller::ControlMode::IMPEDANCE) {
+    return write_impedance_state_to_hardware(joint_state_command);
+  } else if (vic_->get_control_mode() == cartesian_vic_controller::ControlMode::ADMITTANCE) {
+    return write_admittance_state_to_hardware(joint_state_command);
+  } else {
+    RCLCPP_ERROR(
+      get_node()->get_logger(), "Control mode not recognized! Cannot write to hardware.");
+    return false;
+  }
+}
 
 bool CartesianVicController::write_impedance_state_to_hardware(
   trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
@@ -727,6 +740,49 @@ bool CartesianVicController::initialize_vic_rule(
   return all_ok;
 }
 
+bool CartesianVicController::is_command_interfaces_config_valid() const
+{
+  bool all_ok = true;
+
+  if (vic_->get_control_mode() == cartesian_vic_controller::ControlMode::IMPEDANCE) {
+    // Check if claimed command interfaces are compatible with impedance control mode
+    if (!has_effort_command_interface_) {
+      RCLCPP_ERROR(
+        get_node()->get_logger(),
+        "Impedance control mode is enabled, but no effort command interface is specified!");
+      all_ok = false;
+    }
+    if (has_position_command_interface_ || has_velocity_command_interface_) {
+      RCLCPP_ERROR(
+        get_node()->get_logger(),
+        "Impedance control mode is enabled, but unsupported position or velocity command interfaces are specified!");
+      all_ok = false;
+    }
+  } else if (vic_->get_control_mode() == cartesian_vic_controller::ControlMode::ADMITTANCE) {
+    // Check if claimed command interfaces are compatible with admittance control mode
+    if (!has_position_command_interface_ && !has_velocity_command_interface_) {
+      RCLCPP_ERROR(
+        get_node()->get_logger(),
+        "Admittance control mode is enabled, but no position or velocity command interface are specified!");
+      all_ok = false;
+    }
+
+    if (has_effort_command_interface_) {
+      RCLCPP_ERROR(
+        get_node()->get_logger(),
+        "Admittance control mode is enabled, but an unsupported effort command interface is specified!");
+      all_ok = false;
+    }
+  } else {
+    RCLCPP_ERROR(
+      get_node()->get_logger(),
+      "Invalid VIC rule control mode (expected IMPEDANCE or ADMITTANCE)!");
+    all_ok = false;
+  }
+
+  return all_ok;
+}
+
 std::string CartesianVicController::getUrdfFromServer() const
 {
   std::string urdf_string;
@@ -816,3 +872,10 @@ std::string CartesianVicController::getUrdfFromServer() const
 }
 
 }  // namespace cartesian_vic_controller
+
+#include "pluginlib/class_list_macros.hpp"
+
+PLUGINLIB_EXPORT_CLASS(
+  cartesian_vic_controller::CartesianVicController,
+  controller_interface::ControllerInterface
+)

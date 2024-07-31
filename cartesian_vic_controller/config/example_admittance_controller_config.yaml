@@ -66,6 +66,7 @@ cartesian_vic_controller:
       # Vic rule
       plugin_package: cartesian_vic_controller
       plugin_name: cartesian_vic_controller/VanillaCartesianAdmittanceRule  # Nominal admittance controller
+      # plugin_name: cartesian_vic_controller/VanillaCartesianImpedanceRule  # Nominal impedance controller
 
       selected_axes:
         - true # x

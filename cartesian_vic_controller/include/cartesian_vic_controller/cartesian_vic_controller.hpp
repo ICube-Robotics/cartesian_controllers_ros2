@@ -106,14 +106,14 @@ protected:
    * @brief Check if the command interfaces are configured correctly. This function
    * has to be implemented by specialized controllers (e.g., impedance / admittance).
    */
-  virtual bool is_command_interfaces_config_valid() const = 0;
+  virtual bool is_command_interfaces_config_valid() const;
 
   /**
    * @brief Write values from joint_state_command to claimed hardware interfaces. This function
    * has to be implemented by specialized controllers (e.g., impedance / admittance).
    */
   virtual bool
-  write_state_to_hardware(trajectory_msgs::msg::JointTrajectoryPoint & joint_state_c) = 0;
+  write_state_to_hardware(trajectory_msgs::msg::JointTrajectoryPoint & joint_state_c);
 
   /**
    * @brief Write values from joint_state_command to claimed hardware interfaces. This function
