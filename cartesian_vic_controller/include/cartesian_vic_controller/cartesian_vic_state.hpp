@@ -64,7 +64,8 @@ public:
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
     */
   }
-  bool set_joint_state_external_torques(const Eigen::VectorXd & joint_state_external_torques) {
+  bool set_joint_state_external_torques(const Eigen::VectorXd & joint_state_external_torques)
+  {
     if (joint_state_external_torques.size() != joint_state_external_torques_.size()) {
       has_external_torque_sensor_ = false;
       return false;
@@ -74,7 +75,8 @@ public:
     return true;
   }
 
-  bool get_joint_state_external_torques(Eigen::VectorXd & joint_state_external_torques) const {
+  bool get_joint_state_external_torques(Eigen::VectorXd & joint_state_external_torques) const
+  {
     if (!has_external_torque_sensor_) {
       joint_state_external_torques.setZero();
       return false;
@@ -86,7 +88,8 @@ public:
     joint_state_external_torques = joint_state_external_torques_;
     return true;
   }
-  bool reset_joint_state_external_torques() {
+  bool reset_joint_state_external_torques()
+  {
     has_external_torque_sensor_ = false;
     return true;
   }

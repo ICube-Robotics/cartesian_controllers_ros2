@@ -71,7 +71,6 @@ private:
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> K_nullspace_;
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> D_nullspace_;
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> M_inv_nullspace_;
-
 };
 
 }  // namespace cartesian_vic_controller

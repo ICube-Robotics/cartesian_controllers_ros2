@@ -176,8 +176,7 @@ controller_interface::return_type CartesianVicController::update(
         ext_torque_values_,
         joint_command_
       );
-    }
-    else {
+    } else {
       // Update vic WITHOUT external torques
       ret_vic = vic_->update(
         period,

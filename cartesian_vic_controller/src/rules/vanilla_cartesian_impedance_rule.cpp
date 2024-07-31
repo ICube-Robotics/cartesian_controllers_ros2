@@ -123,7 +123,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     vic_input_data.robot_current_velocity;
 
   // External force at interaction frame (assumed to be control frame), expressed in the base frame
-  Eigen::Matrix<double, 6, 1> F_ext = - vic_input_data.robot_current_wrench_at_ft_frame;
+  Eigen::Matrix<double, 6, 1> F_ext = -vic_input_data.robot_current_wrench_at_ft_frame;
 
   // Compute Kinematics and Dynamics
   bool model_is_ok = dynamics_->calculate_jacobian(
@@ -182,24 +182,14 @@ bool VanillaCartesianImpedanceRule::compute_controls(
 
   if (vic_input_data.activate_nullspace_control) {
     auto error_position_nullspace = \
-        vic_input_data.nullspace_desired_joint_positions - vic_input_data.joint_state_position;
+      vic_input_data.nullspace_desired_joint_positions - vic_input_data.joint_state_position;
     // Add nullspace contribution to joint accelerations
     vic_command_data.joint_command_acceleration += nullspace_projection_ * M_inv_nullspace_ * (
-      - D_nullspace_ * vic_input_data.joint_state_velocity
-      + K_nullspace_ * error_position_nullspace
+      -D_nullspace_ * vic_input_data.joint_state_velocity +
+      K_nullspace_ * error_position_nullspace
       // + external_joint_torques_
     );
-    // std::cout << std::endl;
-    // std::cout << "nullspace_projection_ = " << nullspace_projection_ << std::endl;
-    // std::cout << "K_nullspace_ = " << K_nullspace_ << std::endl;
-    // std::cout << "D_nullspace_ = " << D_nullspace_ << std::endl;
-    // std::cout << "M_inv_nullspace_ = " << M_inv_nullspace_ << std::endl;
-    // std::cout << "external_joint_torques_ = " << external_joint_torques_.transpose() << std::endl;
-    // std::cout << std::endl << std::endl << "joint state position = " << vic_input_data.joint_state_position.transpose() << std::endl;
-    // std::cout << "nullspace_desired_joint_positions = " << vic_input_data.nullspace_desired_joint_positions.transpose() << std::endl;
-    // std::cout << "nullspace error = " << error_position_nullspace.transpose() << std::endl;
-  }
-  else {
+  } else {
     // Pure (small) damping in nullspace for stability
     RCLCPP_WARN_THROTTLE(
       logger,
@@ -208,14 +198,14 @@ bool VanillaCartesianImpedanceRule::compute_controls(
       "WARNING! nullspace impedance control is disabled!"
     );
     vic_command_data.joint_command_acceleration += nullspace_projection_ * M_joint_space_ * (
-      - 1.0 * vic_input_data.joint_state_velocity);
+      -1.0 * vic_input_data.joint_state_velocity);
   }
 
   // Compute joint command effort from desired joint acc.
   // ------------------------------------------------
   raw_joint_command_effort_ = \
-    M_joint_space_.diagonal().asDiagonal() * vic_command_data.joint_command_acceleration \
-    - J_.transpose() * F_ext;
+    M_joint_space_.diagonal().asDiagonal() * vic_command_data.joint_command_acceleration - \
+    J_.transpose() * F_ext;
 
   // Gravity compensation
   // ------------------------------------------------
@@ -226,8 +216,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     //  but with "+= - gravity", the robot falls...
     // std::cout << "gravity = " << gravity_.transpose() << std::endl;
     // std::cout << "coriolis = " << coriolis_.transpose() << std::endl;
-  }
-  else {
+  } else {
     RCLCPP_WARN_THROTTLE(
       logger,
       internal_clock_,
@@ -250,8 +239,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
         cmd_filter_coefficient
       );
     }
-  }
-  else {
+  } else {
     // No smoothing otherwise
     vic_command_data.joint_command_effort = raw_joint_command_effort_;
   }

@@ -15,10 +15,10 @@
 /// \authors: Thibault Poignonec
 
 #include "cartesian_vic_controller/cartesian_vic_rule.hpp"
-#include "cartesian_vic_controller/utils.hpp"
 
 #include <sstream>
 
+#include "cartesian_vic_controller/utils.hpp"
 #include "dynamics_interface/dynamics_interface.hpp"
 
 #include "rclcpp/duration.hpp"
@@ -117,7 +117,7 @@ CartesianVicRule::init_reference_frame_trajectory(
   vic_state_.command_data.joint_command_velocity.setZero();
   vic_state_.command_data.joint_command_acceleration.setZero();
 
-  // Reset inital desired robot joint state
+  // Reset initial desired robot joint state
   initial_joint_positions_ = vic_state_.input_data.joint_state_position;
   std::stringstream ss_inital_joint_positions;
   ss_inital_joint_positions << initial_joint_positions_.transpose();
@@ -221,7 +221,7 @@ void CartesianVicRule::apply_parameters_update()
     } else if (parameters_.nullspace_control.joint_inertia.size() == num_joints_) {
       vic_state_.input_data.nullspace_joint_inertia(i) = \
         parameters_.nullspace_control.joint_inertia[i];
-    } else{
+    } else {
       RCLCPP_ERROR(
         rclcpp::get_logger("CartesianVicRule"),
         "Invalid size for nullspace_inertia vector!");
@@ -234,8 +234,7 @@ void CartesianVicRule::apply_parameters_update()
     } else if (parameters_.nullspace_control.joint_stiffness.size() == num_joints_) {
       vic_state_.input_data.nullspace_joint_stiffness(i) = \
         parameters_.nullspace_control.joint_stiffness[i];
-    }
-    else {
+    } else {
       RCLCPP_ERROR(
         rclcpp::get_logger("CartesianVicRule"),
         "Invalid size for nullspace_stiffness vector!");
@@ -248,8 +247,7 @@ void CartesianVicRule::apply_parameters_update()
     } else if (parameters_.nullspace_control.joint_damping.size() == num_joints_) {
       vic_state_.input_data.nullspace_joint_damping(i) = \
         parameters_.nullspace_control.joint_damping[i];
-    }
-    else {
+    } else {
       RCLCPP_ERROR(
         rclcpp::get_logger("CartesianVicRule"),
         "Invalid size for nullspace_damping vector!");
@@ -514,8 +512,7 @@ CartesianVicRule::internal_update(
       joint_state_command.effort.resize(num_joints_);
       joint_state_command.effort[i] =
         vic_state_.command_data.joint_command_effort[i];
-    }
-    else {
+    } else {
       joint_state_command.effort.clear();
     }
   }
@@ -675,8 +672,8 @@ bool CartesianVicRule::process_wrench_measurements(
 }
 
 bool CartesianVicRule::process_external_torques_measurements(
-    double dt /*period in seconds*/,
-    const std::vector<double> & measured_external_torques)
+  double dt /*period in seconds*/,
+  const std::vector<double> & measured_external_torques)
 {
   // Check data validity
   if (static_cast<size_t>(measured_external_torques.size()) != num_joints_) {
@@ -695,7 +692,7 @@ bool CartesianVicRule::process_external_torques_measurements(
     double ext_torques_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_freq);
     for (size_t i = 0; i < 6; ++i) {
       filtered_external_torques_(i) = \
-      filters::exponentialSmoothing(
+        filters::exponentialSmoothing(
         measured_external_torques[i],
         filtered_external_torques_(i),
         ext_torques_filter_coefficient);
