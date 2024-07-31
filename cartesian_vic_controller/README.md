@@ -1,4 +1,4 @@
-# cartesian_admittance_controller
+# cartesian_vic_controller
 
 This is a cartesian version of the package `admittance_controller` from [ros-controls/ros2_controllers](https://github.com/ros-controls/ros2_controllers/tree/master).
 
@@ -50,16 +50,16 @@ where $q$ is the **measured** joint position and $T_s$ is the controller samplin
 
   ```yaml
   <controller_name>:
-    admittance:
+    vic:
       frame:
-        id: <admittance_reference_frame> # e.g., tool0 or world
+        id: <vic_reference_frame> # e.g., tool0 or world
 
       inertia: [1.0, 1.0, 1.0, 0.1, 0.1, 0.1]
       damping_ratio: [1., 1., 1., 1., 1., 1.]
       stiffness: [200., 200., 200., 50., 50., 50.]
   ```
 
-- `~/state` (output topic) [`cartesian_control_msgs::msg::AdmittanceControllerState`]
+- `~/state` (output topic) [`cartesian_control_msgs::msg::VicControllerState`]
 
   Topic publishing controller internal states.
 

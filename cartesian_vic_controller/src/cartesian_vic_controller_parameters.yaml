@@ -1,0 +1,240 @@
+cartesian_vic_controller:
+  joints: {
+    type: string_array,
+    description: "Specifies which joints will be used by the controller. ",
+    read_only: true
+  }
+  command_joints: {
+    type: string_array,
+    default_value: [],
+    description: "(optional) Specifies the joints for writing into another controllers reference. This parameter is only relevant when chaining the output of this controller to the input of another controller.",
+    read_only: true
+  }
+  command_interfaces:
+    {
+      type: string_array,
+      description: "Specifies which command interfaces the controller will claim.",
+      read_only: true
+    }
+
+  state_interfaces:
+    {
+      type: string_array,
+      description: "Specifies which state interfaces the controller will claim.",
+      read_only: true
+    }
+
+  filters:
+    state_position_filter_cuttoff_freq: {
+      type: double,
+      default_value: 100.0,
+      description: "Specifies the cutoff frequency for the state measurements (position). Disabled if frequency <= 0."
+    }
+    state_velocity_filter_cuttoff_freq: {
+      type: double,
+      default_value: 100.0,
+      description: "Specifies the cutoff frequency for the state measurements (velocity). Disabled if frequency <= 0."
+    }
+    command_filter_cuttoff_freq: {
+      type: double,
+      default_value: -1.0,
+      description: "Specifies the cutoff frequency for the command signals. Disabled if frequency <= 0."
+    }
+    ft_sensor_filter_cuttoff_freq: {
+      type: double,
+      default_value: -1.0,
+      description: "Specifies the cutoff frequency for the f/t signals. Disabled if frequency <= 0."
+    }
+    external_torque_sensor_filter_cuttoff_freq: {
+      type: double,
+      default_value: -1.0,
+      description: "Specifies the cutoff frequency for the ext. torques signals. Disabled if frequency <= 0."
+    }
+
+  dynamics:
+    plugin_name: {
+      type: string,
+      description: "Specifies the name of the dynamics plugin to load."
+    }
+    plugin_package: {
+      type: string,
+      description: "Specifies the package name that contains the dynamics plugin."
+    }
+    base: {
+      type: string,
+      description: "Specifies the base link of the robot description used by the dynamics plugin."
+    }
+    tip: {
+      type: string,
+      description: "Specifies the end effector link of the robot description used by the dynamics plugin."
+    }
+    gravity: {
+      type: double_array,
+      default_value: [ 0.0, 0.0, -9.81 ],
+      description: "Specifies the gravity vector used in the dynamics plugin. Expressed in the base frame.",
+    }
+    alpha: {
+      type: double,
+      default_value: 0.01,
+      description: "Specifies the damping coefficient for the Jacobian pseudo inverse."
+    }
+
+  ft_sensor:
+    name: {
+      type: string,
+      description: "Specifies the name of the force torque sensor in the robot description which will be used in the vic calculation."
+    }
+    frame:
+      id: {
+        type: string,
+        description: "Specifies the frame/link name of the force torque sensor."
+      }
+
+  external_torque_sensor:
+    is_enabled: {
+      type: bool,
+      default_value: false,
+      description: "Specifies if the external torque sensor is enabled."
+    }
+    name: {
+      type: string,
+      default_value: "",
+      description: "Specifies the name of the external torque sensor in the robot description which will be used in the vic calculation."
+    }
+
+  control:
+    frame:
+      id: {
+        type: string,
+        description: "Specifies the robot control frame in which the reference pose and velocities are expressed."
+      }
+
+  fixed_world_frame: # Gravity points down (neg. Z) in this frame (Usually: world or base_link)
+    frame:
+      id: {
+        type: string,
+        description: "Specifies the world frame use for vic calculation. Gravity must point down in this frame."
+      }
+
+  gravity_compensation:
+    frame:
+      id: {
+        type: string,
+        description: "Specifies the frame which center of gravity (CoG) is defined in. Normally, the force torque sensor frame should be used."
+      }
+    CoG:
+      pos: {
+        type: double_array,
+        description: "Specifies the position of the center of gravity (CoG) of the end effector in the gravity compensation frame.",
+        validation: {
+          fixed_size<>: 3
+        }
+      }
+      force: {
+        type: double,
+        default_value: 0.0,
+        description: "Specifies the weight of the end effector, e.g mass * 9.81."
+      }
+
+  vic:
+    frame:
+      id: {
+        type: string,
+        description: "Specifies the control frame used for vic calculation."
+      }
+    plugin_name: {
+      type: string,
+      default_value: "cartesian_vic_controller/VanillaCartesianAdmittanceRule",
+      description: "Specifies the name of the vic rule plugin to load."
+    }
+    plugin_package: {
+      type: string,
+      default_value: "cartesian_vic_controller",
+      description: "Specifies the package name that contains the admittance rule plugin."
+    }
+    selected_axes:
+      {
+        type: bool_array,
+        description: "Specifies whether the axes x, y, z, rx, ry, and rz should be included in the vic calculation.",
+        validation: {
+          fixed_size<>: 6
+        }
+      }
+    activate_nullspace_control: {
+      type: bool,
+      default_value: false,
+      description: "Specifies if the nullspace control should be activated. See the nullspace_control parameter for more information."
+    }
+    activate_gravity_compensation: {
+      type: bool,
+      default_value: true,
+      read_only: true,
+      description: "Specifies if the coriolis and gravity compensation should be activated."
+    }
+
+    inertia: {
+      type: double_array,
+      description: "Specifies the mass values for x, y, z, rx, ry, and rz used in the vic calculation.",
+      validation: {
+        fixed_size<>: 6,
+        element_bounds<>: [ 0.0001, 1000000.0 ]
+      }
+    }
+    damping_ratio: {
+      type: double_array,
+      description: "Specifies damping ratio values for x, y, z, rx, ry, and rz used in the vic calculation.
+      The damping ratio is defined as: zeta = D / (2 * sqrt( M * S )).",
+      validation: {
+        fixed_size<>: 6,
+        element_bounds<>: [ 0.0, 1.2 ]
+      }
+    }
+    stiffness: {
+      type: double_array,
+      description: "Specifies the stiffness values for x, y, z, rx, ry, and rz used in the vic calculation.",
+      validation: {
+        fixed_size<>: 6,
+        element_bounds<>: [ 0.0, 1000.0 ]
+      }
+    }
+
+  nullspace_control:
+    desired_joint_positions: {
+      type: double_array,
+      description: "Specifies the desired joint positions used in the vic calculation. If empty, the initial joint positions will be used.",
+      default_value: [],
+    }
+    joint_inertia: {
+      type: double_array,
+      description: "Specifies the nullspace joint stiffness applied used in the vic calculation.",
+      default_value: [10.0],
+      validation: {
+        size_gt<>: [0],
+        element_bounds<>: [ 0.0, 100.0 ]
+      }
+    }
+    joint_stiffness: {
+      type: double_array,
+      description: "Specifies the nullspace joint inertia applied used in the vic calculation.",
+      default_value: [10.0],
+      validation: {
+        size_gt<>: [0],
+        element_bounds<>: [ 0.0, 500.0 ]
+      }
+    }
+    joint_damping: {
+      type: double_array,
+      description: "Specifies the nullspace joint damping ratio applied used in the vic calculation.",
+      default_value: [2.0],
+      validation: {
+        size_gt<>: [0],
+        element_bounds<>: [ 0.0, 200.0 ]
+      }
+    }
+
+  # general settings
+  enable_parameter_update_without_reactivation: {
+    type: bool,
+    default_value: true,
+    description: "If enabled, the parameters will be dynamically updated while the controller is running."
+  }

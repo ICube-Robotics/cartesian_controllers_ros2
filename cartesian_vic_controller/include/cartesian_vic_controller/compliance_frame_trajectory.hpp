@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-/// \authors: Thibault Poignonec
+/// \authors: Thibault Poignonec <thibault.poignonec@gmail.com>
 
-#ifndef CARTESIAN_ADMITTANCE_CONTROLLER__COMPLIANCE_FRAME_TRAJECTORY_HPP_
-#define CARTESIAN_ADMITTANCE_CONTROLLER__COMPLIANCE_FRAME_TRAJECTORY_HPP_
+#ifndef CARTESIAN_VIC_CONTROLLER__COMPLIANCE_FRAME_TRAJECTORY_HPP_
+#define CARTESIAN_VIC_CONTROLLER__COMPLIANCE_FRAME_TRAJECTORY_HPP_
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -31,7 +31,7 @@
 #include "cartesian_control_msgs/msg/compliant_frame_trajectory.hpp"
 
 
-namespace cartesian_admittance_controller
+namespace cartesian_vic_controller
 {
 
 struct CompliantFrame
@@ -106,6 +106,6 @@ protected:
   std::vector<CompliantFrame> frames_;
 };
 
-}  // namespace cartesian_admittance_controller
+}  // namespace cartesian_vic_controller
 
-#endif  // CARTESIAN_ADMITTANCE_CONTROLLER__COMPLIANCE_FRAME_TRAJECTORY_HPP_
+#endif  // CARTESIAN_VIC_CONTROLLER__COMPLIANCE_FRAME_TRAJECTORY_HPP_

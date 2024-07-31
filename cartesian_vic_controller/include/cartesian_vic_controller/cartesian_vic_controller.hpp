@@ -1,4 +1,4 @@
-// Copyright 2023 ICUBE Laboratory, University of Strasbourg
+// Copyright 2024 ICUBE Laboratory, University of Strasbourg
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-/// \authors: Thibault Poignonec, Maciej Bednarczyk
+/// \authors: Thibault Poignonec <thibault.poignonec@gmail.com>
 
-// Based on package "ros2_controllers/admittance_controller", Copyright (c) 2022, PickNik, Inc.
-
-#ifndef CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
-#define CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
+#ifndef CARTESIAN_VIC_CONTROLLER__CARTESIAN_VIC_CONTROLLER_HPP_
+#define CARTESIAN_VIC_CONTROLLER__CARTESIAN_VIC_CONTROLLER_HPP_
 
 #include <chrono>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "cartesian_admittance_controller/visibility_control.h"
-#include "cartesian_admittance_controller/cartesian_admittance_rule.hpp"
+#include "cartesian_vic_controller/visibility_control.h"
+#include "cartesian_vic_controller/cartesian_vic_rule.hpp"
+#include "cartesian_vic_controller/external_torque_sensor.hpp"
 
 // include generated parameter library
-#include "cartesian_admittance_controller_parameters.hpp"
+#include "cartesian_vic_controller_parameters.hpp"
 
 #include "controller_interface/chainable_controller_interface.hpp"
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
@@ -49,59 +48,109 @@
 #include "trajectory_msgs/msg/joint_trajectory.hpp"
 
 // Custom msgs
-#include "cartesian_control_msgs/msg/admittance_controller_state.hpp"
+#include "cartesian_control_msgs/msg/vic_controller_state.hpp"
 #include "cartesian_control_msgs/msg/cartesian_trajectory.hpp"
 #include "cartesian_control_msgs/msg/compliant_frame_trajectory.hpp"
 
-namespace cartesian_admittance_controller
+namespace cartesian_vic_controller
 {
-using ControllerStateMsg = cartesian_control_msgs::msg::AdmittanceControllerState;
+using ControllerStateMsg = cartesian_control_msgs::msg::VicControllerState;
 
-class CartesianAdmittanceController : public controller_interface::ControllerInterface
+class CartesianVicController : public controller_interface::ControllerInterface
 {
 public:
-  CARTESIAN_ADMITTANCE_CONTROLLER_PUBLIC
+  CARTESIAN_VIC_CONTROLLER_PUBLIC
   controller_interface::CallbackReturn on_init() override;
 
   /// Export configuration of required state interfaces.
   /**
    * Allowed types of state interfaces are \ref hardware_interface::POSITION,
-   * \ref hardware_interface::VELOCITY, \ref hardware_interface::ACCELERATION.
+   * \ref hardware_interface::VELOCITY, \ref hardware_interface::ACCELERATION,
+   * \ref hardware_interface::FORCE.
    */
-  CARTESIAN_ADMITTANCE_CONTROLLER_PUBLIC
-  controller_interface::InterfaceConfiguration command_interface_configuration() const override;
+  CARTESIAN_VIC_CONTROLLER_PUBLIC
+  controller_interface::InterfaceConfiguration command_interface_configuration() const
+  override;
 
   /// Export configuration of required state interfaces.
-  /**
-   * Allowed types of state interfaces are \ref hardware_interface::POSITION,
-   * \ref hardware_interface::VELOCITY, \ref hardware_interface::ACCELERATION.
-   */
-  CARTESIAN_ADMITTANCE_CONTROLLER_PUBLIC
-  controller_interface::InterfaceConfiguration state_interface_configuration() const override;
+  CARTESIAN_VIC_CONTROLLER_PUBLIC
+  controller_interface::InterfaceConfiguration state_interface_configuration() const
+  override;
 
-  CARTESIAN_ADMITTANCE_CONTROLLER_PUBLIC
+  CARTESIAN_VIC_CONTROLLER_PUBLIC
   controller_interface::return_type update(
     const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
-  CARTESIAN_ADMITTANCE_CONTROLLER_PUBLIC
+  CARTESIAN_VIC_CONTROLLER_PUBLIC
   controller_interface::CallbackReturn on_configure(
     const rclcpp_lifecycle::State & previous_state) override;
 
-  CARTESIAN_ADMITTANCE_CONTROLLER_PUBLIC
+  CARTESIAN_VIC_CONTROLLER_PUBLIC
   controller_interface::CallbackReturn on_activate(
     const rclcpp_lifecycle::State & previous_state) override;
 
-  CARTESIAN_ADMITTANCE_CONTROLLER_PUBLIC
+  CARTESIAN_VIC_CONTROLLER_PUBLIC
   controller_interface::CallbackReturn on_deactivate(
     const rclcpp_lifecycle::State & previous_state) override;
 
-  CARTESIAN_ADMITTANCE_CONTROLLER_PUBLIC
+  CARTESIAN_VIC_CONTROLLER_PUBLIC
   controller_interface::CallbackReturn on_cleanup(
     const rclcpp_lifecycle::State & previous_state) override;
 
-  CARTESIAN_ADMITTANCE_CONTROLLER_PUBLIC
+  CARTESIAN_VIC_CONTROLLER_PUBLIC
   controller_interface::CallbackReturn on_error(
     const rclcpp_lifecycle::State & previous_state) override;
+
+protected:
+  /**
+   * @brief Check if the command interfaces are configured correctly. This function
+   * has to be implemented by specialized controllers (e.g., impedance / admittance).
+   */
+  virtual bool is_command_interfaces_config_valid() const;
+
+  /**
+   * @brief Write values from joint_state_command to claimed hardware interfaces. This function
+   * has to be implemented by specialized controllers (e.g., impedance / admittance).
+   */
+  virtual bool
+  write_state_to_hardware(trajectory_msgs::msg::JointTrajectoryPoint & joint_state_c);
+
+  /**
+   * @brief Write values from joint_state_command to claimed hardware interfaces. This function
+   * is used to write the admittance state to the hardware (i.e., position and/or velocity).
+   */
+  bool write_admittance_state_to_hardware(
+    trajectory_msgs::msg::JointTrajectoryPoint & joint_state_c);
+
+  /**
+   * @brief Write values from joint_state_command to claimed hardware interfaces. This function
+   * is used to write the impedance state to the hardware (i.e., force / torques).
+   */
+  bool write_impedance_state_to_hardware(
+    trajectory_msgs::msg::JointTrajectoryPoint & joint_state_c);
+
+  /**
+   * @brief Read values from hardware interfaces and set corresponding fields of joint_state and
+   * ft_values
+   */
+  bool read_state_from_hardware(
+    trajectory_msgs::msg::JointTrajectoryPoint & joint_state,
+    geometry_msgs::msg::Wrench & ft_values,
+    std::vector<double> & external_torques);
+
+
+  /**
+   * @brief Initialize the vic rule
+   */
+  bool initialize_vic_rule(const trajectory_msgs::msg::JointTrajectoryPoint & joint_state);
+
+  /**
+   * @brief Try to retrieve the URDF from the parameter server. If this fails, it will
+   * try to retrieve it from the 'robot_state_publisher'.
+   *
+   * @return std::string
+   */
+  std::string getUrdfFromServer() const;
 
 protected:
   size_t num_joints_ = 0;
@@ -128,32 +177,36 @@ protected:
   // as the following constants
   const std::vector<std::string> allowed_interface_types_ = {
     hardware_interface::HW_IF_POSITION, hardware_interface::HW_IF_VELOCITY,
-    hardware_interface::HW_IF_ACCELERATION};
+    hardware_interface::HW_IF_EFFORT};
 
-  // internal reference values
-  const std::vector<std::string> allowed_reference_interfaces_types_ = {
-    hardware_interface::HW_IF_VELOCITY
-  };
   std::vector<std::reference_wrapper<double>> velocity_reference_;
 
-  // Admittance rule loader
-  std::shared_ptr<pluginlib::ClassLoader<cartesian_admittance_controller::CartesianAdmittanceRule>>
-  admittance_loader_;
+  // Vic rule loader
+  std::shared_ptr<pluginlib::ClassLoader<cartesian_vic_controller::CartesianVicRule>>
+  vic_loader_;
 
-  // Admittance rule
-  std::unique_ptr<cartesian_admittance_controller::CartesianAdmittanceRule> admittance_;
-  bool is_impedance_initialized_ = false;
+  // Vic rule
+  std::unique_ptr<cartesian_vic_controller::CartesianVicRule> vic_;
+  bool is_vic_initialized_ = false;
 
   // force torque sensor
   std::unique_ptr<semantic_components::ForceTorqueSensor> force_torque_sensor_;
+
+  // external torque sensor
+  std::vector<std::string> external_torque_interfaces_names_;
+  std::unique_ptr<ExternalTorqueSensor> external_torque_sensor_;  // semantic component
 
   // ROS subscribers
   rclcpp::Subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>::SharedPtr
     input_compliant_frame_trajectory_subscriber_;
   rclcpp::Publisher<ControllerStateMsg>::SharedPtr s_publisher_;
 
-  // admittance parameters
-  std::shared_ptr<cartesian_admittance_controller::ParamListener> parameter_handler_;
+  // vic parameters
+  std::shared_ptr<cartesian_vic_controller::ParamListener> parameter_handler_;
+
+  /// fallback for robot description ROS parameters
+  // TODO(tpoignonec): make this a parameter
+  std::string robot_description_node_ = "robot_state_publisher";
 
   // ROS messages
   std::shared_ptr<cartesian_control_msgs::msg::CompliantFrameTrajectory>
@@ -177,33 +230,10 @@ protected:
   trajectory_msgs::msg::JointTrajectoryPoint joint_command_, last_commanded_joint_state_;
   // ft_values_: values read from the force torque sensor
   geometry_msgs::msg::Wrench ft_values_;
-
-  /**
-   * @brief Read values from hardware interfaces and set corresponding fields of joint_state and
-   * ft_values
-   */
-  bool read_state_from_hardware(
-    trajectory_msgs::msg::JointTrajectoryPoint & joint_state,
-    geometry_msgs::msg::Wrench & ft_values);
-
-  /**
-   * @brief Set fields of state_reference with values from controllers exported position and
-   * velocity references
-   */
-  // void read_state_reference_interfaces(
-  //  cartesian_control_msgs::msg::CompliantFrameTrajectory & compliant_frame_trajectory);
-
-  /**
-   * @brief Write values from joint_state_command to claimed hardware interfaces
-   */
-  bool write_state_to_hardware(trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command);
-
-  /**
-   * @brief Initialize the impedance rule
-   */
-  bool initialize_impedance_rule(const trajectory_msgs::msg::JointTrajectoryPoint & joint_state);
+  // ext_torque_values_ : values read from the external torque sensor (optional, zero if disabled)
+  std::vector<double> ext_torque_values_;
 };
 
-}  // namespace cartesian_admittance_controller
+}  // namespace cartesian_vic_controller
 
-#endif  // CARTESIAN_ADMITTANCE_CONTROLLER__CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
+#endif  // CARTESIAN_VIC_CONTROLLER__CARTESIAN_VIC_CONTROLLER_HPP_

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>cartesian_admittance_controller</name>
+  <name>cartesian_vic_controller</name>
   <version>0.0.1</version>
   <description>TODO: Package description</description>
   <maintainer email="thibault.poignonec@gmail.com">tpoignonec</maintainer>
@@ -9,11 +9,13 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <depend>cartesian_control_msgs</depend>
+  <depend>dynamics_interface</depend>
+
   <depend>backward_ros</depend>
   <depend>control_msgs</depend>
   <depend>control_toolbox</depend>
   <depend>controller_interface</depend>
-  <depend>kinematics_interface</depend>
   <depend>filters</depend>
   <depend>generate_parameter_library</depend>
   <depend>geometry_msgs</depend>
@@ -29,8 +31,6 @@
   <depend>tf2_kdl</depend>
   <depend>tf2_ros</depend>
   <depend>trajectory_msgs</depend>
-
-  <depend>cartesian_control_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_cmake_gmock</test_depend>

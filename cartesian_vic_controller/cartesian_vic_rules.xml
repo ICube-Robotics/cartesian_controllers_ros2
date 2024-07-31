@@ -1,0 +1,16 @@
+<library path="cartesian_vic_controller">
+  <class name="cartesian_vic_controller/VanillaCartesianAdmittanceRule"
+         type="cartesian_vic_controller::VanillaCartesianAdmittanceRule"
+         base_class_type="cartesian_vic_controller::CartesianVicRule">
+    <description>
+      Classical admittance control law.
+    </description>
+  </class>
+  <class name="cartesian_vic_controller/VanillaCartesianImpedanceRule"
+         type="cartesian_vic_controller::VanillaCartesianImpedanceRule"
+         base_class_type="cartesian_vic_controller::CartesianVicRule">
+    <description>
+      Classical impedance control law.
+    </description>
+  </class>
+</library>
