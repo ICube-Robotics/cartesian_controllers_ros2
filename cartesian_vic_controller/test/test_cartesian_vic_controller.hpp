@@ -11,11 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
-/// \author: Denis Stogl
 
-#ifndef TEST_CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
-#define TEST_CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
+#ifndef TEST_CARTESIAN_VIC_CONTROLLER_HPP_
+#define TEST_CARTESIAN_VIC_CONTROLLER_HPP_
 
 #include <chrono>
 #include <map>
@@ -27,8 +25,8 @@
 
 #include "gmock/gmock.h"
 
-#include "cartesian_admittance_controller/cartesian_admittance_controller.hpp"
-#include "control_msgs/msg/admittance_controller_state.hpp"
+#include "cartesian_vic_controller/cartesian_vic_controller.hpp"
+
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "hardware_interface/loaned_command_interface.hpp"
 #include "hardware_interface/loaned_state_interface.hpp"
@@ -44,7 +42,7 @@
 #include "tf2_eigen/tf2_eigen.hpp"
 #include "tf2_kdl/tf2_kdl.hpp"
 
-#include "cartesian_control_msgs/msg/admittance_controller_state.hpp"
+#include "cartesian_control_msgs/msg/vic_controller_state.hpp"
 #include "cartesian_control_msgs/msg/cartesian_trajectory.hpp"
 #include "cartesian_control_msgs/msg/compliant_frame_trajectory.hpp"
 
@@ -52,7 +50,7 @@
 using ControllerCommandWrenchMsg = geometry_msgs::msg::WrenchStamped;
 using ControllerCommandPoseMsg = geometry_msgs::msg::PoseStamped;
 using ControllerRefCompliantTrajectoryMsg = cartesian_control_msgs::msg::CompliantFrameTrajectory;
-using ControllerStateMsg = cartesian_control_msgs::msg::AdmittanceControllerState;
+using ControllerStateMsg = cartesian_control_msgs::msg::VicControllerState;
 
 namespace
 {
@@ -74,7 +72,7 @@ rclcpp::WaitResultKind wait_for(rclcpp::SubscriptionBase::SharedPtr subscription
 }  // namespace
 
 // subclassing and friending so we can access member variables
-class TestableCartesianVicController : public cartesian_admittance_controller::
+class TestableCartesianVicController : public cartesian_vic_controller::
   CartesianVicController
 {
   FRIEND_TEST(CartesianVicControllerTest, joint_names_parameter_not_set);
@@ -93,12 +91,12 @@ public:
     get_node()->set_parameter({"robot_description", robot_description_});
     get_node()->set_parameter({"robot_description_semantic", robot_description_semantic_});
 
-    return cartesian_admittance_controller::CartesianVicController::on_init();
+    return cartesian_vic_controller::CartesianVicController::on_init();
   }
 
   CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override
   {
-    auto ret = cartesian_admittance_controller::CartesianVicController::on_configure(
+    auto ret = cartesian_vic_controller::CartesianVicController::on_configure(
       previous_state);
     // Only if on_configure is successful create subscription
     if (ret == CallbackReturn::SUCCESS) {
@@ -151,7 +149,7 @@ public:
 
     compliant_frame_trajectory_publisher_ =
       command_publisher_node_->create_publisher<ControllerRefCompliantTrajectoryMsg>(
-      "/test_cartesian_admittance_controller/compliant_frame_trajectory",
+      "/test_cartesian_vic_controller/compliant_frame_trajectory",
       rclcpp::SystemDefaultsQoS());
 
     test_subscription_node_ = std::make_shared<rclcpp::Node>("test_subscription_node");
@@ -177,7 +175,7 @@ protected:
   }
 
   controller_interface::return_type SetUpController(
-    const std::string & controller_name = "test_cartesian_admittance_controller")
+    const std::string & controller_name = "test_cartesian_vic_controller")
   {
     auto options = rclcpp::NodeOptions()
       .allow_undeclared_parameters(false)
@@ -188,7 +186,8 @@ protected:
   controller_interface::return_type SetUpControllerCommon(
     const std::string & controller_name, const rclcpp::NodeOptions & options)
   {
-    auto result = controller_->init(controller_name, "", options);
+    // auto result = controller_->init(controller_name, "", options);
+    auto result = controller_->init(controller_name, "", 0, "", options);
 
     controller_->export_reference_interfaces();
     assign_interfaces();
@@ -291,7 +290,7 @@ protected:
     // create a new subscriber
     auto subs_callback = [&](const ControllerStateMsg::SharedPtr) {};
     auto subscription = test_subscription_node_->create_subscription<ControllerStateMsg>(
-      "/test_cartesian_admittance_controller/status", 10, subs_callback);
+      "/test_cartesian_vic_controller/status", 10, subs_callback);
 
     // call update to publish the test value
     ASSERT_EQ(
@@ -359,7 +358,7 @@ protected:
 
     std::vector<double> joint_state_values(joint_state_position_values_.begin(),
       joint_state_position_values_.end());
-    kinematics_->calculate_link_transform(
+      kinematics_->calculate_link_transform(
       joint_state_values,
       tcp_frame,
       robot_reference_pose
@@ -431,11 +430,11 @@ protected:
   const std::string fixed_world_frame_ = "fixed_world_frame";
   const std::string sensor_frame_ = "link_6";
 
-  std::array<bool, 6> admittance_selected_axes_ = {true, true, true, true, true, true};
-  std::array<double, 6> admittance_inertia_ = {5.5, 6.6, 7.7, 8.8, 9.9, 10.10};
-  std::array<double, 6> admittance_damping_ratio_ = {2.828427, 2.828427, 2.828427,
+  std::array<bool, 6> vic_selected_axes_ = {true, true, true, true, true, true};
+  std::array<double, 6> vic_inertia_ = {5.5, 6.6, 7.7, 8.8, 9.9, 10.10};
+  std::array<double, 6> vic_damping_ratio_ = {2.828427, 2.828427, 2.828427,
     2.828427, 2.828427, 2.828427};
-  std::array<double, 6> admittance_stiffness_ = {214.1, 214.2, 214.3, 214.4, 214.5, 214.6};
+  std::array<double, 6> vic_stiffness_ = {214.1, 214.2, 214.3, 214.4, 214.5, 214.6};
 
   std::array<double, 6> joint_command_values_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
   std::array<double, 6> joint_state_position_values_ = {1.1, 2.2, 3.3, 4.4, 5.5, 6.6};
@@ -464,7 +463,7 @@ protected:
 };
 
 // From the tutorial: https://www.sandordargo.com/blog/2019/04/24/parameterized-testing-with-gtest
-class AdmittanceControllerTestParameterizedMissingParameters
+class VicControllerTestParameterizedMissingParameters
   : public CartesianVicControllerTest,
   public ::testing::WithParamInterface<std::string>
 {
@@ -472,7 +471,7 @@ public:
   virtual void SetUp()
   {
     CartesianVicControllerTest::SetUp();
-    auto node = std::make_shared<rclcpp::Node>("test_cartesian_admittance_controller");
+    auto node = std::make_shared<rclcpp::Node>("test_cartesian_vic_controller");
     overrides_ = node->get_node_parameters_interface()->get_parameter_overrides();
   }
 
@@ -490,14 +489,14 @@ protected:
     }
 
     return CartesianVicControllerTest::SetUpController(
-      "test_admittance_controller_no_overrides", parameter_overrides);
+      "test_vic_controller_no_overrides", parameter_overrides);
   }
 
   std::map<std::string, rclcpp::ParameterValue> overrides_;
 };
 
 // From the tutorial: https://www.sandordargo.com/blog/2019/04/24/parameterized-testing-with-gtest
-class AdmittanceControllerTestParameterizedInvalidParameters
+class VicControllerTestParameterizedInvalidParameters
   : public CartesianVicControllerTest,
   public ::testing::WithParamInterface<std::tuple<std::string, rclcpp::ParameterValue>>
 {
@@ -515,8 +514,8 @@ protected:
     rclcpp::Parameter param(param_name, param_value);
     parameter_overrides.push_back(param);
     return CartesianVicControllerTest::SetUpController(
-      "test_cartesian_admittance_controller", parameter_overrides);
+      "test_cartesian_vic_controller", parameter_overrides);
   }
 };
 
-#endif  // TEST_CARTESIAN_ADMITTANCE_CONTROLLER_HPP_
+#endif  // TEST_CARTESIAN_VIC_CONTROLLER_HPP_
