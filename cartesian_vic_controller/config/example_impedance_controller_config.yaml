@@ -1,7 +1,7 @@
 cartesian_impedance_controller:
   ros__parameters:
     command_interfaces:
-      - velocity
+      - force
     state_interfaces:
       - position
       - velocity
@@ -32,8 +32,7 @@ cartesian_impedance_controller:
       gravity: [0.0, 0.0, -9.81]
 
     ft_sensor:
-      is_enabled: true
-      name: ftsensor
+      name: ft_sensor
       frame:
         id: ft_sensor  # Wrench measurements are in this frame
         external: false # force torque frame exists within URDF kinematic chain
@@ -70,11 +69,11 @@ cartesian_impedance_controller:
         external: false # control frame exists within URDF kinematic chain
       # VIC rule
       plugin_package: cartesian_vic_controller
-      plugin_name: cartesian_vic_controller/VanillaCartesianAdmittanceRule  # As nominal controller
+      plugin_name: cartesian_vic_controller/VanillaCartesianImpedanceRule  # As nominal controller
 
       # Misc. control parameters
-      activate_nullspace_control: false
-      activate_gravity_compensation: false
+      activate_nullspace_control: true
+      activate_gravity_compensation: true
 
       selected_axes:
         - true # x
@@ -107,3 +106,11 @@ cartesian_impedance_controller:
         - 2.0
         - 2.0
         - 2.0
+
+    nullspace_control:
+      # desired_joint_positions: [...]  # if empty, defaults to initial joint positions
+      # desired_joint_positions: [0.0, -0.7854, 0.0, 1.3962, 0.0, 0.6109, 0.0]
+      joint_inertia: [25.0]
+      joint_stiffness: [100.0]
+      joint_damping: [90.0]  # e.g., 2 * 0.9 * sqrt (m * k)
+      # Example values for {M, K, D} : {25, 10, 28}, {25, 100, 90}, {25, 200, 128}
