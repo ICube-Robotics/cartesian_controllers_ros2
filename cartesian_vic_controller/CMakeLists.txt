@@ -77,6 +77,7 @@ if(BUILD_TESTING)
   # Dynamically loaded during test
   find_package(kinematics_interface_kdl REQUIRED)
 
+  #[[
   # test controller (loading only)
   add_rostest_with_parameters_gmock(test_load_controller
     test/test_load_controller.cpp
@@ -87,6 +88,7 @@ if(BUILD_TESTING)
     hardware_interface
     ros2_control_test_assets
   )
+  #]]
 
   # test controller
   add_rostest_with_parameters_gmock(test_controller

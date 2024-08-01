@@ -428,7 +428,7 @@ protected:
   const std::string control_frame_ = "tool0";
   const std::string endeffector_frame_ = "endeffector_frame";
   const std::string fixed_world_frame_ = "fixed_world_frame";
-  const std::string sensor_frame_ = "link_6";
+  const std::string sensor_frame_ = "tool0";
 
   std::array<bool, 6> vic_selected_axes_ = {true, true, true, true, true, true};
   std::array<double, 6> vic_inertia_ = {5.5, 6.6, 7.7, 8.8, 9.9, 10.10};

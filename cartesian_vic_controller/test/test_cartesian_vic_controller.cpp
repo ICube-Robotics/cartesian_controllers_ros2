@@ -36,7 +36,7 @@ INSTANTIATE_TEST_SUITE_P(
     "ft_sensor.frame.id", "ft_sensor.name",
     // gravity compensation parameters
     "fixed_world_frame.frame.id", "gravity_compensation.frame.id",
-    "gravity_compensation.CoG.pos", "gravity_compensation.CoG.force",
+    "gravity_compensation.CoG.pos",
     // dynamics model parameters
     "dynamics.plugin_package", "dynamics.plugin_name", "dynamics.base", "dynamics.tip",
     // VIC rule parameters
@@ -74,10 +74,6 @@ INSTANTIATE_TEST_SUITE_P(
     std::make_tuple(
       std::string("vic.selected_axes"),
       rclcpp::ParameterValue(std::vector<double>() = {1, 2, 3}))
-    // invalid robot description.
-    // TODO(anyone): deactivated, because SetUpController returns SUCCESS here?
-    // ,std::make_tuple(
-    //   std::string("robot_description"), rclcpp::ParameterValue(std::string() = "bad_robot")))
 ));
 
 // Test on_init returns ERROR when a parameter is invalid

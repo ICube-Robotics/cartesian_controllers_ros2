@@ -1,6 +1,11 @@
-test_cartesian_admittance_controller:
+test_cartesian_vic_controller:
   # contains minimal needed parameters for kuka_kr6
   ros__parameters:
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
     joints:
       - joint_a1
       - joint_a2
@@ -9,27 +14,32 @@ test_cartesian_admittance_controller:
       - joint_a5
       - joint_a6
 
-    command_interfaces:
-      - position
+    # Parameters for the controller
+    # Note: having ".0" at the end of float is a MUST, otherwise there is a loading error
 
-    state_interfaces:
-      - position
-      - velocity
+    filters:
+      state_position_filter_cuttoff_freq: -1.0
+      state_velocity_filter_cuttoff_freq: 100.0
+      command_filter_cuttoff_freq: -1.0
+      ft_sensor_filter_cuttoff_freq: 30.0
 
-    kinematics:
-      plugin_name: kinematics_interface_kdl/KinematicsInterfaceKDL
-      plugin_package: kinematics_interface
+    dynamics:
+      plugin_name: dynamics_interface_kdl/DynamicsInterfaceKDL
+      plugin_package: dynamics_interface
       base: base_link # Assumed to be stationary
       tip: tool0
-      group_name: arm
       alpha: 0.0005
+      gravity: [0.0, 0.0, -9.81]
 
     ft_sensor:
       name: ft_sensor_name
       frame:
-        id: link_6  # tool0 Wrench measurements are in this frame
+        id: tool0  # Wrench measurements are in this frame
         external: false # force torque frame exists within URDF kinematic chain
-      filter_coefficient: 0.005
+
+    external_torque_sensor:
+      is_enabled: false
+      name: ""
 
     control:
       frame:
@@ -38,28 +48,32 @@ test_cartesian_admittance_controller:
 
     fixed_world_frame:   # Gravity points down (neg. Z) in this frame (Usually: world or base_link)
       frame:
-        id: base_link # Admittance calcs (displacement etc) are done in this frame. Usually the tool or end-effector
-        external: false # control frame exists within URDF kinematic chain
+        id: base_link
+        external: false
 
     gravity_compensation:
       frame:
         id: tool0
         external: false
 
-      CoG: # specifies the center of gravity of the end effector
+      CoG:
         pos:
-          - 0.1 # x
-          - 0.0 # y
-          - 0.0 # z
-        force: 23.0 # mass * 9.81
+          - 0.01
+          - 0.01
+          - 0.01
+        force: 0.0  # mass * 9.81
 
-    admittance:
+    vic:
       frame:
         id: tool0 # Admittance calcs (displacement etc) are done in this frame. Usually the tool or end-effector
         external: false # control frame exists within URDF kinematic chain
-      # Admittance rule
-      plugin_name: cartesian_admittance_controller/VanillaCartesianAdmittanceRule
-      plugin_package: cartesian_admittance_controller
+      # VIC rule
+      plugin_package: cartesian_vic_controller
+      plugin_name: cartesian_vic_controller/VanillaCartesianAdmittanceRule  # As nominal controller
+
+      # Misc. control parameters
+      activate_nullspace_control: false
+      activate_gravity_compensation: false
 
       selected_axes:
         - true # x
@@ -69,8 +83,6 @@ test_cartesian_admittance_controller:
         - true # ry
         - true # rz
 
-      # Having ".0" at the end is MUST, otherwise there is a loading error
-      # F = M*a + D*v + S*(x - x_d)
       inertia:
         - 5.5
         - 6.6
