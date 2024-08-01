@@ -1,4 +1,4 @@
-// Copyright (c) 2021, Stogl Robotics Consulting UG (haftungsbeschränkt)
+// Copyright 2024 ICUBE Laboratory, University of Strasbourg
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -258,6 +258,32 @@ const auto valid_6d_robot_urdf =
       </command_interface>
       <state_interface name="position"/>
     </joint>
+    <!-- F/T sensor -->
+    <sensor name="ft_sensor">
+      <state_interface name="force.x">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+
+      <state_interface name="force.y">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+
+      <state_interface name="force.z">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+
+      <state_interface name="torque.x">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+
+      <state_interface name="torque.y">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+
+      <state_interface name="torque.z">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+    </sensor>
   </ros2_control>
 </robot>
 )";
