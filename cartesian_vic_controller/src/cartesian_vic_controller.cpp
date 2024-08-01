@@ -37,7 +37,10 @@ namespace cartesian_vic_controller
 controller_interface::CallbackReturn CartesianVicController::on_init()
 {
   // Try to retrieve urdf (used by kinematics / dynamics plugin)
-  std::string urdf_string = this->get_robot_description();
+  RCLCPP_INFO(
+    get_node()->get_logger(), "Trying to retrieve 'robot_description' parameter...");
+  std::string urdf_string = auto_declare<std::string>(
+    "robot_description", this->get_robot_description());
   if (urdf_string.empty()) {
     RCLCPP_ERROR(
       get_node()->get_logger(),
@@ -56,6 +59,7 @@ controller_interface::CallbackReturn CartesianVicController::on_init()
   }
 
   // initialize controller config
+  RCLCPP_INFO(get_node()->get_logger(), "Initializing controller config...");
   try {
     parameter_handler_ =
       std::make_shared<cartesian_vic_controller::ParamListener>(get_node());
@@ -68,6 +72,7 @@ controller_interface::CallbackReturn CartesianVicController::on_init()
     return controller_interface::CallbackReturn::ERROR;
   }
 
+  RCLCPP_INFO(get_node()->get_logger(), "Initialized controller with %li joints", num_joints_);
   // allocate dynamic memory
   joint_state_.positions.assign(num_joints_, 0.0);  // std::nan);
   joint_state_.velocities.assign(num_joints_, 0.0);  //  std::nan);

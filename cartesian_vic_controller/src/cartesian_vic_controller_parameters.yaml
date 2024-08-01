@@ -210,7 +210,7 @@ cartesian_vic_controller:
       default_value: [10.0],
       validation: {
         size_gt<>: [0],
-        element_bounds<>: [ 0.0, 100.0 ]
+        # element_bounds<>: [ 0.0, 1000.0 ]
       }
     }
     joint_stiffness: {
@@ -219,7 +219,7 @@ cartesian_vic_controller:
       default_value: [10.0],
       validation: {
         size_gt<>: [0],
-        element_bounds<>: [ 0.0, 500.0 ]
+        # element_bounds<>: [ 0.0, 1000.0 ]
       }
     }
     joint_damping: {
@@ -228,7 +228,7 @@ cartesian_vic_controller:
       default_value: [2.0],
       validation: {
         size_gt<>: [0],
-        element_bounds<>: [ 0.0, 200.0 ]
+        # element_bounds<>: [ 0.0, 1000.0 ]
       }
     }
 
