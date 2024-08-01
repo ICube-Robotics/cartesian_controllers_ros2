@@ -80,6 +80,11 @@ cartesian_vic_controller:
     }
 
   ft_sensor:
+    is_enabled: {
+      type: bool,
+      default_value: true,
+      description: "Specifies if the force torque sensor is enabled."
+    }
     name: {
       type: string,
       description: "Specifies the name of the force torque sensor in the robot description which will be used in the vic calculation."

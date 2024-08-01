@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "trajectory_msgs/msg/joint_trajectory_point.hpp"
+#include "geometry_msgs/msg/wrench_stamped.hpp"
 
 namespace cartesian_vic_controller
 {
@@ -41,29 +42,31 @@ class MeasurementData
 {
 private:
   size_t num_joints_;
-  bool has_external_torques_data_ = false;
-  bool has_ft_sensor_data_ = false;
+  bool has_external_torques_data_;
+  bool has_ft_sensor_data_;
 
-  trajectory_msgs::msg::JointTrajectoryPoint joint_state_;
   geometry_msgs::msg::Wrench measured_wrench_;
   std::vector<double> external_torques_;
+
+public:
+  trajectory_msgs::msg::JointTrajectoryPoint joint_state;
 
 public:
   explicit MeasurementData(size_t num_joints)
   {
     num_joints_ = num_joints;
-    joint_state_.positions.reserve(num_joints);
-    joint_state_.velocities.reserve(num_joints);
-    joint_state_.accelerations.reserve(num_joints);
-    joint_state_.effort.reserve(num_joints);
-    external_torques_.reserve(num_joints_);
+    joint_state.positions.assign(num_joints_, 0.0);  // std::nan);
+    joint_state.velocities.assign(num_joints_, 0.0);  //  std::nan);
+    joint_state.accelerations.assign(num_joints_, 0.0);  //  std::nan);
+    joint_state.effort.reserve(num_joints_);  // not used
+    external_torques_.assign(num_joints_, 0.0);
     reset_data_availability();
   }
   ~MeasurementData() = default;
 
   const trajectory_msgs::msg::JointTrajectoryPoint & get_joint_state() const
   {
-    return joint_state_;
+    return joint_state;
   }
   const geometry_msgs::msg::Wrench & get_ft_sensor_wrench() const
   {
@@ -90,14 +93,14 @@ public:
     return true;
   }
 
-  bool update_joint_state(const trajectory_msgs::msg::JointTrajectoryPoint & joint_state)
+  bool update_joint_state(const trajectory_msgs::msg::JointTrajectoryPoint & joint_state_values)
   {
-    if (joint_state.positions.size() != num_joints_ ||
-      joint_state.velocities.size() != num_joints_)
+    if (joint_state_values.positions.size() != num_joints_ ||
+      joint_state_values.velocities.size() != num_joints_)
     {
       return false;
     }
-    joint_state_ = joint_state;
+    joint_state = joint_state_values;
     return true;
   }
   bool update_ft_sensor_wrench(const geometry_msgs::msg::Wrench & measured_wrench)
