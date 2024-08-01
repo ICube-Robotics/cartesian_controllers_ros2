@@ -22,7 +22,7 @@
 #include <vector>
 
 // Test on_configure returns ERROR when a required parameter is missing
-TEST_P(AdmittanceControllerTestParameterizedMissingParameters, one_parameter_is_missing)
+TEST_P(VicControllerTestParameterizedMissingParameters, one_parameter_is_missing)
 {
   ASSERT_EQ(SetUpController(GetParam()), controller_interface::return_type::ERROR);
   ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()), NODE_ERROR);
@@ -30,7 +30,7 @@ TEST_P(AdmittanceControllerTestParameterizedMissingParameters, one_parameter_is_
 
 INSTANTIATE_TEST_SUITE_P(
   MissingMandatoryParameterDuringConfiguration,
-  AdmittanceControllerTestParameterizedMissingParameters,
+  VicControllerTestParameterizedMissingParameters,
   ::testing::Values(
     "admittance.inertia", "admittance.selected_axes", "admittance.stiffness",
     "command_interfaces", "control.frame.id", "admittance.frame.id",
@@ -40,7 +40,7 @@ INSTANTIATE_TEST_SUITE_P(
     "kinematics.plugin_name", "kinematics.plugin_package", "kinematics.tip", "state_interfaces"));
 
 INSTANTIATE_TEST_SUITE_P(
-  InvalidParameterDuringConfiguration, AdmittanceControllerTestParameterizedInvalidParameters,
+  InvalidParameterDuringConfiguration, VicControllerTestParameterizedInvalidParameters,
   ::testing::Values(
     // wrong length COG
     std::make_tuple(
@@ -76,12 +76,12 @@ INSTANTIATE_TEST_SUITE_P(
 ));
 
 // Test on_init returns ERROR when a parameter is invalid
-TEST_P(AdmittanceControllerTestParameterizedInvalidParameters, invalid_parameters)
+TEST_P(VicControllerTestParameterizedInvalidParameters, invalid_parameters)
 {
   ASSERT_EQ(SetUpController(), controller_interface::return_type::ERROR);
 }
 
-TEST_F(CartesianAdmittanceControllerTest, all_parameters_set_configure_success)
+TEST_F(CartesianVicControllerTest, all_parameters_set_configure_success)
 {
   auto result = SetUpController();
 
@@ -161,7 +161,7 @@ TEST_F(CartesianAdmittanceControllerTest, all_parameters_set_configure_success)
       admittance_stiffness_.end()));
 }
 
-TEST_F(CartesianAdmittanceControllerTest, check_interfaces)
+TEST_F(CartesianVicControllerTest, check_interfaces)
 {
   SetUpController();
 
@@ -183,7 +183,7 @@ TEST_F(CartesianAdmittanceControllerTest, check_interfaces)
     state_interface_types_.size() * joint_names_.size() + fts_state_values_.size());
 }
 
-TEST_F(CartesianAdmittanceControllerTest, activate_success)
+TEST_F(CartesianVicControllerTest, activate_success)
 {
   SetUpController();
 
@@ -193,7 +193,7 @@ TEST_F(CartesianAdmittanceControllerTest, activate_success)
   ASSERT_EQ(controller_->on_activate(rclcpp_lifecycle::State()), NODE_SUCCESS);
 }
 
-TEST_F(CartesianAdmittanceControllerTest, update_success)
+TEST_F(CartesianVicControllerTest, update_success)
 {
   SetUpController();
 
@@ -205,7 +205,7 @@ TEST_F(CartesianAdmittanceControllerTest, update_success)
     controller_interface::return_type::OK);
 }
 
-TEST_F(CartesianAdmittanceControllerTest, deactivate_success)
+TEST_F(CartesianVicControllerTest, deactivate_success)
 {
   SetUpController();
 
@@ -214,7 +214,7 @@ TEST_F(CartesianAdmittanceControllerTest, deactivate_success)
   ASSERT_EQ(controller_->on_deactivate(rclcpp_lifecycle::State()), NODE_SUCCESS);
 }
 
-TEST_F(CartesianAdmittanceControllerTest, reactivate_success)
+TEST_F(CartesianVicControllerTest, reactivate_success)
 {
   SetUpController();
 
@@ -229,7 +229,7 @@ TEST_F(CartesianAdmittanceControllerTest, reactivate_success)
     controller_interface::return_type::OK);
 }
 
-TEST_F(CartesianAdmittanceControllerTest, publish_status_success)
+TEST_F(CartesianVicControllerTest, publish_status_success)
 {
   SetUpController();
 
@@ -263,7 +263,7 @@ TEST_F(CartesianAdmittanceControllerTest, publish_status_success)
   //   }
 }
 
-TEST_F(CartesianAdmittanceControllerTest, receive_message_and_publish_updated_status)
+TEST_F(CartesianVicControllerTest, receive_message_and_publish_updated_status)
 {
   SetUpController();
   rclcpp::executors::MultiThreadedExecutor executor;

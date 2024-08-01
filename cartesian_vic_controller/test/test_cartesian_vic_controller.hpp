@@ -74,15 +74,15 @@ rclcpp::WaitResultKind wait_for(rclcpp::SubscriptionBase::SharedPtr subscription
 }  // namespace
 
 // subclassing and friending so we can access member variables
-class TestableCartesianAdmittanceController : public cartesian_admittance_controller::
-  CartesianAdmittanceController
+class TestableCartesianVicController : public cartesian_admittance_controller::
+  CartesianVicController
 {
-  FRIEND_TEST(CartesianAdmittanceControllerTest, joint_names_parameter_not_set);
-  FRIEND_TEST(CartesianAdmittanceControllerTest, interface_parameter_not_set);
-  FRIEND_TEST(CartesianAdmittanceControllerTest, all_parameters_set_configure_success);
-  FRIEND_TEST(CartesianAdmittanceControllerTest, check_interfaces);
-  FRIEND_TEST(CartesianAdmittanceControllerTest, activate_success);
-  FRIEND_TEST(CartesianAdmittanceControllerTest, receive_message_and_publish_updated_status);
+  FRIEND_TEST(CartesianVicControllerTest, joint_names_parameter_not_set);
+  FRIEND_TEST(CartesianVicControllerTest, interface_parameter_not_set);
+  FRIEND_TEST(CartesianVicControllerTest, all_parameters_set_configure_success);
+  FRIEND_TEST(CartesianVicControllerTest, check_interfaces);
+  FRIEND_TEST(CartesianVicControllerTest, activate_success);
+  FRIEND_TEST(CartesianVicControllerTest, receive_message_and_publish_updated_status);
 
 public:
   CallbackReturn on_init() override
@@ -93,12 +93,12 @@ public:
     get_node()->set_parameter({"robot_description", robot_description_});
     get_node()->set_parameter({"robot_description_semantic", robot_description_semantic_});
 
-    return cartesian_admittance_controller::CartesianAdmittanceController::on_init();
+    return cartesian_admittance_controller::CartesianVicController::on_init();
   }
 
   CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override
   {
-    auto ret = cartesian_admittance_controller::CartesianAdmittanceController::on_configure(
+    auto ret = cartesian_admittance_controller::CartesianVicController::on_configure(
       previous_state);
     // Only if on_configure is successful create subscription
     if (ret == CallbackReturn::SUCCESS) {
@@ -134,7 +134,7 @@ private:
   const std::string robot_description_semantic_ = ros2_control_test_assets::valid_6d_robot_srdf;
 };
 
-class CartesianAdmittanceControllerTest : public ::testing::Test
+class CartesianVicControllerTest : public ::testing::Test
 {
 public:
   static void SetUpTestCase()
@@ -145,7 +145,7 @@ public:
   void SetUp()
   {
     // initialize controller
-    controller_ = std::make_unique<TestableCartesianAdmittanceController>();
+    controller_ = std::make_unique<TestableCartesianVicController>();
 
     command_publisher_node_ = std::make_shared<rclcpp::Node>("command_publisher");
 
@@ -447,7 +447,7 @@ protected:
   std::vector<hardware_interface::CommandInterface> command_itfs_;
 
   // Test related parameters
-  std::unique_ptr<TestableCartesianAdmittanceController> controller_;
+  std::unique_ptr<TestableCartesianVicController> controller_;
   rclcpp::Node::SharedPtr command_publisher_node_;
   rclcpp::Publisher<ControllerRefCompliantTrajectoryMsg>::SharedPtr
     compliant_frame_trajectory_publisher_;
@@ -465,18 +465,18 @@ protected:
 
 // From the tutorial: https://www.sandordargo.com/blog/2019/04/24/parameterized-testing-with-gtest
 class AdmittanceControllerTestParameterizedMissingParameters
-  : public CartesianAdmittanceControllerTest,
+  : public CartesianVicControllerTest,
   public ::testing::WithParamInterface<std::string>
 {
 public:
   virtual void SetUp()
   {
-    CartesianAdmittanceControllerTest::SetUp();
+    CartesianVicControllerTest::SetUp();
     auto node = std::make_shared<rclcpp::Node>("test_cartesian_admittance_controller");
     overrides_ = node->get_node_parameters_interface()->get_parameter_overrides();
   }
 
-  static void TearDownTestCase() {CartesianAdmittanceControllerTest::TearDownTestCase();}
+  static void TearDownTestCase() {CartesianVicControllerTest::TearDownTestCase();}
 
 protected:
   controller_interface::return_type SetUpController(const std::string & remove_name)
@@ -489,7 +489,7 @@ protected:
       }
     }
 
-    return CartesianAdmittanceControllerTest::SetUpController(
+    return CartesianVicControllerTest::SetUpController(
       "test_admittance_controller_no_overrides", parameter_overrides);
   }
 
@@ -498,13 +498,13 @@ protected:
 
 // From the tutorial: https://www.sandordargo.com/blog/2019/04/24/parameterized-testing-with-gtest
 class AdmittanceControllerTestParameterizedInvalidParameters
-  : public CartesianAdmittanceControllerTest,
+  : public CartesianVicControllerTest,
   public ::testing::WithParamInterface<std::tuple<std::string, rclcpp::ParameterValue>>
 {
 public:
-  virtual void SetUp() {CartesianAdmittanceControllerTest::SetUp();}
+  virtual void SetUp() {CartesianVicControllerTest::SetUp();}
 
-  static void TearDownTestCase() {CartesianAdmittanceControllerTest::TearDownTestCase();}
+  static void TearDownTestCase() {CartesianVicControllerTest::TearDownTestCase();}
 
 protected:
   controller_interface::return_type SetUpController()
@@ -514,7 +514,7 @@ protected:
     std::vector<rclcpp::Parameter> parameter_overrides;
     rclcpp::Parameter param(param_name, param_value);
     parameter_overrides.push_back(param);
-    return CartesianAdmittanceControllerTest::SetUpController(
+    return CartesianVicControllerTest::SetUpController(
       "test_cartesian_admittance_controller", parameter_overrides);
   }
 };
