@@ -42,7 +42,7 @@ INSTANTIATE_TEST_SUITE_P(
     // VIC rule parameters
     "vic.frame.id", "vic.plugin_name", "vic.plugin_package",
     "vic.selected_axes", "vic.inertia", "vic.stiffness", "vic.damping_ratio"
-  ));
+));
 
 INSTANTIATE_TEST_SUITE_P(
   InvalidParameterDuringConfiguration, VicControllerTestParameterizedInvalidParameters,

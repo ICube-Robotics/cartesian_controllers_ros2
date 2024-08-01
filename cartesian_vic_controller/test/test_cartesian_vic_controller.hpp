@@ -358,7 +358,7 @@ protected:
 
     std::vector<double> joint_state_values(joint_state_position_values_.begin(),
       joint_state_position_values_.end());
-      kinematics_->calculate_link_transform(
+    kinematics_->calculate_link_transform(
       joint_state_values,
       tcp_frame,
       robot_reference_pose
