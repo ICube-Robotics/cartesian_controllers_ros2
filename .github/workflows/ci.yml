@@ -23,14 +23,14 @@ jobs:
       - name: Build Docker Image
         uses: docker/build-push-action@v6
         with:
-          tags: cartesian_controllers_ros2:humble
+          tags: cartesian_controllers_ros2:jazzy
           file: .docker/ci/Dockerfile
           push: false
 
       - name: Build
         uses: addnab/docker-run-action@v3
         with:
-          image: cartesian_controllers_ros2:humble
+          image: cartesian_controllers_ros2:jazzy
           options: -v ${{github.workspace}}/:/ros/
           run: |
             cd /ros # structure = <...>/ros/src/cartesian_controllers_ros2/<...>
