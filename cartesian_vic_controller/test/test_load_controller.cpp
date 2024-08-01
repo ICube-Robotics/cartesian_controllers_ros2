@@ -31,6 +31,7 @@ TEST(TestLoadVicController, load_controller)
   controller_manager::ControllerManager cm(
     executor,
     ros2_control_test_assets::minimal_robot_urdf,
+    true,
     "test_controller_manager"
   );
 
