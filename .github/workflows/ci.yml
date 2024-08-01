@@ -34,7 +34,7 @@ jobs:
           options: -v ${{github.workspace}}/:/ros/
           run: |
             cd /ros # structure = <...>/ros/src/cartesian_controllers_ros2/<...>
-            . /opt/ros/humble/setup.sh
+            . /opt/ros/jazzy/setup.sh
             vcs import src < src/cartesian_controllers_ros2/cartesian_controllers_ros2.repos
             rosdep install --ignore-src --from-paths . -y -r
             colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --symlink-install
@@ -42,11 +42,11 @@ jobs:
       - name: Tests
         uses: addnab/docker-run-action@v3
         with:
-          image: cartesian_controllers_ros2:humble
+          image: cartesian_controllers_ros2:jazzy
           options: -v ${{github.workspace}}/:/ros/
           run: |
             cd /ros
-            . /opt/ros/humble/setup.sh
+            . /opt/ros/jazzy/setup.sh
             vcs import src < src/cartesian_controllers_ros2/cartesian_controllers_ros2.repos
             rosdep install --ignore-src --from-paths . -y -r
             colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --symlink-install

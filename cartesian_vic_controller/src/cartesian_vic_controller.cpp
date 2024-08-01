@@ -37,8 +37,10 @@ namespace cartesian_vic_controller
 controller_interface::CallbackReturn CartesianVicController::on_init()
 {
   // Try to retrieve urdf (used by kinematics / dynamics plugin)
-  std::string urdf_string;
-  get_node()->get_parameter("robot_description", urdf_string);
+  RCLCPP_INFO(
+    get_node()->get_logger(), "Trying to retrieve 'robot_description' parameter...");
+  std::string urdf_string = auto_declare<std::string>(
+    "robot_description", this->get_robot_description());
   if (urdf_string.empty()) {
     RCLCPP_ERROR(
       get_node()->get_logger(),
@@ -57,6 +59,7 @@ controller_interface::CallbackReturn CartesianVicController::on_init()
   }
 
   // initialize controller config
+  RCLCPP_INFO(get_node()->get_logger(), "Initializing controller config...");
   try {
     parameter_handler_ =
       std::make_shared<cartesian_vic_controller::ParamListener>(get_node());
@@ -69,6 +72,7 @@ controller_interface::CallbackReturn CartesianVicController::on_init()
     return controller_interface::CallbackReturn::ERROR;
   }
 
+  RCLCPP_INFO(get_node()->get_logger(), "Initialized controller with %li joints", num_joints_);
   // allocate dynamic memory
   joint_state_.positions.assign(num_joints_, 0.0);  // std::nan);
   joint_state_.velocities.assign(num_joints_, 0.0);  //  std::nan);
@@ -754,7 +758,8 @@ bool CartesianVicController::is_command_interfaces_config_valid() const
     if (has_position_command_interface_ || has_velocity_command_interface_) {
       RCLCPP_ERROR(
         get_node()->get_logger(),
-        "Impedance control mode is enabled, but unsupported position or velocity command interfaces are specified!");
+        "Impedance control mode is enabled, but unsupported position or velocity"
+        " command interfaces are specified!");
       all_ok = false;
     }
   } else if (vic_->get_control_mode() == cartesian_vic_controller::ControlMode::ADMITTANCE) {
@@ -762,14 +767,16 @@ bool CartesianVicController::is_command_interfaces_config_valid() const
     if (!has_position_command_interface_ && !has_velocity_command_interface_) {
       RCLCPP_ERROR(
         get_node()->get_logger(),
-        "Admittance control mode is enabled, but no position or velocity command interface are specified!");
+        "Admittance control mode is enabled, but no position or velocity command"
+        " interface are specified!");
       all_ok = false;
     }
 
     if (has_effort_command_interface_) {
       RCLCPP_ERROR(
         get_node()->get_logger(),
-        "Admittance control mode is enabled, but an unsupported effort command interface is specified!");
+        "Admittance control mode is enabled, but an unsupported effort command interface"
+        " is specified!");
       all_ok = false;
     }
   } else {
