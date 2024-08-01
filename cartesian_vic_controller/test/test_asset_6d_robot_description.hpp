@@ -259,7 +259,7 @@ const auto valid_6d_robot_urdf =
       <state_interface name="position"/>
     </joint>
     <!-- F/T sensor -->
-    <sensor name="ft_sensor">
+    <sensor name="tool0">
       <state_interface name="force.x">
         <param name="initial_value">0.0</param>
       </state_interface>
