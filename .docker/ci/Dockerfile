@@ -1,4 +1,4 @@
-ARG ROS_DISTRO="humble"
+ARG ROS_DISTRO="jazzy"
 FROM ros:${ROS_DISTRO}
 
 COPY . /ros2_dev/src/cartesian_controllers_ros2
