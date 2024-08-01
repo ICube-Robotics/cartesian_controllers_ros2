@@ -22,7 +22,7 @@
 #include "rclcpp/utilities.hpp"
 #include "ros2_control_test_assets/descriptions.hpp"
 
-TEST(TestLoadAdmittanceController, load_controller)
+TEST(TestLoadVicController, load_controller)
 {
   std::shared_ptr<rclcpp::Executor> executor =
     std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
@@ -34,8 +34,8 @@ TEST(TestLoadAdmittanceController, load_controller)
 
   ASSERT_EQ(
     cm.load_controller(
-      "test_cartesian_admittance_controller",
-      "cartesian_admittance_controller/CartesianAdmittanceController"),
+      "test_cartesian_vic_controller",
+      "cartesian_vic_controller/CartesianVicController"),
     nullptr);
 }
 
