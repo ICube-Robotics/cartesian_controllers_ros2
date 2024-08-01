@@ -758,7 +758,8 @@ bool CartesianVicController::is_command_interfaces_config_valid() const
     if (has_position_command_interface_ || has_velocity_command_interface_) {
       RCLCPP_ERROR(
         get_node()->get_logger(),
-        "Impedance control mode is enabled, but unsupported position or velocity command interfaces are specified!");
+        "Impedance control mode is enabled, but unsupported position or velocity"
+        " command interfaces are specified!");
       all_ok = false;
     }
   } else if (vic_->get_control_mode() == cartesian_vic_controller::ControlMode::ADMITTANCE) {
@@ -766,14 +767,16 @@ bool CartesianVicController::is_command_interfaces_config_valid() const
     if (!has_position_command_interface_ && !has_velocity_command_interface_) {
       RCLCPP_ERROR(
         get_node()->get_logger(),
-        "Admittance control mode is enabled, but no position or velocity command interface are specified!");
+        "Admittance control mode is enabled, but no position or velocity command"
+        " interface are specified!");
       all_ok = false;
     }
 
     if (has_effort_command_interface_) {
       RCLCPP_ERROR(
         get_node()->get_logger(),
-        "Admittance control mode is enabled, but an unsupported effort command interface is specified!");
+        "Admittance control mode is enabled, but an unsupported effort command interface"
+        " is specified!");
       all_ok = false;
     }
   } else {
