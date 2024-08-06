@@ -27,13 +27,13 @@ TEST(TestLoadVicController, load_controller)
   std::shared_ptr<rclcpp::Executor> executor =
     std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
 
-  // Warning: this is the constructor syntax for jazzy, not humble...
+  // Warning: this is the constructor syntax for humble...
   // see https://github.com/ros-controls/ros2_control/blob/42107676e96d6517c258cb9c06e0adcfbb23fc3b/controller_manager/src/controller_manager.cpp#L206-L209
   controller_manager::ControllerManager cm(
+    std::make_unique<hardware_interface::ResourceManager>(
+      ros2_control_test_assets::valid_6d_robot_urdf),
     executor,
-    ros2_control_test_assets::valid_6d_robot_urdf,
-    true /*activate_all_hw_components*/,
-    "test_controller_manager" /*manager_node_name*/
+    "test_controller_manager"
   );
 
   ASSERT_EQ(
