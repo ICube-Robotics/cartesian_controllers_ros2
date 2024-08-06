@@ -29,6 +29,7 @@ cartesian_vic_controller:
       gravity: [0.0, 0.0, -9.81]
 
     ft_sensor:
+      is_enabled: true
       name: ftsensor
       frame:
         id: ft_sensor  # Wrench measurements are in this frame

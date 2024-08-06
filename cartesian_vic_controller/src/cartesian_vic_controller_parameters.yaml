@@ -80,6 +80,10 @@ cartesian_vic_controller:
     }
 
   ft_sensor:
+    is_enabled: {
+      type: bool,
+      description: "Specifies if the force torque sensor is enabled."
+    }
     name: {
       type: string,
       description: "Specifies the name of the force torque sensor in the robot description which will be used in the vic calculation."
@@ -167,9 +171,15 @@ cartesian_vic_controller:
     }
     activate_gravity_compensation: {
       type: bool,
-      default_value: true,
+      default_value: false,
       read_only: true,
       description: "Specifies if the coriolis and gravity compensation should be activated."
+    }
+    use_natural_robot_inertia: {
+      type: bool,
+      default_value: false,
+      read_only: true,
+      description: "If true, the natural inertia of the robot is used as desired inertia in VIC computations."
     }
 
     inertia: {

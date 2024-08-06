@@ -34,7 +34,8 @@ INSTANTIATE_TEST_SUITE_P(
   ::testing::Values(
     "admittance.inertia", "admittance.selected_axes", "admittance.stiffness",
     "command_interfaces", "control.frame.id", "admittance.frame.id",
-    "fixed_world_frame.frame.id", "ft_sensor.frame.id", "ft_sensor.name",
+    "fixed_world_frame.frame.id",
+    "ft_sensor.is_enabled", "ft_sensor.frame.id", "ft_sensor.name",
     "gravity_compensation.CoG.pos", "gravity_compensation.frame.id", "joints", "kinematics.base",
     "kinematics.plugin_name", "kinematics.plugin_package", "kinematics.tip", "state_interfaces"));
 

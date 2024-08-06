@@ -34,6 +34,7 @@ namespace cartesian_vic_controller
 CartesianVicRule::CartesianVicRule()
 : num_joints_(0),
   vic_state_(0, ControlMode::INVALID),
+  logger_(rclcpp::get_logger("cartesian_vic_rule")),
   dynamics_loader_(nullptr)
 {
   // Nothing to do, see init().
@@ -76,7 +77,7 @@ CartesianVicRule::configure(
       }
     } catch (pluginlib::PluginlibException & ex) {
       RCLCPP_ERROR(
-        rclcpp::get_logger("CartesianVicRule"),
+        logger_,
         "Exception while loading the IK plugin '%s': '%s'",
         parameters_.dynamics.plugin_name.c_str(), ex.what()
       );
@@ -84,7 +85,7 @@ CartesianVicRule::configure(
     }
   } else {
     RCLCPP_ERROR(
-      rclcpp::get_logger("CartesianVicRule"),
+      logger_,
       "A differential IK plugin name was not specified in the config file.");
     return controller_interface::return_type::ERROR;
   }
@@ -106,7 +107,7 @@ CartesianVicRule::init_reference_frame_trajectory(
   // Update kinematics state
   if (!update_kinematics(-1.0, current_joint_state)) {
     RCLCPP_ERROR(
-      rclcpp::get_logger("CartesianVicRule"),
+      logger_,
       "Failed to update internal state in 'init_reference_frame_trajectory()'!");
     return controller_interface::return_type::ERROR;
   }
@@ -122,7 +123,7 @@ CartesianVicRule::init_reference_frame_trajectory(
   std::stringstream ss_inital_joint_positions;
   ss_inital_joint_positions << initial_joint_positions_.transpose();
   RCLCPP_INFO(
-    rclcpp::get_logger("CartesianVicRule"),
+    logger_,
     "Initial joint positions set to : %s",
     ss_inital_joint_positions.str().c_str());
 
@@ -143,7 +144,7 @@ CartesianVicRule::init_reference_frame_trajectory(
       );
     if (!success) {
       RCLCPP_ERROR(
-        rclcpp::get_logger("CartesianVicRule"),
+        logger_,
         "Failed to fill the desired robot state for index=%u!",
         i);
       return controller_interface::return_type::ERROR;
@@ -160,7 +161,7 @@ controller_interface::return_type
 CartesianVicRule::reset(const size_t num_joints)
 {
   if (control_mode_ == ControlMode::INVALID) {
-    RCLCPP_ERROR(rclcpp::get_logger("CartesianVicRule"), "Invalid control mode!");
+    RCLCPP_ERROR(logger_, "Invalid control mode!");
     return controller_interface::return_type::ERROR;
   }
   // Reset vic state
@@ -223,7 +224,7 @@ void CartesianVicRule::apply_parameters_update()
         parameters_.nullspace_control.joint_inertia[i];
     } else {
       RCLCPP_ERROR(
-        rclcpp::get_logger("CartesianVicRule"),
+        logger_,
         "Invalid size for nullspace_inertia vector!");
       vic_state_.input_data.nullspace_joint_inertia(i) = default_nullspace_inertia;
     }
@@ -236,7 +237,7 @@ void CartesianVicRule::apply_parameters_update()
         parameters_.nullspace_control.joint_stiffness[i];
     } else {
       RCLCPP_ERROR(
-        rclcpp::get_logger("CartesianVicRule"),
+        logger_,
         "Invalid size for nullspace_stiffness vector!");
       vic_state_.input_data.nullspace_joint_stiffness(i) = default_nullspace_stiffness;
     }
@@ -249,7 +250,7 @@ void CartesianVicRule::apply_parameters_update()
         parameters_.nullspace_control.joint_damping[i];
     } else {
       RCLCPP_ERROR(
-        rclcpp::get_logger("CartesianVicRule"),
+        logger_,
         "Invalid size for nullspace_damping vector!");
       vic_state_.input_data.nullspace_joint_damping(i) = default_nullspace_damping;
     }
@@ -265,7 +266,7 @@ void CartesianVicRule::apply_parameters_update()
     );
   } else {
     RCLCPP_ERROR(
-      rclcpp::get_logger("CartesianVicRule"),
+      logger_,
       "Invalid size for desired_joint_position vector!");
     vic_state_.input_data.nullspace_desired_joint_positions = initial_joint_positions_;
   }
@@ -346,119 +347,122 @@ CartesianVicRule::controller_state_to_msg(
   }
 }
 
-
 controller_interface::return_type
 CartesianVicRule::update(
   const rclcpp::Duration & period,
-  const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
-  const geometry_msgs::msg::Wrench & measured_wrench,
-  const std::vector<double> & measured_external_torques,
+  const MeasurementData & measurement_data,
   trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
 {
-  // Update parameters
+  if (update_input_data(period, measurement_data) != controller_interface::return_type::OK) {
+    RCLCPP_ERROR(
+      logger_,
+      "Failed to update VIC input data!"
+    );
+    // Set commanded position to the previous one
+    joint_state_command.positions = measurement_data.get_joint_state().positions;
+    // Set commanded velocity/acc to zero
+    std::fill(
+      joint_state_command.velocities.begin(),
+      joint_state_command.velocities.end(),
+      0
+    );
+    std::fill(
+      joint_state_command.accelerations.begin(),
+      joint_state_command.accelerations.end(),
+      0
+    );
+    // Set efforts to zero
+    std::fill(
+      joint_state_command.effort.begin(),
+      joint_state_command.effort.end(),
+      0
+    );
+    return controller_interface::return_type::ERROR;
+  }
+  return compute_controls(period, joint_state_command);
+}
+
+controller_interface::return_type
+CartesianVicRule::update_input_data(
+  const rclcpp::Duration & period,
+  const MeasurementData & measurement_data)
+{
+  bool success = true;     // return flag
+  const double dt = period.seconds();
+
+    // Update parameters
   if (parameters_.enable_parameter_update_without_reactivation) {
     apply_parameters_update();
   }
 
-  // Process external torques
-  bool has_valid_external_torques = true;
-  if (!process_external_torques_measurements(period.seconds(), measured_external_torques)) {
-    has_valid_external_torques = false;
-    RCLCPP_WARN_THROTTLE(
-      rclcpp::get_logger("CartesianVicRule"),
-      internal_clock_, 1000,
-      "Invalid external torques data!");
+    // Process F/T sensor data
+  bool has_valid_ft_wrench = measurement_data.has_ft_sensor_data();
+  if (has_valid_ft_wrench) {
+    has_valid_ft_wrench &= process_wrench_measurements(
+        period.seconds(), measurement_data.get_ft_sensor_wrench());
   }
-  // Update VIC and compute joint command
-  auto ret = internal_update(
-    period,
-    current_joint_state,
-    measured_wrench,
-    joint_state_command,
-    has_valid_external_torques);
-  if (ret != controller_interface::return_type::OK) {
-    RCLCPP_ERROR(
-      rclcpp::get_logger("CartesianVicRule"),
-      "Failed to update CartesianVicRule");
+  if (!has_valid_ft_wrench) {
+    vic_state_.input_data.reset_ft_sensor_wrench();
+    if (measurement_data.has_ft_sensor_data()) {
+      success = false;
+      RCLCPP_WARN_THROTTLE(
+          logger_,
+          internal_clock_,
+          1000,
+          "Invalid F/T sensor data provided to VIC rule!");
+    }
   }
-  return ret;
+
+    // Process external torques
+  bool has_valid_external_torques = measurement_data.has_external_torques_data();
+  if (has_valid_external_torques) {
+    has_valid_external_torques &= process_external_torques_measurements(
+        period.seconds(), measurement_data.get_external_torques());
+  }
+  if (!has_valid_external_torques) {
+    vic_state_.input_data.reset_joint_state_external_torques();
+    if (measurement_data.has_external_torques_data()) {
+      success = false;
+      RCLCPP_WARN_THROTTLE(
+          logger_,
+          internal_clock_,
+          1000,
+          "Invalid external torques provided to VIC rule!");
+    }
+  }
+
+    // Update current robot kinematic state
+  success &= update_kinematics(
+      dt,
+      measurement_data.get_joint_state()
+  );
+
+  if (!success) {
+    return controller_interface::return_type::ERROR;
+  }
+  return controller_interface::return_type::OK;
 }
 
 controller_interface::return_type
-CartesianVicRule::update(
+CartesianVicRule::compute_controls(
   const rclcpp::Duration & period,
-  const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
-  const geometry_msgs::msg::Wrench & measured_wrench,
   trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
-{
-  // Update parameters
-  if (parameters_.enable_parameter_update_without_reactivation) {
-    apply_parameters_update();
-  }
-
-  // Update VIC and compute joint command
-  auto ret = internal_update(
-    period,
-    current_joint_state,
-    measured_wrench,
-    joint_state_command,
-    false /*use_external_torques*/);
-  if (ret != controller_interface::return_type::OK) {
-    RCLCPP_ERROR(
-      rclcpp::get_logger("CartesianVicRule"),
-      "Failed to update CartesianVicRule");
-  }
-  return ret;
-}
-
-controller_interface::return_type
-CartesianVicRule::internal_update(
-  const rclcpp::Duration & period,
-  const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state,
-  const geometry_msgs::msg::Wrench & measured_wrench,
-  trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command,
-  bool use_external_torques)
 {
   bool success = true;   // return flag
   const double dt = period.seconds();
-
-  // Check external torques availability
-  if (!use_external_torques) {
-    // No external torque sensor, reset flag and set data to zero
-    vic_state_.input_data.reset_joint_state_external_torques();
-  }
-
-  if (use_external_torques && !vic_state_.input_data.has_external_torque_sensor()) {
-    RCLCPP_ERROR(
-      rclcpp::get_logger("CartesianVicRule"),
-      "External torque sensor requested, but not available!"
-    );
-    success = false;
-  }
-
-  // Update current robot kinematic state
-  success &= update_kinematics(
-    dt,
-    current_joint_state
-  );
-
-  // Process wrench measurement
-  success &= process_wrench_measurements(dt, measured_wrench);
-
-  // Process external torques
-  // TODO(tpoignonec): success &= process_external_torques(dt, measured_external_torques);
-
   // Compute controls
   success &= compute_controls(dt, vic_state_.input_data, vic_state_.command_data);
 
   // If an error is detected, set commanded velocity to zero
   if (!success) {
     RCLCPP_ERROR(
-      rclcpp::get_logger("CartesianVicRule"),
+      logger_,
       "Failed to compute the controls!"
     );
     // Set commanded position to the previous one
-    joint_state_command.positions = current_joint_state.positions;
+    for (size_t i = 0; i < parameters_.joints.size(); ++i) {
+      joint_state_command.positions[i] = vic_state_.input_data.joint_state_position(i);
+    }
 
     // Set commanded velocity/acc to zero
     std::fill(
@@ -519,6 +523,8 @@ CartesianVicRule::internal_update(
   return controller_interface::return_type::OK;
 }
 
+// Internal functions
+
 bool CartesianVicRule::update_kinematics(
   double dt,
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state)
@@ -573,11 +579,18 @@ bool CartesianVicRule::update_kinematics(
   );
 
   // Pre-compute commonly used transformations
-  success &= dynamics_->calculate_link_transform(
-    vic_state_.input_data.joint_state_position,
-    vic_state_.input_data.ft_sensor_frame,
-    vic_transforms_.base_ft_
-  );
+  if (parameters_.ft_sensor.is_enabled) {
+    success &= dynamics_->calculate_link_transform(
+      vic_state_.input_data.joint_state_position,
+      vic_state_.input_data.ft_sensor_frame,
+      vic_transforms_.base_ft_
+    );
+  } else {
+    // TODO(tpoignonec): how to make sure it is not used in that case ?
+    // In theory, there is no reason to use it if no wrench is available, but you never know...
+    vic_transforms_.base_ft_.setIdentity();
+  }
+
   success &= dynamics_->calculate_link_transform(
     vic_state_.input_data.joint_state_position,
     parameters_.dynamics.tip,
@@ -661,12 +674,12 @@ bool CartesianVicRule::process_wrench_measurements(
       wrench_world_(i) = new_wrench_world(i);
     }
   }
-
   // Transform wrench_world_ into base frame
-  vic_state_.input_data.robot_current_wrench_at_ft_frame.head(3) =
+  wrench_base_.head(3) = \
     vic_transforms_.world_base_.rotation().transpose() * wrench_world_.head(3);
-  vic_state_.input_data.robot_current_wrench_at_ft_frame.tail(3) =
+  wrench_base_.tail(3) = \
     vic_transforms_.world_base_.rotation().transpose() * wrench_world_.tail(3);
+  vic_state_.input_data.set_ft_sensor_wrench(wrench_base_);
 
   return true;
 }
@@ -678,7 +691,7 @@ bool CartesianVicRule::process_external_torques_measurements(
   // Check data validity
   if (static_cast<size_t>(measured_external_torques.size()) != num_joints_) {
     RCLCPP_ERROR(
-      rclcpp::get_logger("CartesianVicRule"),
+      logger_,
       "Invalid size for measured_external_torques vector!");
     filtered_external_torques_.setZero();
     vic_state_.input_data.set_joint_state_external_torques(filtered_external_torques_);
