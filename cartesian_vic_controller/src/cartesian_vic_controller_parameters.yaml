@@ -176,6 +176,12 @@ cartesian_vic_controller:
       read_only: true,
       description: "Specifies if the coriolis and gravity compensation should be activated."
     }
+    use_natural_robot_inertia: {
+      type: bool,
+      default_value: false,
+      read_only: true,
+      description: "If true, the natural inertia of the robot is used as desired inertia in VIC computations."
+    }
 
     inertia: {
       type: double_array,
