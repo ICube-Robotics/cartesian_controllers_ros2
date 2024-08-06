@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "cartesian_vic_controller/visibility_control.h"
+#include "cartesian_vic_controller/measurement_data.hpp"
 #include "cartesian_vic_controller/cartesian_vic_rule.hpp"
 #include "cartesian_vic_controller/external_torque_sensor.hpp"
 
@@ -133,16 +134,13 @@ protected:
    * @brief Read values from hardware interfaces and set corresponding fields of joint_state and
    * ft_values
    */
-  bool read_state_from_hardware(
-    trajectory_msgs::msg::JointTrajectoryPoint & joint_state,
-    geometry_msgs::msg::Wrench & ft_values,
-    std::vector<double> & external_torques);
+  bool read_state_from_hardware(MeasurementData & measurement_data);
 
 
   /**
    * @brief Initialize the vic rule
    */
-  bool initialize_vic_rule(const trajectory_msgs::msg::JointTrajectoryPoint & joint_state);
+  bool initialize_vic_rule(const MeasurementData & measurement_data);
 
   /**
    * @brief Try to retrieve the URDF from the parameter server. If this fails, it will
@@ -224,13 +222,18 @@ protected:
   cartesian_control_msgs::msg::CompliantFrameTrajectory cartesian_state_;
   cartesian_control_msgs::msg::CompliantFrameTrajectory cartesian_reference_,
     last_cartesian_reference_;
-  // joint_state_: current joint readings from the hardware
   // joint_command_: joint reference value computed by the controller
-  trajectory_msgs::msg::JointTrajectoryPoint joint_state_;
   trajectory_msgs::msg::JointTrajectoryPoint joint_command_, last_commanded_joint_state_;
-  // ft_values_: values read from the force torque sensor
+
+  // measurement data used by the vic controller
+  //   - joint state: current joint readings from the hardware
+  //   - measured wrench: values read from the ft sensor (optional)
+  //   - external torques: values read from the external torque sensor (optional)
+  MeasurementData measurement_data_{0};
+
+  // ft_values_: values read from the force torque sensor (temporary storage)
   geometry_msgs::msg::Wrench ft_values_;
-  // ext_torque_values_ : values read from the external torque sensor (optional, zero if disabled)
+  // ext_torque_values_ : values read from the external torque sensor (temporary storage)
   std::vector<double> ext_torque_values_;
 };
 

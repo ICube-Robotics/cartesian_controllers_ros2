@@ -34,6 +34,7 @@
 
 namespace cartesian_vic_controller
 {
+
 controller_interface::CallbackReturn CartesianVicController::on_init()
 {
   // Try to retrieve urdf (used by kinematics / dynamics plugin)
@@ -70,12 +71,9 @@ controller_interface::CallbackReturn CartesianVicController::on_init()
   }
 
   // allocate dynamic memory
-  joint_state_.positions.assign(num_joints_, 0.0);  // std::nan);
-  joint_state_.velocities.assign(num_joints_, 0.0);  //  std::nan);
-  joint_state_.accelerations.assign(num_joints_, 0.0);  //  std::nan);
-
-  joint_command_ = joint_state_;
-  last_commanded_joint_state_ = joint_state_;
+  measurement_data_ = MeasurementData(num_joints_);
+  joint_command_ = measurement_data_.get_joint_state();
+  last_commanded_joint_state_ = measurement_data_.get_joint_state();
 
   return controller_interface::CallbackReturn::SUCCESS;
 }
@@ -137,7 +135,7 @@ controller_interface::return_type CartesianVicController::update(
   }
 
   // get all controller inputs
-  bool is_state_valid = read_state_from_hardware(joint_state_, ft_values_, ext_torque_values_);
+  bool is_state_valid = read_state_from_hardware(measurement_data_);
 
   bool all_ok = true;
   // make sure impedance was initialized
@@ -146,7 +144,7 @@ controller_interface::return_type CartesianVicController::update(
     return controller_interface::return_type::OK;
   } else if (!is_vic_initialized_ && is_state_valid) {
     // Init current desired pose from current joint position
-    if (!initialize_vic_rule(joint_state_)) {
+    if (!initialize_vic_rule(measurement_data_)) {
       return controller_interface::return_type::ERROR;
     }
   } else if (!is_state_valid) {
@@ -166,25 +164,11 @@ controller_interface::return_type CartesianVicController::update(
     }
     // apply vic control to reference to determine desired state
 
-    controller_interface::return_type ret_vic = controller_interface::return_type::ERROR;
-    if (external_torque_sensor_ && vic_->parameters_.external_torque_sensor.is_enabled) {
-      // Update vic with external torques
-      ret_vic = vic_->update(
+    auto ret_vic = vic_->update(
         period,
-        joint_state_,
-        ft_values_,
-        ext_torque_values_,
+        measurement_data_,
         joint_command_
-      );
-    } else {
-      // Update vic WITHOUT external torques
-      ret_vic = vic_->update(
-        period,
-        joint_state_,
-        ft_values_,
-        joint_command_
-      );
-    }
+    );
     if (ret_vic != controller_interface::return_type::OK) {
       std::fill(
         joint_command_.accelerations.begin(), joint_command_.accelerations.end(), 0.0);
@@ -361,8 +345,17 @@ controller_interface::CallbackReturn CartesianVicController::on_configure(
   state_publisher_->unlock();
 
   // Initialize F/T sensor semantic_component
-  force_torque_sensor_ = std::make_unique<semantic_components::ForceTorqueSensor>(
-    semantic_components::ForceTorqueSensor(vic_->parameters_.ft_sensor.name));
+  if (vic_->parameters_.ft_sensor.is_enabled) {
+    RCLCPP_INFO(get_node()->get_logger(), "Force / torque sensor is enabled");
+    if (vic_->parameters_.ft_sensor.name.empty()) {
+      RCLCPP_ERROR(
+        get_node()->get_logger(),
+        "Force / torque sensor is enabled, but sensor name is empty!");
+      return CallbackReturn::FAILURE;
+    }
+    force_torque_sensor_ = std::make_unique<semantic_components::ForceTorqueSensor>(
+      semantic_components::ForceTorqueSensor(vic_->parameters_.ft_sensor.name));
+  }
 
   // Initialize external torque sensor semantic_component
   if (vic_->parameters_.external_torque_sensor.is_enabled) {
@@ -444,8 +437,8 @@ controller_interface::CallbackReturn CartesianVicController::on_activate(
   }
 
   // initialize states
-  read_state_from_hardware(joint_state_, ft_values_, ext_torque_values_);
-  for (auto val : joint_state_.positions) {
+  read_state_from_hardware(measurement_data_);
+  for (auto val : measurement_data_.joint_state.positions) {
     if (std::isnan(val)) {
       RCLCPP_ERROR(get_node()->get_logger(), "Failed to read joint positions from the hardware.\n");
       return controller_interface::CallbackReturn::ERROR;
@@ -502,10 +495,11 @@ controller_interface::CallbackReturn CartesianVicController::on_error(
 }
 
 bool CartesianVicController::read_state_from_hardware(
-  trajectory_msgs::msg::JointTrajectoryPoint & state_current,
-  geometry_msgs::msg::Wrench & ft_values,
-  std::vector<double> & external_torques)
+  MeasurementData & measurement_data)
 {
+  // reset data availability in case of error
+  measurement_data.reset_data_availability();
+
   // if any interface has nan values, assume state_current is the last command state
   bool all_ok = true;
   bool nan_position = false;
@@ -515,6 +509,9 @@ bool CartesianVicController::read_state_from_hardware(
   size_t pos_ind = 0;  // Mandatory state interface
   size_t vel_ind = pos_ind + has_velocity_state_interface_;
   size_t acc_ind = vel_ind + has_acceleration_state_interface_;
+
+  auto & state_current = measurement_data.joint_state;
+
   for (size_t joint_ind = 0; joint_ind < num_joints_; ++joint_ind) {
     if (has_position_state_interface_) {
       state_current.positions[joint_ind] =
@@ -551,46 +548,46 @@ bool CartesianVicController::read_state_from_hardware(
   }
 
   // if any ft_values are nan, assume values are zero
-  force_torque_sensor_->get_values_as_message(ft_values);
-  if (
-    std::isnan(ft_values.force.x) || std::isnan(ft_values.force.y) ||
-    std::isnan(ft_values.force.z) || std::isnan(ft_values.torque.x) ||
-    std::isnan(ft_values.torque.y) || std::isnan(ft_values.torque.z))
-  {
+  if (!force_torque_sensor_ && vic_->parameters_.ft_sensor.is_enabled) {
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(), *clock, 1000, "Force/Torque sensor unavailable!");
     all_ok &= false;
-    ft_values = geometry_msgs::msg::Wrench();
+  }
+  if (force_torque_sensor_ && vic_->parameters_.ft_sensor.is_enabled) {
+    force_torque_sensor_->get_values_as_message(ft_values_);
+    if (
+      std::isnan(ft_values_.force.x) || std::isnan(ft_values_.force.y) ||
+      std::isnan(ft_values_.force.z) || std::isnan(ft_values_.torque.x) ||
+      std::isnan(ft_values_.torque.y) || std::isnan(ft_values_.torque.z))
+    {
+      all_ok &= false;
+      ft_values_ = geometry_msgs::msg::Wrench();
+      RCLCPP_WARN_THROTTLE(get_node()->get_logger(), *clock, 1000, "Force/Torque sensor is NaN!");
+    } else {
+      all_ok &= measurement_data.update_ft_sensor_wrench(ft_values_);
+    }
   }
 
-  // if any external_torques are nan, assume values are zero
-  if (external_torque_sensor_ && vic_->parameters_.external_torque_sensor.is_enabled) {
-    external_torques = external_torque_sensor_->get_torques();
-  } else {
-    external_torques = std::vector<double>(num_joints_, 0.0);
-  }
   if (!external_torque_sensor_ && vic_->parameters_.external_torque_sensor.is_enabled) {
     RCLCPP_WARN_THROTTLE(
       get_node()->get_logger(), *clock, 1000, "External torque sensor unavailable!");
     all_ok &= false;
   }
-  if (vic_->parameters_.external_torque_sensor.is_enabled &&
-    external_torques.size() != num_joints_)
-  {
-    RCLCPP_WARN_THROTTLE(
-      get_node()->get_logger(), *clock, 1000,
-      "External torque sensor has incorrect size! Expected %lu, got %lu. Setting to zero",
-      num_joints_, external_torques.size());
-    external_torques = std::vector<double>(num_joints_, 0.0);
-    all_ok &= false;
-  }
-  bool ext_torque_has_nan = false;
-  for (size_t i = 0; i < num_joints_; ++i) {
-    ext_torque_has_nan |= std::isnan(external_torques[i]);
-  }
-  if (ext_torque_has_nan) {
-    all_ok &= false;
-    external_torques = std::vector<double>(num_joints_, 0.0);
-    RCLCPP_WARN_THROTTLE(
-      get_node()->get_logger(), *clock, 1000, "External torque contains one or more NaN!");
+  if (external_torque_sensor_ && vic_->parameters_.external_torque_sensor.is_enabled) {
+    ext_torque_values_ = external_torque_sensor_->get_torques();
+    bool ext_torque_has_nan = false;
+    for (size_t i = 0; i < num_joints_; ++i) {
+      ext_torque_has_nan |= std::isnan(ext_torque_values_[i]);
+    }
+    if (ext_torque_has_nan || ext_torque_values_.size() != num_joints_) {
+      all_ok &= false;
+      ext_torque_values_ = std::vector<double>(num_joints_, 0.0);
+      RCLCPP_WARN_THROTTLE(
+        get_node()->get_logger(), *clock, 1000,
+        "Invalid external torque measurements (%s)!", ext_torque_has_nan ? "NaN" : "wrong size");
+    } else {
+      all_ok &= measurement_data.update_external_torques(ext_torque_values_);
+    }
   }
 
   return all_ok;
@@ -708,24 +705,12 @@ bool CartesianVicController::write_admittance_state_to_hardware(
 }
 
 bool CartesianVicController::initialize_vic_rule(
-  const trajectory_msgs::msg::JointTrajectoryPoint & joint_state)
+  const MeasurementData & measurement_data)
 {
   bool all_ok = true;
 
-  RCLCPP_INFO(
-    get_node()->get_logger(),
-    "Initializing VIC rule with joint positions: [%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f]\n",
-    joint_state.positions[0],
-    joint_state.positions[1],
-    joint_state.positions[2],
-    joint_state.positions[3],
-    joint_state.positions[4],
-    joint_state.positions[5],
-    joint_state.positions[6]
-  );
-
   // Use current joint_state as a default reference
-  auto ret = vic_->init_reference_frame_trajectory(joint_state);
+  auto ret = vic_->init_reference_frame_trajectory(measurement_data.get_joint_state());
   if (ret != controller_interface::return_type::OK) {
     all_ok = false;
     RCLCPP_ERROR(
@@ -733,8 +718,8 @@ bool CartesianVicController::initialize_vic_rule(
       "Failed to initialize the reference compliance frame trajectory.\n");
     return false;
   }
-  joint_command_ = joint_state;
-  last_commanded_joint_state_ = joint_state;
+  joint_command_ = measurement_data.get_joint_state();
+  last_commanded_joint_state_ = measurement_data.get_joint_state();
   is_vic_initialized_ = all_ok;
   return all_ok;
 }

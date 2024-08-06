@@ -27,6 +27,7 @@ namespace cartesian_vic_controller
 controller_interface::return_type VanillaCartesianAdmittanceRule::init(
   const std::shared_ptr<cartesian_vic_controller::ParamListener> & parameter_handler)
 {
+  logger_ = rclcpp::get_logger("vanilla_cartesian_admittance_rule");
   // Initialize CartesianVicRule
   control_mode_ = ControlMode::ADMITTANCE;
   auto ret = CartesianVicRule::init(parameter_handler);
@@ -63,6 +64,9 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   const VicInputData & vic_input_data,
   VicCommandData & vic_command_data)
 {
+  bool success = true;
+
+  // Get reference compliant frame at t_k
   const CompliantFrame & reference_compliant_frame =
     vic_input_data.reference_compliant_frames.get_compliant_frame(0);
 
@@ -128,24 +132,32 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     reference_compliant_frame.velocity - \
     vic_input_data.robot_current_velocity;
 
-  // External force at interaction frame (assumed to be control frame), expressed in the base frame
-  // (note that this is the measured force, the the generalized wrench used in VIC papers...)
-  Eigen::Matrix<double, 6, 1> F_ext = vic_input_data.robot_current_wrench_at_ft_frame;
+  // External force at interaction frame (assumed to be control frame)
+  Eigen::Matrix<double, 6, 1> F_ext = Eigen::Matrix<double, 6, 1>::Zero();
+  if (vic_input_data.has_ft_sensor()) {
+    F_ext = -vic_input_data.get_ft_sensor_wrench();
+  } else {
+    success &= false;
+    RCLCPP_ERROR(
+      logger_,
+      "F/T sensor is required for inertia shaping! Setting wrenches to zero!"
+    );
+  }
 
   // Compute admittance control law in the base frame
   // ------------------------------------------------
-  // commanded_acc = p_ddot_desired + inv(M) * (K * err_p + D * err_p_dot + f_ext)
+  // commanded_acc = p_ddot_desired + inv(M) * (K * err_p + D * err_p_dot - f_ext)
   // where err_p = p_desired - p_current
 
   Eigen::Matrix<double, 6, 1> commanded_cartesian_acc =
     reference_compliant_frame.acceleration + \
-    M_inv * (K * error_pose + D * error_velocity + F_ext);
+    M_inv * (K * error_pose + D * error_velocity - F_ext);
 
   robot_command_twist_ += last_robot_commanded_twist_ + commanded_cartesian_acc * dt;
 
   auto previous_jnt_cmd_velocity = vic_command_data.joint_command_velocity;
 
-  bool success = dynamics_->convert_cartesian_deltas_to_joint_deltas(
+  success &= dynamics_->convert_cartesian_deltas_to_joint_deltas(
     vic_input_data.joint_state_position,
     robot_command_twist_,
     vic_input_data.control_frame,

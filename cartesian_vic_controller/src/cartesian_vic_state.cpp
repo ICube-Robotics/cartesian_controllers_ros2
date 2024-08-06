@@ -67,7 +67,16 @@ VicState::to_msg(cartesian_control_msgs::msg::VicControllerState & vic_state_msg
   // Fill robot state
   vic_state_msg.pose = Eigen::toMsg(input_data.robot_current_pose);
   vic_state_msg.velocity = Eigen::toMsg(input_data.robot_current_velocity);
-  vic_state_msg.wrench = WrenchToMsg(input_data.robot_current_wrench_at_ft_frame);
+  if (input_data.has_ft_sensor()) {
+    vic_state_msg.wrench = WrenchToMsg(input_data.get_ft_sensor_wrench());
+  } else {
+    vic_state_msg.wrench.force.x = 0.0;
+    vic_state_msg.wrench.force.y = 0.0;
+    vic_state_msg.wrench.force.z = 0.0;
+    vic_state_msg.wrench.torque.x = 0.0;
+    vic_state_msg.wrench.torque.y = 0.0;
+    vic_state_msg.wrench.torque.z = 0.0;
+  }
   // matrixEigenToMsg(input_data.natural_cartesian_inertia, vic_state_msg.natural_inertia);
 
   // Fill rendered impedance
