@@ -33,7 +33,7 @@ INSTANTIATE_TEST_SUITE_P(
     "state_interfaces", "command_interfaces", "joints",
     "control.frame.id",
     // ft sensor parameters
-    "ft_sensor.frame.id", "ft_sensor.name",
+    "ft_sensor.is_enabled", "ft_sensor.frame.id", "ft_sensor.name",
     // gravity compensation parameters
     "fixed_world_frame.frame.id", "gravity_compensation.frame.id",
     "gravity_compensation.CoG.pos",
