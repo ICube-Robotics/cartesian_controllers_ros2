@@ -34,8 +34,8 @@ namespace cartesian_vic_controller
 CartesianVicRule::CartesianVicRule()
 : num_joints_(0),
   vic_state_(0, ControlMode::INVALID),
-  dynamics_loader_(nullptr),
-  logger_(rclcpp::get_logger("cartesian_vic_rule"))
+  logger_(rclcpp::get_logger("cartesian_vic_rule")),
+  dynamics_loader_(nullptr)
 {
   // Nothing to do, see init().
 }
@@ -353,56 +353,103 @@ CartesianVicRule::update(
   const MeasurementData & measurement_data,
   trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
 {
-  bool success = true;   // return flag
+  if (update_input_data(period, measurement_data) != controller_interface::return_type::OK) {
+    RCLCPP_ERROR(
+      logger_,
+      "Failed to update VIC input data!"
+    );
+    // Set commanded position to the previous one
+    joint_state_command.positions = measurement_data.get_joint_state().positions;
+    // Set commanded velocity/acc to zero
+    std::fill(
+      joint_state_command.velocities.begin(),
+      joint_state_command.velocities.end(),
+      0
+    );
+    std::fill(
+      joint_state_command.accelerations.begin(),
+      joint_state_command.accelerations.end(),
+      0
+    );
+    // Set efforts to zero
+    std::fill(
+      joint_state_command.effort.begin(),
+      joint_state_command.effort.end(),
+      0
+    );
+    return controller_interface::return_type::ERROR;
+  }
+  return compute_controls(period, joint_state_command);
+}
+
+controller_interface::return_type
+CartesianVicRule::update_input_data(
+  const rclcpp::Duration & period,
+  const MeasurementData & measurement_data)
+{
+  bool success = true;     // return flag
   const double dt = period.seconds();
 
-  // Update parameters
+    // Update parameters
   if (parameters_.enable_parameter_update_without_reactivation) {
     apply_parameters_update();
   }
 
-  // Process F/T sensor data
+    // Process F/T sensor data
   bool has_valid_ft_wrench = measurement_data.has_ft_sensor_data();
   if (has_valid_ft_wrench) {
     has_valid_ft_wrench &= process_wrench_measurements(
-      period.seconds(), measurement_data.get_ft_sensor_wrench());
+        period.seconds(), measurement_data.get_ft_sensor_wrench());
   }
   if (!has_valid_ft_wrench) {
     vic_state_.input_data.reset_ft_sensor_wrench();
     if (measurement_data.has_ft_sensor_data()) {
       success = false;
       RCLCPP_WARN_THROTTLE(
-        logger_,
-        internal_clock_,
-        1000,
-        "Invalid F/T sensor data provided to VIC rule!");
+          logger_,
+          internal_clock_,
+          1000,
+          "Invalid F/T sensor data provided to VIC rule!");
     }
   }
 
-  // Process external torques
+    // Process external torques
   bool has_valid_external_torques = measurement_data.has_external_torques_data();
   if (has_valid_external_torques) {
     has_valid_external_torques &= process_external_torques_measurements(
-      period.seconds(), measurement_data.get_external_torques());
+        period.seconds(), measurement_data.get_external_torques());
   }
   if (!has_valid_external_torques) {
     vic_state_.input_data.reset_joint_state_external_torques();
     if (measurement_data.has_external_torques_data()) {
       success = false;
       RCLCPP_WARN_THROTTLE(
-        logger_,
-        internal_clock_,
-        1000,
-        "Invalid external torques provided to VIC rule!");
+          logger_,
+          internal_clock_,
+          1000,
+          "Invalid external torques provided to VIC rule!");
     }
   }
 
-  // Update current robot kinematic state
+    // Update current robot kinematic state
   success &= update_kinematics(
-    dt,
-    measurement_data.get_joint_state()
+      dt,
+      measurement_data.get_joint_state()
   );
 
+  if (!success) {
+    return controller_interface::return_type::ERROR;
+  }
+  return controller_interface::return_type::OK;
+}
+
+controller_interface::return_type
+CartesianVicRule::compute_controls(
+  const rclcpp::Duration & period,
+  trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command)
+{
+  bool success = true;   // return flag
+  const double dt = period.seconds();
   // Compute controls
   success &= compute_controls(dt, vic_state_.input_data, vic_state_.command_data);
 
@@ -413,7 +460,9 @@ CartesianVicRule::update(
       "Failed to compute the controls!"
     );
     // Set commanded position to the previous one
-    joint_state_command.positions = measurement_data.get_joint_state().positions;
+    for (size_t i = 0; i < parameters_.joints.size(); ++i) {
+      joint_state_command.positions[i] = vic_state_.input_data.joint_state_position(i);
+    }
 
     // Set commanded velocity/acc to zero
     std::fill(
@@ -474,6 +523,8 @@ CartesianVicRule::update(
   return controller_interface::return_type::OK;
 }
 
+// Internal functions
+
 bool CartesianVicRule::update_kinematics(
   double dt,
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state)
@@ -528,11 +579,18 @@ bool CartesianVicRule::update_kinematics(
   );
 
   // Pre-compute commonly used transformations
-  success &= dynamics_->calculate_link_transform(
-    vic_state_.input_data.joint_state_position,
-    vic_state_.input_data.ft_sensor_frame,
-    vic_transforms_.base_ft_
-  );
+  if (parameters_.ft_sensor.is_enabled) {
+    success &= dynamics_->calculate_link_transform(
+      vic_state_.input_data.joint_state_position,
+      vic_state_.input_data.ft_sensor_frame,
+      vic_transforms_.base_ft_
+    );
+  } else {
+    // TODO(tpoignonec): how to make sure it is not used in that case ?
+    // In theory, there is no reason to use it if no wrench is available, but you never know...
+    vic_transforms_.base_ft_.setIdentity();
+  }
+
   success &= dynamics_->calculate_link_transform(
     vic_state_.input_data.joint_state_position,
     parameters_.dynamics.tip,

@@ -138,7 +138,10 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     F_ext = -vic_input_data.get_ft_sensor_wrench();
   } else {
     success &= false;
-    // TODO(tpoignonec): add logging error
+    RCLCPP_ERROR(
+      logger_,
+      "F/T sensor is required for inertia shaping! Setting wrenches to zero!"
+    );
   }
 
   // Compute admittance control law in the base frame

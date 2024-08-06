@@ -103,8 +103,6 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     vic_command_data.inertia.block<3, 3>(3, 3) * \
     rot_base_impedance.transpose();
 
-  Eigen::Matrix<double, 6, 6> M_inv = M.inverse();
-
   // Compute pose tracking errors
   Eigen::Matrix<double, 6, 1> error_pose;
   error_pose.head(3) =
@@ -128,7 +126,10 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     F_ext = -vic_input_data.get_ft_sensor_wrench();
   } else {
     success &= false;
-    // TODO(tpoignonec): add logging error
+    RCLCPP_ERROR(
+      logger_,
+      "F/T sensor is required for inertia shaping! Setting wrenches to zero!"
+    );
   }
 
   // Compute Kinematics and Dynamics
@@ -164,6 +165,20 @@ bool VanillaCartesianImpedanceRule::compute_controls(
       logger_,
       "Failed to calculate kinematic / dynamic model!"
     );
+  }
+
+  Eigen::Matrix<double, 6, 6> M_inv;
+  if (parameters_.vic.use_natural_robot_inertia) {
+    M_inv = J_ * M_joint_space_.inverse() * J_.transpose();
+    M = M_inv.inverse();
+    RCLCPP_INFO_THROTTLE(
+      logger_,
+      internal_clock_,
+      5000,
+      "Using natural robot inertia as desired inertia matrix."
+    );
+  } else {
+    M_inv = M.inverse();
   }
 
   // Compute impedance control law in the base frame
