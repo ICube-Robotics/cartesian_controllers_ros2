@@ -63,6 +63,9 @@ public:
     natural_joint_space_inertia = \
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
     */
+    // Reset data availability
+    has_ft_sensor_ = false;
+    has_external_torque_sensor_ = false;
   }
   bool set_joint_state_external_torques(const Eigen::VectorXd & joint_state_external_torques)
   {
@@ -75,27 +78,41 @@ public:
     return true;
   }
 
-  bool get_joint_state_external_torques(Eigen::VectorXd & joint_state_external_torques) const
+  bool set_ft_sensor_wrench(const Eigen::Matrix<double, 6, 1> & ft_sensor_wrench)
   {
-    if (!has_external_torque_sensor_) {
-      joint_state_external_torques.setZero();
-      return false;
-    }
-    if (joint_state_external_torques.size() != joint_state_external_torques_.size()) {
-      joint_state_external_torques.setZero();
-      return false;
-    }
-    joint_state_external_torques = joint_state_external_torques_;
+    robot_current_wrench_at_ft_frame_ = ft_sensor_wrench;
+    has_ft_sensor_ = true;
     return true;
   }
+
+  const Eigen::VectorXd & get_joint_state_external_torques() const
+  {
+    return joint_state_external_torques_;
+  }
+
+  const Eigen::Matrix<double, 6, 1> & get_ft_sensor_wrench() const
+  {
+    return robot_current_wrench_at_ft_frame_;
+  }
+
   bool reset_joint_state_external_torques()
   {
     has_external_torque_sensor_ = false;
     return true;
   }
+
+  bool reset_ft_sensor_wrench()
+  {
+    has_ft_sensor_ = false;
+    return true;
+  }
   bool has_external_torque_sensor() const
   {
     return has_external_torque_sensor_;
+  }
+  bool has_ft_sensor() const
+  {
+    return has_ft_sensor_;
   }
 
 public:
@@ -133,7 +150,6 @@ public:
   // Cartesian state (control frame w.r.t. robot base frame)
   Eigen::Isometry3d robot_current_pose;
   Eigen::Matrix<double, 6, 1> robot_current_velocity;
-  Eigen::Matrix<double, 6, 1> robot_current_wrench_at_ft_frame;  // ft_frame w.r.t. base
 
   /// Natural inertia matrix (from dynamic model)
   // Eigen::Matrix<double, 6, 6> natural_cartesian_inertia;
@@ -141,6 +157,8 @@ public:
 
 protected:
   Eigen::VectorXd joint_state_external_torques_;
+  Eigen::Matrix<double, 6, 1> robot_current_wrench_at_ft_frame_;  // ft_frame w.r.t. base
+  bool has_ft_sensor_ = false;
   bool has_external_torque_sensor_ = false;
 };
 
