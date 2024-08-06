@@ -85,6 +85,9 @@ public:
   * Compute joint command from the current cartesian tracking errors
   * and the desired interaction parameters (M, K, D). This function is
   * to be used when no external torque sensor is available.
+  * Internally calls update_input_data() and then compute_controls().
+  *
+  * Note: call only ONE of the update functions.
   *
   * \param[in] period time in seconds since last controller update
   * \param[in] measurement_data most recent measurement data, including at
@@ -97,8 +100,38 @@ public:
     trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command
   );
 
+  /**
+  * Update VIC input data (i.e., kinematics and parameters)
+  *
+  * Note: call only ONE of the update functions.
+  *
+  * \param[in] period time in seconds since last controller update
+  * \param[in] measurement_data most recent measurement data, including at
+  * least the joint position and velocity
+  */
+  controller_interface::return_type update_input_data(
+    const rclcpp::Duration & period,
+    const MeasurementData & measurement_data
+  );
+
+  /**
+  * Compute joint command from the current cartesian tracking errors
+  * and the desired interaction parameters (M, K, D). This function is
+  * to be used when no external torque sensor is available.
+  *
+  * \param[in] period time in seconds since last controller update
+  * \param[out] joint_state_command computed joint state command
+  */
+  controller_interface::return_type compute_controls(
+    const rclcpp::Duration & period,
+    trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command
+  );
+
   /// Get current control mode (ADMITTANCE / IMPEDANCE / INVALID)
   ControlMode get_control_mode() const {return control_mode_;}
+
+  /// Get current input data (call update_input_data() first)
+  const VicInputData & get_input_data() const {return vic_state_.input_data;}
 
 protected:
   /// Manual setting of inertia, damping, and stiffness (diagonal matrices)
