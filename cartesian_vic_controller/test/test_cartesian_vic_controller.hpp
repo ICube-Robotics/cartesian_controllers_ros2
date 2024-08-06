@@ -186,8 +186,8 @@ protected:
   controller_interface::return_type SetUpControllerCommon(
     const std::string & controller_name, const rclcpp::NodeOptions & options)
   {
-    // auto result = controller_->init(controller_name, "", options);
-    auto result = controller_->init(controller_name, "", 0, "", options);
+    auto result = controller_->init(controller_name, "", options);
+    // auto result = controller_->init(controller_name, "", 0, "", options);
 
     controller_->export_reference_interfaces();
     assign_interfaces();
