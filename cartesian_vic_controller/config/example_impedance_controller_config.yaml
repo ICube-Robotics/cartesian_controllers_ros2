@@ -1,8 +1,7 @@
-test_cartesian_vic_controller:
-  # contains minimal needed parameters for kuka_kr6
+cartesian_impedance_controller:
   ros__parameters:
     command_interfaces:
-      - position
+      - force
     state_interfaces:
       - position
       - velocity
@@ -13,6 +12,7 @@ test_cartesian_vic_controller:
       - joint_a4
       - joint_a5
       - joint_a6
+      - joint_a7
 
     # Parameters for the controller
     # Note: having ".0" at the end of float is a MUST, otherwise there is a loading error
@@ -26,16 +26,15 @@ test_cartesian_vic_controller:
     dynamics:
       plugin_name: dynamics_interface_kdl/DynamicsInterfaceKDL
       plugin_package: dynamics_interface
-      base: base_link # Assumed to be stationary
-      tip: tool0
+      base: iiwa_base # Assumed to be stationary
+      tip: interaction_point
       alpha: 0.0005
       gravity: [0.0, 0.0, -9.81]
 
     ft_sensor:
-      is_enabled: true
-      name: ft_sensor_name
+      name: ft_sensor
       frame:
-        id: tool0  # Wrench measurements are in this frame
+        id: ft_sensor  # Wrench measurements are in this frame
         external: false # force torque frame exists within URDF kinematic chain
 
     external_torque_sensor:
@@ -44,17 +43,17 @@ test_cartesian_vic_controller:
 
     control:
       frame:
-        id: tool0 # Admittance calcs (displacement etc) are done in this frame. Usually the tool or end-effector
+        id: interaction_point # Admittance calcs (displacement etc) are done in this frame. Usually the tool or end-effector
         external: false # control frame exists within URDF kinematic chain
 
     fixed_world_frame:   # Gravity points down (neg. Z) in this frame (Usually: world or base_link)
       frame:
-        id: base_link
+        id: iiwa_base
         external: false
 
     gravity_compensation:
       frame:
-        id: tool0
+        id: ft_sensor
         external: false
 
       CoG:
@@ -66,15 +65,15 @@ test_cartesian_vic_controller:
 
     vic:
       frame:
-        id: tool0 # Admittance calcs (displacement etc) are done in this frame. Usually the tool or end-effector
+        id: interaction_point # Admittance calcs (displacement etc) are done in this frame. Usually the tool or end-effector
         external: false # control frame exists within URDF kinematic chain
       # VIC rule
       plugin_package: cartesian_vic_controller
-      plugin_name: cartesian_vic_controller/VanillaCartesianAdmittanceRule  # As nominal controller
+      plugin_name: cartesian_vic_controller/VanillaCartesianImpedanceRule  # As nominal controller
 
       # Misc. control parameters
-      activate_nullspace_control: false
-      activate_gravity_compensation: false
+      activate_nullspace_control: true
+      activate_gravity_compensation: true
 
       selected_axes:
         - true # x
@@ -85,25 +84,33 @@ test_cartesian_vic_controller:
         - true # rz
 
       inertia:
-        - 5.5
-        - 6.6
-        - 7.7
-        - 8.8
-        - 9.9
-        - 10.10
+        - 5.0
+        - 5.0
+        - 5.0
+        - 0.1
+        - 0.1
+        - 0.1
 
       damping_ratio: # damping can be used instead: zeta = D / (2 * sqrt( M * S ))
-        - 2.828427 # x
-        - 2.828427 # y
-        - 2.828427 # z
-        - 2.828427 # rx
-        - 2.828427 # ry
-        - 2.828427 # rz
+        - 0.9 # x
+        - 0.9 # y
+        - 0.9 # z
+        - 0.99 # rx
+        - 0.99 # ry
+        - 0.99 # rz
 
       stiffness:
-        - 214.1
-        - 214.2
-        - 214.3
-        - 214.4
-        - 214.5
-        - 214.6
+        - 200.0
+        - 200.0
+        - 200.0
+        - 2.0
+        - 2.0
+        - 2.0
+
+    nullspace_control:
+      # desired_joint_positions: [...]  # if empty, defaults to initial joint positions
+      # desired_joint_positions: [0.0, -0.7854, 0.0, 1.3962, 0.0, 0.6109, 0.0]
+      joint_inertia: [25.0]
+      joint_stiffness: [100.0]
+      joint_damping: [90.0]  # e.g., 2 * 0.9 * sqrt (m * k)
+      # Example values for {M, K, D} : {25, 10, 28}, {25, 100, 90}, {25, 200, 128}
