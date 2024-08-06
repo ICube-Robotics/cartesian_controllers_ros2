@@ -28,6 +28,7 @@ namespace cartesian_vic_controller
 controller_interface::return_type VanillaCartesianImpedanceRule::init(
   const std::shared_ptr<cartesian_vic_controller::ParamListener> & parameter_handler)
 {
+  logger_ = rclcpp::get_logger("vanilla_cartesian_impedance_rule");
   // Initialize CartesianVicRule
   control_mode_ = ControlMode::IMPEDANCE;
   auto ret = CartesianVicRule::init(parameter_handler);
@@ -55,7 +56,6 @@ bool VanillaCartesianImpedanceRule::compute_controls(
 {
   bool success = true;
   // auto num_joints = vic_input_data.joint_state_position.size();
-  auto logger = rclcpp::get_logger("VanillaCartesianImpedanceRule");
 
   // Get reference compliant frame at t_k
   const CompliantFrame & reference_compliant_frame =
@@ -161,7 +161,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   if (!model_is_ok) {
     success = false;
     RCLCPP_ERROR(
-      logger,
+      logger_,
       "Failed to calculate kinematic / dynamic model!"
     );
   }
@@ -198,7 +198,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   } else {
     // Pure (small) damping in nullspace for stability
     RCLCPP_WARN_THROTTLE(
-      logger,
+      logger_,
       internal_clock_,
       10000,  // every 10 seconds
       "WARNING! nullspace impedance control is disabled!"
@@ -224,7 +224,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     // std::cout << "coriolis = " << coriolis_.transpose() << std::endl;
   } else {
     RCLCPP_WARN_THROTTLE(
-      logger,
+      logger_,
       internal_clock_,
       10000,  // every 10 seconds
       "WARNING! gravity compensation is disabled!"

@@ -34,7 +34,8 @@ namespace cartesian_vic_controller
 CartesianVicRule::CartesianVicRule()
 : num_joints_(0),
   vic_state_(0, ControlMode::INVALID),
-  dynamics_loader_(nullptr)
+  dynamics_loader_(nullptr),
+  logger_(rclcpp::get_logger("cartesian_vic_rule"))
 {
   // Nothing to do, see init().
 }
@@ -76,7 +77,7 @@ CartesianVicRule::configure(
       }
     } catch (pluginlib::PluginlibException & ex) {
       RCLCPP_ERROR(
-        rclcpp::get_logger("CartesianVicRule"),
+        logger_,
         "Exception while loading the IK plugin '%s': '%s'",
         parameters_.dynamics.plugin_name.c_str(), ex.what()
       );
@@ -84,7 +85,7 @@ CartesianVicRule::configure(
     }
   } else {
     RCLCPP_ERROR(
-      rclcpp::get_logger("CartesianVicRule"),
+      logger_,
       "A differential IK plugin name was not specified in the config file.");
     return controller_interface::return_type::ERROR;
   }
@@ -106,7 +107,7 @@ CartesianVicRule::init_reference_frame_trajectory(
   // Update kinematics state
   if (!update_kinematics(-1.0, current_joint_state)) {
     RCLCPP_ERROR(
-      rclcpp::get_logger("CartesianVicRule"),
+      logger_,
       "Failed to update internal state in 'init_reference_frame_trajectory()'!");
     return controller_interface::return_type::ERROR;
   }
@@ -122,7 +123,7 @@ CartesianVicRule::init_reference_frame_trajectory(
   std::stringstream ss_inital_joint_positions;
   ss_inital_joint_positions << initial_joint_positions_.transpose();
   RCLCPP_INFO(
-    rclcpp::get_logger("CartesianVicRule"),
+    logger_,
     "Initial joint positions set to : %s",
     ss_inital_joint_positions.str().c_str());
 
@@ -143,7 +144,7 @@ CartesianVicRule::init_reference_frame_trajectory(
       );
     if (!success) {
       RCLCPP_ERROR(
-        rclcpp::get_logger("CartesianVicRule"),
+        logger_,
         "Failed to fill the desired robot state for index=%u!",
         i);
       return controller_interface::return_type::ERROR;
@@ -160,7 +161,7 @@ controller_interface::return_type
 CartesianVicRule::reset(const size_t num_joints)
 {
   if (control_mode_ == ControlMode::INVALID) {
-    RCLCPP_ERROR(rclcpp::get_logger("CartesianVicRule"), "Invalid control mode!");
+    RCLCPP_ERROR(logger_, "Invalid control mode!");
     return controller_interface::return_type::ERROR;
   }
   // Reset vic state
@@ -223,7 +224,7 @@ void CartesianVicRule::apply_parameters_update()
         parameters_.nullspace_control.joint_inertia[i];
     } else {
       RCLCPP_ERROR(
-        rclcpp::get_logger("CartesianVicRule"),
+        logger_,
         "Invalid size for nullspace_inertia vector!");
       vic_state_.input_data.nullspace_joint_inertia(i) = default_nullspace_inertia;
     }
@@ -236,7 +237,7 @@ void CartesianVicRule::apply_parameters_update()
         parameters_.nullspace_control.joint_stiffness[i];
     } else {
       RCLCPP_ERROR(
-        rclcpp::get_logger("CartesianVicRule"),
+        logger_,
         "Invalid size for nullspace_stiffness vector!");
       vic_state_.input_data.nullspace_joint_stiffness(i) = default_nullspace_stiffness;
     }
@@ -249,7 +250,7 @@ void CartesianVicRule::apply_parameters_update()
         parameters_.nullspace_control.joint_damping[i];
     } else {
       RCLCPP_ERROR(
-        rclcpp::get_logger("CartesianVicRule"),
+        logger_,
         "Invalid size for nullspace_damping vector!");
       vic_state_.input_data.nullspace_joint_damping(i) = default_nullspace_damping;
     }
@@ -265,7 +266,7 @@ void CartesianVicRule::apply_parameters_update()
     );
   } else {
     RCLCPP_ERROR(
-      rclcpp::get_logger("CartesianVicRule"),
+      logger_,
       "Invalid size for desired_joint_position vector!");
     vic_state_.input_data.nullspace_desired_joint_positions = initial_joint_positions_;
   }
@@ -371,7 +372,7 @@ CartesianVicRule::update(
     if (measurement_data.has_ft_sensor_data()) {
       success = false;
       RCLCPP_WARN_THROTTLE(
-        rclcpp::get_logger("CartesianVicRule"),
+        logger_,
         internal_clock_,
         1000,
         "Invalid F/T sensor data provided to VIC rule!");
@@ -389,7 +390,7 @@ CartesianVicRule::update(
     if (measurement_data.has_external_torques_data()) {
       success = false;
       RCLCPP_WARN_THROTTLE(
-        rclcpp::get_logger("CartesianVicRule"),
+        logger_,
         internal_clock_,
         1000,
         "Invalid external torques provided to VIC rule!");
@@ -408,7 +409,7 @@ CartesianVicRule::update(
   // If an error is detected, set commanded velocity to zero
   if (!success) {
     RCLCPP_ERROR(
-      rclcpp::get_logger("CartesianVicRule"),
+      logger_,
       "Failed to compute the controls!"
     );
     // Set commanded position to the previous one
@@ -632,7 +633,7 @@ bool CartesianVicRule::process_external_torques_measurements(
   // Check data validity
   if (static_cast<size_t>(measured_external_torques.size()) != num_joints_) {
     RCLCPP_ERROR(
-      rclcpp::get_logger("CartesianVicRule"),
+      logger_,
       "Invalid size for measured_external_torques vector!");
     filtered_external_torques_.setZero();
     vic_state_.input_data.set_joint_state_external_torques(filtered_external_torques_);

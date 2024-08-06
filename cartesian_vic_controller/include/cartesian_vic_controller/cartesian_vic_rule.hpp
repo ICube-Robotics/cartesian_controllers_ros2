@@ -131,9 +131,11 @@ public:
   std::shared_ptr<cartesian_vic_controller::ParamListener> parameter_handler_;
   cartesian_vic_controller::Params parameters_;
 
+protected:
+  // ROS2 logging
+  rclcpp::Logger logger_;
   rclcpp::Clock internal_clock_;
 
-protected:
   template<typename T1, typename T2>
   void vec_to_eigen(const std::vector<T1> & data, T2 & matrix);
 

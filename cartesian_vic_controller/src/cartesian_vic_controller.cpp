@@ -34,6 +34,7 @@
 
 namespace cartesian_vic_controller
 {
+
 controller_interface::CallbackReturn CartesianVicController::on_init()
 {
   // Try to retrieve urdf (used by kinematics / dynamics plugin)
