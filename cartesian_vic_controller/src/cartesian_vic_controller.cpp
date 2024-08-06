@@ -349,8 +349,17 @@ controller_interface::CallbackReturn CartesianVicController::on_configure(
   state_publisher_->unlock();
 
   // Initialize F/T sensor semantic_component
-  force_torque_sensor_ = std::make_unique<semantic_components::ForceTorqueSensor>(
-    semantic_components::ForceTorqueSensor(vic_->parameters_.ft_sensor.name));
+  if (vic_->parameters_.ft_sensor.is_enabled) {
+    RCLCPP_INFO(get_node()->get_logger(), "Force / torque sensor is enabled");
+    if (vic_->parameters_.ft_sensor.name.empty()) {
+      RCLCPP_ERROR(
+        get_node()->get_logger(),
+        "Force / torque sensor is enabled, but sensor name is empty!");
+      return CallbackReturn::FAILURE;
+    }
+    force_torque_sensor_ = std::make_unique<semantic_components::ForceTorqueSensor>(
+      semantic_components::ForceTorqueSensor(vic_->parameters_.ft_sensor.name));
+  }
 
   // Initialize external torque sensor semantic_component
   if (vic_->parameters_.external_torque_sensor.is_enabled) {
