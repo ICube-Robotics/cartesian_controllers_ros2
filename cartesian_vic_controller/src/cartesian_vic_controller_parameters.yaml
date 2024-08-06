@@ -148,12 +148,10 @@ cartesian_vic_controller:
       }
     plugin_name: {
       type: string,
-      default_value: "cartesian_vic_controller/VanillaCartesianAdmittanceRule",
       description: "Specifies the name of the vic rule plugin to load."
     }
     plugin_package: {
       type: string,
-      default_value: "cartesian_vic_controller",
       description: "Specifies the package name that contains the admittance rule plugin."
     }
     selected_axes:
@@ -196,7 +194,7 @@ cartesian_vic_controller:
       The damping ratio is defined as: zeta = D / (2 * sqrt( M * S )).",
       validation: {
         fixed_size<>: 6,
-        element_bounds<>: [ 0.0, 1.2 ]
+        element_bounds<>: [ 0.0, 5.0 ]
       }
     }
     stiffness: {

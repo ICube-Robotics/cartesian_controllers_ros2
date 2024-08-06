@@ -11,6 +11,7 @@
 
   <depend>cartesian_control_msgs</depend>
   <depend>dynamics_interface</depend>
+  <depend>dynamics_interface_kdl</depend>
 
   <depend>backward_ros</depend>
   <depend>control_msgs</depend>
