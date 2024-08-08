@@ -176,6 +176,12 @@ bool FdImpedanceRule::compute_controls(
   }
 
   if (parameters_.vic.use_natural_robot_inertia) {
+    RCLCPP_WARN_THROTTLE(
+      logger_,
+      internal_clock_,
+      10000,
+      "FYI: using natural robot inertia for impedance control."
+    );
     // Simplified impedance controller without F/T sensor
     // see https://www.diag.uniroma1.it/~deluca/rob2_en/15_ImpedanceControl.pdf (page 13)
     raw_joint_command_effort_ = \
