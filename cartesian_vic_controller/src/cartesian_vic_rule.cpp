@@ -435,13 +435,14 @@ CartesianVicRule::update_input_data(
     }
   }
 
-    // Update current robot kinematic state
+  // Update current robot kinematic state
   success &= update_kinematics(
       dt,
       measurement_data.get_joint_state()
   );
 
   // Retrieve inertia matrices
+  // TODO(tpoignonec): move to a "update_dynamics()" function?
   success &= dynamics_->calculate_inertia(
     vic_state_.input_data.joint_state_position,
     vic_state_.input_data.natural_joint_space_inertia
@@ -592,12 +593,20 @@ bool CartesianVicRule::update_kinematics(
     vic_state_.input_data.robot_current_pose
   );
 
+  auto last_robot_cartesian_velocity = vic_state_.input_data.robot_current_velocity;
   success = dynamics_->convert_joint_deltas_to_cartesian_deltas(
     vic_state_.input_data.joint_state_position,
     vic_state_.input_data.joint_state_velocity,
     vic_state_.input_data.control_frame,
     vic_state_.input_data.robot_current_velocity
   );
+
+  // Estimation acceleration (finite diff.)
+  if (dt > 0) {
+    // TODO(tpoignonec): add a cutoff filter to numerical differentiation??
+    vic_state_.input_data.robot_estimated_acceleration =
+      (vic_state_.input_data.robot_current_velocity - last_robot_cartesian_velocity) / dt;
+  }
 
   // Pre-compute commonly used transformations
   if (parameters_.ft_sensor.is_enabled) {

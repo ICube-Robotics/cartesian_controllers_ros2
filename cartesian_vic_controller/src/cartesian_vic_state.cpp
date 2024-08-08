@@ -68,6 +68,7 @@ VicState::to_msg(cartesian_control_msgs::msg::VicControllerState & vic_state_msg
   // Fill robot state
   vic_state_msg.pose = Eigen::toMsg(input_data.robot_current_pose);
   vic_state_msg.velocity = Eigen::toMsg(input_data.robot_current_velocity);
+  vic_state_msg.acceleration = AccelToMsg(input_data.robot_estimated_acceleration);
   if (input_data.has_ft_sensor()) {
     vic_state_msg.has_valid_wrench = true;
     vic_state_msg.wrench = WrenchToMsg(input_data.get_ft_sensor_wrench());
