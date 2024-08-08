@@ -5,8 +5,8 @@ std_msgs/String control_mode # admittance / impedance
 # Cartesian compliance reference
 geometry_msgs/Pose desired_pose
 geometry_msgs/Twist desired_velocity
-geometry_msgs/Accel desired_acceleration # optional, set to null by default
-geometry_msgs/Wrench desired_wrench # optional, set to null by default
+geometry_msgs/Accel desired_acceleration # optional, set to zero if unsused
+geometry_msgs/Wrench desired_wrench # optional, set to zero if unsused
 
 std_msgs/Float64MultiArray desired_inertia
 std_msgs/Float64MultiArray desired_damping
@@ -15,7 +15,7 @@ std_msgs/Float64MultiArray desired_stiffness
 # Actual Cartesian robot state
 geometry_msgs/Pose pose
 geometry_msgs/Twist velocity
-geometry_msgs/Accel acceleration # optional
+geometry_msgs/Accel acceleration # optional, set to zero if unsused
 bool has_valid_wrench
 geometry_msgs/Wrench wrench
 
