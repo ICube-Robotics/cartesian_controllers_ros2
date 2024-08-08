@@ -602,10 +602,25 @@ bool CartesianVicRule::update_kinematics(
   );
 
   // Estimation acceleration (finite diff.)
+  double cutoff_acceleration = parameters_.filters.state_acceleration_filter_cuttoff_freq;
   if (dt > 0) {
-    // TODO(tpoignonec): add a cutoff filter to numerical differentiation??
-    vic_state_.input_data.robot_estimated_acceleration =
+    auto raw_acc = \
       (vic_state_.input_data.robot_current_velocity - last_robot_cartesian_velocity) / dt;
+    if (cutoff_acceleration > 0.0) {
+      double cutoff_acceleration = 30.0;  // Hz
+      double acceleration_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_acceleration);
+      for (size_t i = 0; i < 6; ++i) {
+        vic_state_.input_data.robot_estimated_acceleration(i) = filters::exponentialSmoothing(
+          raw_acc(i),
+          vic_state_.input_data.robot_estimated_acceleration(i),
+          acceleration_filter_coefficient
+        );
+      }
+    } else {
+      vic_state_.input_data.robot_estimated_acceleration = raw_acc;
+    }
+  } else {
+    vic_state_.input_data.robot_estimated_acceleration.setZero();
   }
 
   // Pre-compute commonly used transformations
