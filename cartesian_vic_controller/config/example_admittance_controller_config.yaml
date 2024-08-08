@@ -1,8 +1,7 @@
-cartesian_vic_controller:
+cartesian_impedance_controller:
   ros__parameters:
     command_interfaces:
-      - position
-      # - velocity
+      - velocity
     state_interfaces:
       - position
       - velocity
@@ -13,17 +12,21 @@ cartesian_vic_controller:
       - joint_a4
       - joint_a5
       - joint_a6
+      - joint_a7
+
+    # Parameters for the controller
+    # Note: having ".0" at the end of float is a MUST, otherwise there is a loading error
 
     filters:
-      state_position_filter_cuttoff_freq: 100.0
+      state_position_filter_cuttoff_freq: -1.0
       state_velocity_filter_cuttoff_freq: 100.0
       command_filter_cuttoff_freq: -1.0
       ft_sensor_filter_cuttoff_freq: 30.0
 
     dynamics:
-      plugin_name: kinematics_interface_kdl/KinematicsInterfaceKDL
-      plugin_package: kinematics_interface
-      base: base_link # Assumed to be stationary
+      plugin_name: dynamics_interface_kdl/DynamicsInterfaceKDL
+      plugin_package: dynamics_interface
+      base: iiwa_base # Assumed to be stationary
       tip: interaction_point
       alpha: 0.0005
       gravity: [0.0, 0.0, -9.81]
@@ -41,33 +44,37 @@ cartesian_vic_controller:
 
     control:
       frame:
-        id: interaction_point # Vic calcs (displacement etc) are done in this frame. Usually the tool or end-effector
+        id: interaction_point # Admittance calcs (displacement etc) are done in this frame. Usually the tool or end-effector
         external: false # control frame exists within URDF kinematic chain
 
     fixed_world_frame:   # Gravity points down (neg. Z) in this frame (Usually: world or base_link)
       frame:
-        id: world # Vic calcs (displacement etc) are done in this frame. Usually the tool or end-effector
-        external: false # control frame exists within URDF kinematic chain
+        id: iiwa_base
+        external: false
 
     gravity_compensation:
       frame:
         id: ft_sensor
         external: false
 
-      CoG: # specifies the center of gravity of the end effector (post FT sensor)
+      CoG:
         pos:
-          - 0.0015 # x
-          - 0.0001 # y
-          - 0.0371 # z
-        force: 0.5 # mass * 9.81
+          - 0.01
+          - 0.01
+          - 0.01
+        force: 0.0  # mass * 9.81
 
     vic:
       frame:
-        id: interaction_point # Vic calcs (displacement etc) are done in this frame. Usually the tool or end-effector
-      # Vic rule
+        id: interaction_point # Admittance calcs (displacement etc) are done in this frame. Usually the tool or end-effector
+        external: false # control frame exists within URDF kinematic chain
+      # VIC rule
       plugin_package: cartesian_vic_controller
-      plugin_name: cartesian_vic_controller/VanillaCartesianAdmittanceRule  # Nominal admittance controller
-      # plugin_name: cartesian_vic_controller/VanillaCartesianImpedanceRule  # Nominal impedance controller
+      plugin_name: cartesian_vic_controller/VanillaCartesianAdmittanceRule  # As nominal controller
+
+      # Misc. control parameters
+      activate_nullspace_control: false
+      activate_gravity_compensation: false
 
       selected_axes:
         - true # x
@@ -77,8 +84,6 @@ cartesian_vic_controller:
         - true # ry
         - true # rz
 
-      # Having ".0" at the end is MUST, otherwise there is a loading error
-      # F = M*a + D*v + S*(x - x_d)
       inertia:
         - 5.0
         - 5.0
@@ -91,9 +96,9 @@ cartesian_vic_controller:
         - 0.9 # x
         - 0.9 # y
         - 0.9 # z
-        - 0.9 # rx
-        - 0.9 # ry
-        - 0.9 # rz
+        - 0.99 # rx
+        - 0.99 # ry
+        - 0.99 # rz
 
       stiffness:
         - 200.0
@@ -102,5 +107,3 @@ cartesian_vic_controller:
         - 2.0
         - 2.0
         - 2.0
-
-      joint_damping: 0.5

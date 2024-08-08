@@ -69,7 +69,7 @@ target_compile_definitions(cartesian_vic_controller PRIVATE "CARTESIAN_VIC_CONTR
 pluginlib_export_plugin_description_file(controller_interface cartesian_vic_controller.xml)
 pluginlib_export_plugin_description_file(cartesian_vic_controller cartesian_vic_rules.xml)
 
-if(0) # (BUILD_TESTING)
+if(BUILD_TESTING)
   find_package(ament_cmake_gmock REQUIRED)
   find_package(controller_manager REQUIRED)
   find_package(ros2_control_test_assets REQUIRED)
@@ -77,6 +77,7 @@ if(0) # (BUILD_TESTING)
   # Dynamically loaded during test
   find_package(kinematics_interface_kdl REQUIRED)
 
+  #[[
   # test controller (loading only)
   add_rostest_with_parameters_gmock(test_load_controller
     test/test_load_controller.cpp
@@ -87,6 +88,7 @@ if(0) # (BUILD_TESTING)
     hardware_interface
     ros2_control_test_assets
   )
+  #]]
 
   # test controller
   add_rostest_with_parameters_gmock(test_controller

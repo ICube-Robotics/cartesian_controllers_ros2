@@ -11,10 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
-/// \author: Denis Stogl
 
-#include "test_cartesian_admittance_controller.hpp"
+#include "test_cartesian_vic_controller.hpp"
 
 #include <limits>
 #include <memory>
@@ -22,7 +20,7 @@
 #include <vector>
 
 // Test on_configure returns ERROR when a required parameter is missing
-TEST_P(AdmittanceControllerTestParameterizedMissingParameters, one_parameter_is_missing)
+TEST_P(VicControllerTestParameterizedMissingParameters, one_parameter_is_missing)
 {
   ASSERT_EQ(SetUpController(GetParam()), controller_interface::return_type::ERROR);
   ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()), NODE_ERROR);
@@ -30,17 +28,24 @@ TEST_P(AdmittanceControllerTestParameterizedMissingParameters, one_parameter_is_
 
 INSTANTIATE_TEST_SUITE_P(
   MissingMandatoryParameterDuringConfiguration,
-  AdmittanceControllerTestParameterizedMissingParameters,
+  VicControllerTestParameterizedMissingParameters,
   ::testing::Values(
-    "admittance.inertia", "admittance.selected_axes", "admittance.stiffness",
-    "command_interfaces", "control.frame.id", "admittance.frame.id",
-    "fixed_world_frame.frame.id",
+    "state_interfaces", "command_interfaces", "joints",
+    "control.frame.id",
+    // ft sensor parameters
     "ft_sensor.is_enabled", "ft_sensor.frame.id", "ft_sensor.name",
-    "gravity_compensation.CoG.pos", "gravity_compensation.frame.id", "joints", "kinematics.base",
-    "kinematics.plugin_name", "kinematics.plugin_package", "kinematics.tip", "state_interfaces"));
+    // gravity compensation parameters
+    "fixed_world_frame.frame.id", "gravity_compensation.frame.id",
+    "gravity_compensation.CoG.pos",
+    // dynamics model parameters
+    "dynamics.plugin_package", "dynamics.plugin_name", "dynamics.base", "dynamics.tip",
+    // VIC rule parameters
+    "vic.frame.id", "vic.plugin_name", "vic.plugin_package",
+    "vic.selected_axes", "vic.inertia", "vic.stiffness", "vic.damping_ratio"
+));
 
 INSTANTIATE_TEST_SUITE_P(
-  InvalidParameterDuringConfiguration, AdmittanceControllerTestParameterizedInvalidParameters,
+  InvalidParameterDuringConfiguration, VicControllerTestParameterizedInvalidParameters,
   ::testing::Values(
     // wrong length COG
     std::make_tuple(
@@ -48,40 +53,36 @@ INSTANTIATE_TEST_SUITE_P(
       rclcpp::ParameterValue(std::vector<double>() = {1, 2, 3, 4})),
     // wrong length stiffness
     std::make_tuple(
-      std::string("admittance.stiffness"),
+      std::string("vic.stiffness"),
       rclcpp::ParameterValue(std::vector<double>() = {1, 2, 3})),
     // negative stiffness
     std::make_tuple(
-      std::string("admittance.stiffness"),
+      std::string("vic.stiffness"),
       rclcpp::ParameterValue(std::vector<double>() = {-1, -2, 3, 4, 5, 6})),
     // wrong length inertia
     std::make_tuple(
-      std::string("admittance.inertia"), rclcpp::ParameterValue(std::vector<double>() = {1, 2, 3})),
+      std::string("vic.inertia"), rclcpp::ParameterValue(std::vector<double>() = {1, 2, 3})),
     // negative inertia
     std::make_tuple(
-      std::string("admittance.inertia"),
+      std::string("vic.inertia"),
       rclcpp::ParameterValue(std::vector<double>() = {-1, -2, 3, 4, 5, 6})),
     // wrong length damping ratio
     std::make_tuple(
-      std::string("admittance.damping_ratio"),
+      std::string("vic.damping_ratio"),
       rclcpp::ParameterValue(std::vector<double>() = {1, 2, 3})),
     // wrong length selected axes
     std::make_tuple(
-      std::string("admittance.selected_axes"),
+      std::string("vic.selected_axes"),
       rclcpp::ParameterValue(std::vector<double>() = {1, 2, 3}))
-    // invalid robot description.
-    // TODO(anyone): deactivated, because SetUpController returns SUCCESS here?
-    // ,std::make_tuple(
-    //   std::string("robot_description"), rclcpp::ParameterValue(std::string() = "bad_robot")))
 ));
 
 // Test on_init returns ERROR when a parameter is invalid
-TEST_P(AdmittanceControllerTestParameterizedInvalidParameters, invalid_parameters)
+TEST_P(VicControllerTestParameterizedInvalidParameters, invalid_parameters)
 {
   ASSERT_EQ(SetUpController(), controller_interface::return_type::ERROR);
 }
 
-TEST_F(CartesianAdmittanceControllerTest, all_parameters_set_configure_success)
+TEST_F(CartesianVicControllerTest, all_parameters_set_configure_success)
 {
   auto result = SetUpController();
 
@@ -89,79 +90,79 @@ TEST_F(CartesianAdmittanceControllerTest, all_parameters_set_configure_success)
 
   ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()), NODE_SUCCESS);
 
-  ASSERT_TRUE(!controller_->admittance_->parameters_.joints.empty());
-  ASSERT_TRUE(controller_->admittance_->parameters_.joints.size() == joint_names_.size());
+  ASSERT_TRUE(!controller_->vic_->parameters_.joints.empty());
+  ASSERT_TRUE(controller_->vic_->parameters_.joints.size() == joint_names_.size());
   ASSERT_TRUE(
     std::equal(
-      controller_->admittance_->parameters_.joints.begin(),
-      controller_->admittance_->parameters_.joints.end(), joint_names_.begin(),
+      controller_->vic_->parameters_.joints.begin(),
+      controller_->vic_->parameters_.joints.end(), joint_names_.begin(),
       joint_names_.end()));
 
-  ASSERT_TRUE(!controller_->admittance_->parameters_.command_interfaces.empty());
+  ASSERT_TRUE(!controller_->vic_->parameters_.command_interfaces.empty());
   ASSERT_TRUE(
-    controller_->admittance_->parameters_.command_interfaces.size() ==
+    controller_->vic_->parameters_.command_interfaces.size() ==
     command_interface_types_.size());
   ASSERT_TRUE(
     std::equal(
-      controller_->admittance_->parameters_.command_interfaces.begin(),
-      controller_->admittance_->parameters_.command_interfaces.end(),
+      controller_->vic_->parameters_.command_interfaces.begin(),
+      controller_->vic_->parameters_.command_interfaces.end(),
       command_interface_types_.begin(), command_interface_types_.end()));
 
-  ASSERT_TRUE(!controller_->admittance_->parameters_.state_interfaces.empty());
+  ASSERT_TRUE(!controller_->vic_->parameters_.state_interfaces.empty());
   ASSERT_TRUE(
-    controller_->admittance_->parameters_.state_interfaces.size() == state_interface_types_.size());
+    controller_->vic_->parameters_.state_interfaces.size() == state_interface_types_.size());
   ASSERT_TRUE(
     std::equal(
-      controller_->admittance_->parameters_.state_interfaces.begin(),
-      controller_->admittance_->parameters_.state_interfaces.end(), state_interface_types_.begin(),
+      controller_->vic_->parameters_.state_interfaces.begin(),
+      controller_->vic_->parameters_.state_interfaces.end(), state_interface_types_.begin(),
       state_interface_types_.end()));
 
-  ASSERT_EQ(controller_->admittance_->parameters_.ft_sensor.name, ft_sensor_name_);
-  ASSERT_EQ(controller_->admittance_->parameters_.kinematics.base, ik_base_frame_);
-  ASSERT_EQ(controller_->admittance_->parameters_.ft_sensor.frame.id, sensor_frame_);
+  ASSERT_EQ(controller_->vic_->parameters_.ft_sensor.name, ft_sensor_name_);
+  ASSERT_EQ(controller_->vic_->parameters_.dynamics.base, ik_base_frame_);
+  ASSERT_EQ(controller_->vic_->parameters_.ft_sensor.frame.id, sensor_frame_);
 
-  ASSERT_TRUE(!controller_->admittance_->parameters_.admittance.selected_axes.empty());
+  ASSERT_TRUE(!controller_->vic_->parameters_.vic.selected_axes.empty());
   ASSERT_TRUE(
-    controller_->admittance_->parameters_.admittance.selected_axes.size() ==
-    admittance_selected_axes_.size());
+    controller_->vic_->parameters_.vic.selected_axes.size() ==
+    vic_selected_axes_.size());
   ASSERT_TRUE(
     std::equal(
-      controller_->admittance_->parameters_.admittance.selected_axes.begin(),
-      controller_->admittance_->parameters_.admittance.selected_axes.end(),
-      admittance_selected_axes_.begin(), admittance_selected_axes_.end()));
+      controller_->vic_->parameters_.vic.selected_axes.begin(),
+      controller_->vic_->parameters_.vic.selected_axes.end(),
+      vic_selected_axes_.begin(), vic_selected_axes_.end()));
 
-  ASSERT_TRUE(!controller_->admittance_->parameters_.admittance.inertia.empty());
+  ASSERT_TRUE(!controller_->vic_->parameters_.vic.inertia.empty());
   ASSERT_TRUE(
-    controller_->admittance_->parameters_.admittance.inertia.size() == admittance_inertia_.size());
+    controller_->vic_->parameters_.vic.inertia.size() == vic_inertia_.size());
   ASSERT_TRUE(
     std::equal(
-      controller_->admittance_->parameters_.admittance.inertia.begin(),
-      controller_->admittance_->parameters_.admittance.inertia.end(), admittance_inertia_.begin(),
-      admittance_inertia_.end()));
+      controller_->vic_->parameters_.vic.inertia.begin(),
+      controller_->vic_->parameters_.vic.inertia.end(), vic_inertia_.begin(),
+      vic_inertia_.end()));
 
-  ASSERT_TRUE(!controller_->admittance_->parameters_.admittance.damping_ratio.empty());
+  ASSERT_TRUE(!controller_->vic_->parameters_.vic.damping_ratio.empty());
   ASSERT_TRUE(
-    controller_->admittance_->parameters_.admittance.damping_ratio.size() ==
-    admittance_damping_ratio_.size());
+    controller_->vic_->parameters_.vic.damping_ratio.size() ==
+    vic_damping_ratio_.size());
   ASSERT_TRUE(
     std::equal(
-      controller_->admittance_->parameters_.admittance.damping_ratio.begin(),
-      controller_->admittance_->parameters_.admittance.damping_ratio.end(),
-      admittance_damping_ratio_.begin(), admittance_damping_ratio_.end()));
+      controller_->vic_->parameters_.vic.damping_ratio.begin(),
+      controller_->vic_->parameters_.vic.damping_ratio.end(),
+      vic_damping_ratio_.begin(), vic_damping_ratio_.end()));
 
-  ASSERT_TRUE(!controller_->admittance_->parameters_.admittance.stiffness.empty());
+  ASSERT_TRUE(!controller_->vic_->parameters_.vic.stiffness.empty());
   ASSERT_TRUE(
-    controller_->admittance_->parameters_.admittance.stiffness.size() ==
-    admittance_stiffness_.size());
+    controller_->vic_->parameters_.vic.stiffness.size() ==
+    vic_stiffness_.size());
   ASSERT_TRUE(
     std::equal(
-      controller_->admittance_->parameters_.admittance.stiffness.begin(),
-      controller_->admittance_->parameters_.admittance.stiffness.end(),
-      admittance_stiffness_.begin(),
-      admittance_stiffness_.end()));
+      controller_->vic_->parameters_.vic.stiffness.begin(),
+      controller_->vic_->parameters_.vic.stiffness.end(),
+      vic_stiffness_.begin(),
+      vic_stiffness_.end()));
 }
 
-TEST_F(CartesianAdmittanceControllerTest, check_interfaces)
+TEST_F(CartesianVicControllerTest, check_interfaces)
 {
   SetUpController();
 
@@ -183,7 +184,7 @@ TEST_F(CartesianAdmittanceControllerTest, check_interfaces)
     state_interface_types_.size() * joint_names_.size() + fts_state_values_.size());
 }
 
-TEST_F(CartesianAdmittanceControllerTest, activate_success)
+TEST_F(CartesianVicControllerTest, activate_success)
 {
   SetUpController();
 
@@ -193,7 +194,7 @@ TEST_F(CartesianAdmittanceControllerTest, activate_success)
   ASSERT_EQ(controller_->on_activate(rclcpp_lifecycle::State()), NODE_SUCCESS);
 }
 
-TEST_F(CartesianAdmittanceControllerTest, update_success)
+TEST_F(CartesianVicControllerTest, update_success)
 {
   SetUpController();
 
@@ -205,7 +206,7 @@ TEST_F(CartesianAdmittanceControllerTest, update_success)
     controller_interface::return_type::OK);
 }
 
-TEST_F(CartesianAdmittanceControllerTest, deactivate_success)
+TEST_F(CartesianVicControllerTest, deactivate_success)
 {
   SetUpController();
 
@@ -214,7 +215,7 @@ TEST_F(CartesianAdmittanceControllerTest, deactivate_success)
   ASSERT_EQ(controller_->on_deactivate(rclcpp_lifecycle::State()), NODE_SUCCESS);
 }
 
-TEST_F(CartesianAdmittanceControllerTest, reactivate_success)
+TEST_F(CartesianVicControllerTest, reactivate_success)
 {
   SetUpController();
 
@@ -229,7 +230,7 @@ TEST_F(CartesianAdmittanceControllerTest, reactivate_success)
     controller_interface::return_type::OK);
 }
 
-TEST_F(CartesianAdmittanceControllerTest, publish_status_success)
+TEST_F(CartesianVicControllerTest, publish_status_success)
 {
   SetUpController();
 
@@ -263,7 +264,7 @@ TEST_F(CartesianAdmittanceControllerTest, publish_status_success)
   //   }
 }
 
-TEST_F(CartesianAdmittanceControllerTest, receive_message_and_publish_updated_status)
+TEST_F(CartesianVicControllerTest, receive_message_and_publish_updated_status)
 {
   SetUpController();
   rclcpp::executors::MultiThreadedExecutor executor;

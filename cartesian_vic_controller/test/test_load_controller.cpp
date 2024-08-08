@@ -22,20 +22,24 @@
 #include "rclcpp/utilities.hpp"
 #include "ros2_control_test_assets/descriptions.hpp"
 
-TEST(TestLoadAdmittanceController, load_controller)
+TEST(TestLoadVicController, load_controller)
 {
   std::shared_ptr<rclcpp::Executor> executor =
     std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
 
+  // Warning: this is the constructor syntax for humble...
+  // see https://github.com/ros-controls/ros2_control/blob/42107676e96d6517c258cb9c06e0adcfbb23fc3b/controller_manager/src/controller_manager.cpp#L206-L209
   controller_manager::ControllerManager cm(
     std::make_unique<hardware_interface::ResourceManager>(
-      ros2_control_test_assets::minimal_robot_urdf),
-    executor, "test_controller_manager");
+      ros2_control_test_assets::valid_6d_robot_urdf),
+    executor,
+    "test_controller_manager"
+  );
 
   ASSERT_EQ(
     cm.load_controller(
-      "test_cartesian_admittance_controller",
-      "cartesian_admittance_controller/CartesianAdmittanceController"),
+      "test_cartesian_vic_controller",
+      "cartesian_vic_controller/CartesianVicController"),
     nullptr);
 }
 
