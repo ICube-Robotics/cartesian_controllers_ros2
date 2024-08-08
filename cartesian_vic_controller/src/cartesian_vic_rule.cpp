@@ -90,6 +90,10 @@ CartesianVicRule::configure(
     return controller_interface::return_type::ERROR;
   }
 
+  // Allocate temporary matrices
+  J_private_ = \
+    Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
+
   return controller_interface::return_type::OK;
 }
 
@@ -437,7 +441,24 @@ CartesianVicRule::update_input_data(
       measurement_data.get_joint_state()
   );
 
+  // Retrieve inertia matrices
+  success &= dynamics_->calculate_inertia(
+    vic_state_.input_data.joint_state_position,
+    vic_state_.input_data.natural_joint_space_inertia
+  );
+  success &= dynamics_->calculate_jacobian(
+    vic_state_.input_data.joint_state_position,
+    vic_state_.input_data.control_frame,
+    J_private_
+  );
+  vic_state_.input_data.natural_cartesian_inertia = (J_private_ * \
+    vic_state_.input_data.natural_joint_space_inertia.inverse() * \
+    J_private_.transpose()).inverse();
+
   if (!success) {
+    RCLCPP_ERROR(
+        logger_,
+        "update_input_data(): failed to update input data!");
     return controller_interface::return_type::ERROR;
   }
   return controller_interface::return_type::OK;

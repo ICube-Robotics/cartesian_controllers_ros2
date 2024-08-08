@@ -60,6 +60,7 @@ VicState::to_msg(cartesian_control_msgs::msg::VicControllerState & vic_state_msg
   vic_state_msg.desired_pose = Eigen::toMsg(desired_frame_0.pose);
   vic_state_msg.desired_velocity = Eigen::toMsg(desired_frame_0.velocity);
   vic_state_msg.desired_acceleration = AccelToMsg(desired_frame_0.acceleration);
+  vic_state_msg.desired_wrench = WrenchToMsg(desired_frame_0.wrench);
   matrixEigenToMsg(desired_frame_0.inertia, vic_state_msg.desired_inertia);
   matrixEigenToMsg(desired_frame_0.stiffness, vic_state_msg.desired_stiffness);
   matrixEigenToMsg(desired_frame_0.damping, vic_state_msg.desired_damping);
@@ -68,8 +69,10 @@ VicState::to_msg(cartesian_control_msgs::msg::VicControllerState & vic_state_msg
   vic_state_msg.pose = Eigen::toMsg(input_data.robot_current_pose);
   vic_state_msg.velocity = Eigen::toMsg(input_data.robot_current_velocity);
   if (input_data.has_ft_sensor()) {
+    vic_state_msg.has_valid_wrench = true;
     vic_state_msg.wrench = WrenchToMsg(input_data.get_ft_sensor_wrench());
   } else {
+    vic_state_msg.has_valid_wrench = false;
     vic_state_msg.wrench.force.x = 0.0;
     vic_state_msg.wrench.force.y = 0.0;
     vic_state_msg.wrench.force.z = 0.0;
@@ -77,7 +80,7 @@ VicState::to_msg(cartesian_control_msgs::msg::VicControllerState & vic_state_msg
     vic_state_msg.wrench.torque.y = 0.0;
     vic_state_msg.wrench.torque.z = 0.0;
   }
-  // matrixEigenToMsg(input_data.natural_cartesian_inertia, vic_state_msg.natural_inertia);
+  matrixEigenToMsg(input_data.natural_cartesian_inertia, vic_state_msg.natural_inertia);
 
   // Fill rendered impedance
   matrixEigenToMsg(command_data.inertia, vic_state_msg.rendered_inertia);
