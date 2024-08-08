@@ -52,6 +52,7 @@ protected:
   bool reset_rule__internal_storage(const size_t num_joints);
 
   // Internal data for this rule
+  Eigen::Matrix<double, 6, 6> I_;
   Eigen::Matrix<double, 6, 1> robot_command_twist_;
   Eigen::Matrix<double, 6, 1> last_robot_commanded_twist_;
 };

@@ -55,14 +55,12 @@ private:
   // Internal data for this rule
   Eigen::VectorXd raw_joint_command_effort_;
 
+  Eigen::Matrix<double, 6, 6> I_;
   Eigen::Matrix<double, 6, Eigen::Dynamic> J_;
   Eigen::Matrix<double, Eigen::Dynamic, 6> J_pinv_;
   Eigen::Matrix<double, 6, Eigen::Dynamic> J_dot_;
 
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> I_joint_space_;
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> M_joint_space_;
-
-  Eigen::Matrix<double, 6, 6> M_cartesian_space_;
 
   double alpha_pinv_ = 0.000005;
 };

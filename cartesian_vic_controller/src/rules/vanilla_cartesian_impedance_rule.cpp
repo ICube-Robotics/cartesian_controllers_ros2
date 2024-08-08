@@ -144,33 +144,20 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     vic_input_data.control_frame,
     J_dot_
   );
-  J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).inverse() * J_.transpose();
+  J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).llt().solve(I_) * J_.transpose();
 
-  model_is_ok &= dynamics_->calculate_inertia(
-    vic_input_data.joint_state_position,
-    M_joint_space_
-  );
-  model_is_ok &= dynamics_->calculate_coriolis(
-    vic_input_data.joint_state_position,
-    vic_input_data.joint_state_velocity,
-    coriolis_
-  );
-  model_is_ok &= dynamics_->calculate_gravity(
-    vic_input_data.joint_state_position,
-    gravity_
-  );
   if (!model_is_ok) {
     success = false;
     RCLCPP_ERROR(
       logger_,
-      "Failed to calculate kinematic / dynamic model!"
+      "Failed to calculate kinematic model!"
     );
   }
 
   Eigen::Matrix<double, 6, 6> M_inv;
   if (parameters_.vic.use_natural_robot_inertia) {
-    M_inv = J_ * M_joint_space_.inverse() * J_.transpose();
-    M = M_inv.inverse();
+    M = vic_input_data.natural_cartesian_inertia;
+    M_inv = vic_input_data.natural_cartesian_inertia.llt().solve(I_);
     RCLCPP_INFO_THROTTLE(
       logger_,
       internal_clock_,
@@ -178,7 +165,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
       "Using natural robot inertia as desired inertia matrix."
     );
   } else {
-    M_inv = M.inverse();
+    M_inv = M.llt().solve(I_);
   }
 
   // Compute impedance control law in the base frame
@@ -218,19 +205,35 @@ bool VanillaCartesianImpedanceRule::compute_controls(
       10000,  // every 10 seconds
       "WARNING! nullspace impedance control is disabled!"
     );
-    vic_command_data.joint_command_acceleration += nullspace_projection_ * M_joint_space_ * (
+    vic_command_data.joint_command_acceleration += nullspace_projection_ *
+      vic_input_data.natural_joint_space_inertia * (
       -1.0 * vic_input_data.joint_state_velocity);
   }
 
   // Compute joint command effort from desired joint acc.
   // ------------------------------------------------
   raw_joint_command_effort_ = \
-    M_joint_space_.diagonal().asDiagonal() * vic_command_data.joint_command_acceleration - \
+    vic_input_data.natural_joint_space_inertia.diagonal().asDiagonal() *
+    vic_command_data.joint_command_acceleration - \
     J_.transpose() * F_ext;
 
   // Gravity compensation
   // ------------------------------------------------
   if (vic_input_data.activate_gravity_compensation) {
+    bool dynamic_model_is_ok = dynamics_->calculate_coriolis(
+      vic_input_data.joint_state_position,
+      vic_input_data.joint_state_velocity,
+      coriolis_);
+    dynamic_model_is_ok &= dynamics_->calculate_gravity(
+      vic_input_data.joint_state_position,
+      gravity_);
+    if (!dynamic_model_is_ok) {
+      success = false;
+      RCLCPP_ERROR(
+        logger_,
+        "Failed to calculate dynamics (coriolis and gravity)!"
+      );
+    }
     raw_joint_command_effort_ += coriolis_;
     raw_joint_command_effort_ += gravity_;
     // TODO(tpoignonec): investigate Orocos implementation! This should be negative,
@@ -289,9 +292,6 @@ bool VanillaCartesianImpedanceRule::reset_rule__internal_storage(const size_t nu
   I_ = Eigen::Matrix<double, 6, 6>::Identity();
   I_joint_space_ = \
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Identity(num_joints, num_joints);
-
-  M_joint_space_ = \
-    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
 
   J_ = Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
   J_pinv_ = Eigen::Matrix<double, Eigen::Dynamic, 6>::Zero(num_joints, 6);

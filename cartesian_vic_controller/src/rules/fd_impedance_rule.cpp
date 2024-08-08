@@ -111,7 +111,7 @@ bool FdImpedanceRule::compute_controls(
     vic_command_data.inertia.block<3, 3>(3, 3) * \
     rot_base_impedance.transpose();
 
-  Eigen::Matrix<double, 6, 6> M_inv = M.inverse();
+  Eigen::Matrix<double, 6, 6> M_inv = M.llt().solve(I_);
 
   // Compute pose tracking errors
   Eigen::Matrix<double, 6, 1> error_pose;
@@ -142,12 +142,8 @@ bool FdImpedanceRule::compute_controls(
     vic_input_data.control_frame,
     J_dot_
   );
-  J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).inverse() * J_.transpose();
-
-  model_is_ok &= dynamics_->calculate_inertia(
-    vic_input_data.joint_state_position,
-    M_joint_space_
-  );
+  J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).llt().solve(I_joint_space_) *
+    J_.transpose();
 
   // Check if the model is ok
   if (!model_is_ok) {
@@ -161,8 +157,7 @@ bool FdImpedanceRule::compute_controls(
   // External force at interaction frame (assumed to be control frame)
   Eigen::Matrix<double, 6, 1> F_ext = Eigen::Matrix<double, 6, 1>::Zero();
   if (parameters_.vic.use_natural_robot_inertia) {
-    M_cartesian_space_ = (J_ * M_joint_space_.inverse() * J_.transpose()).inverse();
-    M = M_cartesian_space_;
+    M = vic_input_data.natural_cartesian_inertia;
   } else {
     if (vic_input_data.has_ft_sensor()) {
       F_ext = -vic_input_data.get_ft_sensor_wrench();
@@ -185,7 +180,7 @@ bool FdImpedanceRule::compute_controls(
     // Simplified impedance controller without F/T sensor
     // see https://www.diag.uniroma1.it/~deluca/rob2_en/15_ImpedanceControl.pdf (page 13)
     raw_joint_command_effort_ = \
-      M_joint_space_ * J_pinv_ *
+      vic_input_data.natural_joint_space_inertia * J_pinv_ *
       (reference_compliant_frame.acceleration - J_dot_ * vic_input_data.joint_state_velocity) + \
       J_.transpose() * (K * error_pose + D * error_velocity);
   } else {
@@ -198,7 +193,7 @@ bool FdImpedanceRule::compute_controls(
       J_pinv_ * (commanded_cartesian_acc - J_dot_ * vic_input_data.joint_state_velocity);
 
     // Compute joint command effort from desired joint acc.
-    raw_joint_command_effort_ = M_joint_space_.diagonal().asDiagonal() *
+    raw_joint_command_effort_ = vic_input_data.natural_joint_space_inertia.diagonal().asDiagonal() *
       vic_command_data.joint_command_acceleration - \
       J_.transpose() * F_ext;
   }
@@ -245,16 +240,13 @@ bool FdImpedanceRule::reset_rule__internal_storage(const size_t num_joints)
 {
   raw_joint_command_effort_ = Eigen::VectorXd::Zero(num_joints);
 
+  I_ = Eigen::Matrix<double, 6, 6>::Identity();
   J_ = Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
   J_pinv_ = Eigen::Matrix<double, Eigen::Dynamic, 6>::Zero(num_joints, 6);
   J_dot_ = Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
 
   I_joint_space_ = \
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Identity(num_joints, num_joints);
-  M_joint_space_ = \
-    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
-
-  M_cartesian_space_.setZero();
   return true;
 }
 

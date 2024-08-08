@@ -53,9 +53,8 @@ private:
   bool reset_rule__internal_storage(const size_t num_joints);
 
   // Internal data for this rule
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> I_;
+  Eigen::Matrix<double, 6, 6> I_;
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> I_joint_space_;
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> M_joint_space_;
   Eigen::Matrix<double, 6, Eigen::Dynamic> J_;
   Eigen::Matrix<double, Eigen::Dynamic, 6> J_pinv_;
   Eigen::Matrix<double, 6, Eigen::Dynamic> J_dot_;

@@ -112,7 +112,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     vic_command_data.inertia.block<3, 3>(3, 3) * \
     rot_base_admittance.transpose();
 
-  Eigen::Matrix<double, 6, 6> M_inv = M.inverse();
+  Eigen::Matrix<double, 6, 6> M_inv = M.llt().solve(I_);
 
   // Compute pose tracking errors
   Eigen::Matrix<double, 6, 1> error_pose;
@@ -203,6 +203,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
 
 bool VanillaCartesianAdmittanceRule::reset_rule__internal_storage(const size_t /*num_joints*/)
 {
+  I_ = Eigen::Matrix<double, 6, 6>::Identity();
   robot_command_twist_.setZero();
   last_robot_commanded_twist_.setZero();
   return true;
