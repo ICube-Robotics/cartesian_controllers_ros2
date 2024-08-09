@@ -66,7 +66,14 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
 {
   bool success = true;
 
+  if (dt <= 0.0) {
+    RCLCPP_ERROR(logger_, "Sampling time should be positive, received %f", dt);
+    success = false;
+  }
+
+  // auto num_joints = vic_input_data.joint_state_position.size();
   // Get reference compliant frame at t_k
+  RCLCPP_DEBUG(logger_, "Reading reference frame...");
   const CompliantFrame & reference_compliant_frame =
     vic_input_data.reference_compliant_frames.get_compliant_frame(0);
 
@@ -77,6 +84,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
 
   // Prepare data
   // --------------------------------
+  RCLCPP_DEBUG(logger_, "Preparing data...");
 
   // auto rot_base_control = vic_transforms_.base_control_.rotation();
   auto rot_base_admittance = vic_transforms_.base_vic_.rotation();
@@ -112,8 +120,6 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     vic_command_data.inertia.block<3, 3>(3, 3) * \
     rot_base_admittance.transpose();
 
-  Eigen::Matrix<double, 6, 6> M_inv = M.llt().solve(I_);
-
   // Compute pose tracking errors
   Eigen::Matrix<double, 6, 1> error_pose;
   error_pose.head(3) =
@@ -132,7 +138,11 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     reference_compliant_frame.velocity - \
     vic_input_data.robot_current_velocity;
 
-  // External force at interaction frame (assumed to be control frame)
+
+  // Retrieve forces if needed (not used if use_natural_robot_inertia is set to True)
+  // RQ: external force at interaction frame (assumed to be control frame),
+  // expressed in the base frame
+  RCLCPP_DEBUG(logger_, "Reading forces...");
   Eigen::Matrix<double, 6, 1> F_ext = Eigen::Matrix<double, 6, 1>::Zero();
   if (vic_input_data.has_ft_sensor()) {
     F_ext = -vic_input_data.get_ft_sensor_wrench();
@@ -140,33 +150,132 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     success &= false;
     RCLCPP_ERROR(
       logger_,
-      "F/T sensor is required for inertia shaping! Setting wrenches to zero!"
+      "F/T sensor is required for admittance control! Setting wrenches to zero!"
     );
+  }
+
+  // Retrieve external joint torques
+  RCLCPP_DEBUG(logger_, "Reading external torques...");
+  if (vic_input_data.has_external_torque_sensor()) {
+    external_joint_torques_ = vic_input_data.get_joint_state_external_torques();
+  } else {
+    external_joint_torques_.setZero();
+  }
+
+  // Compute Kinematics and Dynamics
+  RCLCPP_DEBUG(logger_, "computing J and J_dot...");
+  bool model_is_ok = dynamics_->calculate_jacobian(
+    vic_input_data.joint_state_position,
+    vic_input_data.control_frame,
+    J_
+  );
+  model_is_ok &= dynamics_->calculate_jacobian_derivative(
+    vic_input_data.joint_state_position,
+    vic_input_data.joint_state_velocity,
+    vic_input_data.control_frame,
+    J_dot_
+  );
+
+  RCLCPP_DEBUG(logger_, "Computing J_pinv...");
+  J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).llt().solve(I_) * J_.transpose();
+
+  if (!model_is_ok) {
+    success = false;
+    RCLCPP_ERROR(
+      logger_,
+      "Failed to calculate kinematic model!"
+    );
+  }
+
+  // Compute desired inertia matrix and its inverse
+  RCLCPP_DEBUG(logger_, "Computing M_inv...");
+  Eigen::Matrix<double, 6, 6> M_inv;
+  if (parameters_.vic.use_natural_robot_inertia) {
+    M = vic_input_data.natural_cartesian_inertia;
+    M_inv = vic_input_data.natural_cartesian_inertia.llt().solve(I_);
+    RCLCPP_INFO_THROTTLE(
+      logger_,
+      internal_clock_,
+      5000,
+      "Using natural robot inertia as desired inertia matrix."
+    );
+  } else {
+    M_inv = M.llt().solve(I_);
   }
 
   // Compute admittance control law in the base frame
   // ------------------------------------------------
-  // commanded_acc = p_ddot_desired + inv(M) * (K * err_p + D * err_p_dot - f_ext)
+  // VIC rule: M * err_p_ddot + D * err_p_dot + K * err_p = F_ext - F_ref
   // where err_p = p_desired - p_current
-
+  //
+  // -> commanded_acc = p_ddot_desired + inv(M) * (K * err_p + D * err_p_dot - F_ext + F_ref)
+  // Implement "normal" impedance control
   Eigen::Matrix<double, 6, 1> commanded_cartesian_acc =
     reference_compliant_frame.acceleration + \
     M_inv * (K * error_pose + D * error_velocity - F_ext);
 
-  robot_command_twist_ += last_robot_commanded_twist_ + commanded_cartesian_acc * dt;
-
+  // Copy previous command velocity (used for integration)
   auto previous_jnt_cmd_velocity = vic_command_data.joint_command_velocity;
 
+  // Compute commanded cartesian twist
+  auto robot_command_twist = J_ * previous_jnt_cmd_velocity + commanded_cartesian_acc * dt;
   success &= dynamics_->convert_cartesian_deltas_to_joint_deltas(
     vic_input_data.joint_state_position,
-    robot_command_twist_,
+    robot_command_twist,
     vic_input_data.control_frame,
     vic_command_data.joint_command_velocity
   );
 
+  /*
+  RCLCPP_DEBUG(logger_, "Cmd cartesian acc...");
+  Eigen::Matrix<double, 6, 1> commanded_cartesian_acc = reference_compliant_frame.acceleration + \
+    M_inv * (K * error_pose + D * error_velocity - F_ext + reference_compliant_frame.wrench);
+
+  // Compute joint command accelerations
+  RCLCPP_DEBUG(logger_, "Cmd joint acc...");
+  vic_command_data.joint_command_acceleration = \
+    J_pinv_ * (commanded_cartesian_acc - J_dot_ * vic_input_data.joint_state_velocity);
+
+  // Nullspace objective for stability
+  // ------------------------------------------------
+
+  if (vic_input_data.activate_nullspace_control) {
+    RCLCPP_DEBUG(logger_, "Cmd nullspace joint acc...");
+    nullspace_projection_ = I_joint_space_ - J_pinv_ * J_;
+    M_nullspace_.diagonal() = vic_input_data.nullspace_joint_inertia;
+    K_nullspace_.diagonal() = vic_input_data.nullspace_joint_stiffness;
+    D_nullspace_.diagonal() = vic_input_data.nullspace_joint_damping;
+    M_inv_nullspace_.diagonal() = M_nullspace_.diagonal().cwiseInverse();
+    auto error_position_nullspace = \
+      vic_input_data.nullspace_desired_joint_positions - vic_input_data.joint_state_position;
+    // Add nullspace contribution to joint accelerations
+    vic_command_data.joint_command_acceleration += nullspace_projection_ * M_inv_nullspace_ * (
+      -D_nullspace_ * vic_input_data.joint_state_velocity +
+      K_nullspace_ * error_position_nullspace
+      + external_joint_torques_
+    );
+  } else {
+    // Pure (small) damping in nullspace for stability
+    RCLCPP_WARN_THROTTLE(
+      logger_,
+      internal_clock_,
+      10000,  // every 10 seconds
+      "WARNING! nullspace impedance control is disabled!"
+    );
+  }
+
+  // Compute velocity command
+  RCLCPP_DEBUG(logger_, "Save last velocity...");
+  RCLCPP_DEBUG(logger_, "Integration acc...");
+  vic_command_data.joint_command_velocity += \
+    vic_command_data.joint_command_acceleration * dt;
+  */
+
+
   // Filter joint command velocity
   double cutoff_freq_cmd = parameters_.filters.command_filter_cuttoff_freq;
   if (cutoff_freq_cmd > 0.0) {  // No smoothing otherwise
+    RCLCPP_DEBUG(logger_, "Filter velocity cmd...");
     double cmd_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_freq_cmd);
 
     for (size_t i = 0; i < static_cast<size_t>(
@@ -201,11 +310,27 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   return success;
 }
 
-bool VanillaCartesianAdmittanceRule::reset_rule__internal_storage(const size_t /*num_joints*/)
+bool VanillaCartesianAdmittanceRule::reset_rule__internal_storage(const size_t num_joints)
 {
   I_ = Eigen::Matrix<double, 6, 6>::Identity();
-  robot_command_twist_.setZero();
-  last_robot_commanded_twist_.setZero();
+  I_joint_space_ = \
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Identity(num_joints, num_joints);
+
+  J_ = Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
+  J_pinv_ = Eigen::Matrix<double, Eigen::Dynamic, 6>::Zero(num_joints, 6);
+  J_dot_ = Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
+
+  // Nullspace control
+  M_nullspace_ = \
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
+  M_inv_nullspace_ = \
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
+  K_nullspace_ = \
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
+  D_nullspace_ = \
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
+  external_joint_torques_ = Eigen::VectorXd::Zero(num_joints);
+
   return true;
 }
 

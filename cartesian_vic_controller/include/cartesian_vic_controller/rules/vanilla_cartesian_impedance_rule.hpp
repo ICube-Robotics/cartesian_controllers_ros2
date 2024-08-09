@@ -60,6 +60,7 @@ private:
   Eigen::Matrix<double, 6, Eigen::Dynamic> J_dot_;
   Eigen::VectorXd gravity_;
   Eigen::VectorXd coriolis_;
+
   Eigen::VectorXd raw_joint_command_effort_;
 
   double alpha_pinv_ = 0.000005;
@@ -70,6 +71,7 @@ private:
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> K_nullspace_;
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> D_nullspace_;
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> M_inv_nullspace_;
+  Eigen::VectorXd external_joint_torques_;
 };
 
 }  // namespace cartesian_vic_controller

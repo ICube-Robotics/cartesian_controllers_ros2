@@ -24,7 +24,6 @@ std_msgs/Float64MultiArray rendered_damping  # optional
 std_msgs/Float64MultiArray rendered_stiffness  # optional
 
 # Commands
-geometry_msgs/Twist robot_command_twist  # optional
 float64[] joint_command_position  # optional
 float64[] joint_command_velocity  # optional
 float64[] joint_command_acceleration  # optional
