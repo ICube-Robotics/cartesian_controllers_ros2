@@ -37,48 +37,6 @@ namespace cartesian_vic_controller
 
 controller_interface::CallbackReturn CartesianVicController::on_init()
 {
-  // Try to retrieve urdf (used by kinematics / dynamics plugin)
-  RCLCPP_INFO(
-    get_node()->get_logger(), "Trying to retrieve 'robot_description' parameter...");
-  std::string urdf_string = auto_declare<std::string>(
-    "robot_description", this->get_robot_description());
-  if (urdf_string.empty()) {
-    RCLCPP_ERROR(
-      get_node()->get_logger(),
-      "Could not find 'robot_description' parameter! Trying to retrieve URDF from param server...");
-    // TODO(tpoignonec): get URDF from param server
-    urdf_string = getUrdfFromServer();
-    if (urdf_string.empty()) {
-      RCLCPP_ERROR(
-        get_node()->get_logger(), "Could not retrieve URDF from param server!");
-      return controller_interface::CallbackReturn::ERROR;
-    } else {
-      rclcpp::Parameter robot_description_param("robot_description", urdf_string);
-      get_node()->set_parameter(robot_description_param);
-      // RCLCPP_INFO(get_node()->get_logger(), "URDF: %s", urdf_string.c_str());
-    }
-  }
-
-  // initialize controller config
-  RCLCPP_INFO(get_node()->get_logger(), "Initializing controller config...");
-  try {
-    parameter_handler_ =
-      std::make_shared<cartesian_vic_controller::ParamListener>(get_node());
-    cartesian_vic_controller::Params parameters = parameter_handler_->get_params();
-    // number of joints in controllers is fixed after initialization
-    num_joints_ = parameters.joints.size();
-  } catch (const std::exception & e) {
-    RCLCPP_ERROR(
-      get_node()->get_logger(), "Exception thrown during init stage with message: %s \n", e.what());
-    return controller_interface::CallbackReturn::ERROR;
-  }
-
-  RCLCPP_INFO(get_node()->get_logger(), "Initialized controller with %li joints", num_joints_);
-  // allocate dynamic memory
-  measurement_data_ = MeasurementData(num_joints_);
-  joint_command_ = measurement_data_.get_joint_state();
-  last_commanded_joint_state_ = measurement_data_.get_joint_state();
-
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -205,11 +163,40 @@ controller_interface::return_type CartesianVicController::update(
 controller_interface::CallbackReturn CartesianVicController::on_configure(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
+  // Try to retrieve urdf (used by kinematics / dynamics plugin)
+  RCLCPP_INFO(
+    get_node()->get_logger(), "Trying to retrieve 'robot_description' parameter...");
+  std::string urdf_string = auto_declare<std::string>(
+    "robot_description", this->get_robot_description());
+  if (urdf_string.empty()) {
+    RCLCPP_ERROR(
+      get_node()->get_logger(),
+      "Could not find 'robot_description' parameter! Trying to retrieve URDF from param server...");
+    // TODO(tpoignonec): get URDF from param server
+    urdf_string = getUrdfFromServer();
+    if (urdf_string.empty()) {
+      RCLCPP_ERROR(
+        get_node()->get_logger(), "Could not retrieve URDF from param server!");
+      return controller_interface::CallbackReturn::ERROR;
+    } else {
+      rclcpp::Parameter robot_description_param("robot_description", urdf_string);
+      get_node()->set_parameter(robot_description_param);
+      // RCLCPP_INFO(get_node()->get_logger(), "URDF: %s", urdf_string.c_str());
+    }
+  }
+
   // initialize controller config
   try {
     parameter_handler_ =
       std::make_shared<cartesian_vic_controller::ParamListener>(get_node());
     cartesian_vic_controller::Params parameters = parameter_handler_->get_params();
+    // number of joints in controllers is fixed after initialization
+    num_joints_ = parameters.joints.size();
+    RCLCPP_INFO(get_node()->get_logger(), "Configuring controller with %li joints", num_joints_);
+    // allocate dynamic memory
+    measurement_data_ = MeasurementData(num_joints_);
+    joint_command_ = measurement_data_.get_joint_state();
+    last_commanded_joint_state_ = measurement_data_.get_joint_state();
 
     if (!parameters.vic.plugin_name.empty() &&
       !parameters.vic.plugin_package.empty())
