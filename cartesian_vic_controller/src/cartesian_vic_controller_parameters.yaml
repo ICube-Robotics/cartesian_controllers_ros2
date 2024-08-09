@@ -35,6 +35,11 @@ cartesian_vic_controller:
       default_value: 100.0,
       description: "Specifies the cutoff frequency for the state measurements (velocity). Disabled if frequency <= 0."
     }
+    state_acceleration_filter_cuttoff_freq: {
+      type: double,
+      default_value: 100.0,
+      description: "Specifies the cutoff frequency for the estimation of the robot acceleration. Disabled if frequency <= 0."
+    }
     command_filter_cuttoff_freq: {
       type: double,
       default_value: -1.0,

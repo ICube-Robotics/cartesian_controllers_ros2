@@ -203,6 +203,9 @@ private:
   /// Filtered wrench expressed in robot base frame
   Eigen::Matrix<double, 6, 1> wrench_base_;
 
+  /// Jacobian pre-allocation (used to compute cartesian inertia matrix)
+  Eigen::Matrix<double, 6, Eigen::Dynamic> J_private_;
+
   /// Filtered external torques
   Eigen::VectorXd filtered_external_torques_;
 };
