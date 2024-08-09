@@ -167,7 +167,7 @@ controller_interface::CallbackReturn CartesianVicController::on_configure(
   RCLCPP_INFO(
     get_node()->get_logger(), "Trying to retrieve 'robot_description' parameter...");
   std::string urdf_string = auto_declare<std::string>(
-    "robot_description", this->get_robot_description());
+    "robot_description", "");
   if (urdf_string.empty()) {
     RCLCPP_ERROR(
       get_node()->get_logger(),
