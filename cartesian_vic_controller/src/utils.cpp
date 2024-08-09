@@ -45,6 +45,9 @@ geometry_msgs::msg::Wrench WrenchToMsg(const Eigen::Matrix<double, 6, 1> & in)
 
 bool fromMsg(const std_msgs::msg::Float64MultiArray & m, Eigen::Matrix<double, 6, 6> & e)
 {
+  if (m.data.size() != 36) {
+    return false;
+  }
   /*
   // TODO(tpoignonec): check layout validity !!! (could be flattened or not...)
   size_t size_in_msg = m.layout.dim[0].size;

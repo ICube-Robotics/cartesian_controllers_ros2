@@ -1,4 +1,4 @@
-<library path="cartesian_vic_controller">
+<library path="cartesian_vic_rules">
   <class name="cartesian_vic_controller/VanillaCartesianAdmittanceRule"
          type="cartesian_vic_controller::VanillaCartesianAdmittanceRule"
          base_class_type="cartesian_vic_controller::CartesianVicRule">
@@ -11,13 +11,6 @@
          base_class_type="cartesian_vic_controller::CartesianVicRule">
     <description>
       Classical impedance control law.
-    </description>
-  </class>
-  <class name="cartesian_vic_controller/FdImpedanceRule"
-         type="cartesian_vic_controller::FdImpedanceRule"
-         base_class_type="cartesian_vic_controller::CartesianVicRule">
-    <description>
-      Impedance control law for Force Dimension haptic devices (and ONLY those!!!).
     </description>
   </class>
 </library>

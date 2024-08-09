@@ -52,17 +52,22 @@ public:
     joint_state_velocity = Eigen::VectorXd::Zero(num_joints);
     joint_state_external_torques_ = Eigen::VectorXd::Zero(num_joints);
 
+    natural_joint_space_inertia = \
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
+
     // Allocate nullspace parameters
     nullspace_desired_joint_positions = Eigen::VectorXd::Zero(num_joints);
     nullspace_joint_inertia = Eigen::VectorXd::Zero(num_joints);
     nullspace_joint_stiffness = Eigen::VectorXd::Zero(num_joints);
     nullspace_joint_damping = Eigen::VectorXd::Zero(num_joints);
 
-    // Allocate cartesian state
-    /*
+    // Reset cartesian state
+    robot_current_velocity.setZero();
+    robot_estimated_acceleration.setZero();
+    robot_current_wrench_at_ft_frame_.setZero();
     natural_joint_space_inertia = \
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_joints, num_joints);
-    */
+
     // Reset data availability
     has_ft_sensor_ = false;
     has_external_torque_sensor_ = false;
@@ -150,10 +155,11 @@ public:
   // Cartesian state (control frame w.r.t. robot base frame)
   Eigen::Isometry3d robot_current_pose;
   Eigen::Matrix<double, 6, 1> robot_current_velocity;
+  Eigen::Matrix<double, 6, 1> robot_estimated_acceleration;
 
   /// Natural inertia matrix (from dynamic model)
-  // Eigen::Matrix<double, 6, 6> natural_cartesian_inertia;
-  // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> natural_joint_space_inertia;
+  Eigen::Matrix<double, 6, 6> natural_cartesian_inertia;
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> natural_joint_space_inertia;
 
 protected:
   Eigen::VectorXd joint_state_external_torques_;

@@ -35,6 +35,8 @@ foreach(Dependency IN ITEMS ${DEPENDENCIES})
   find_package(${Dependency} REQUIRED)
 endforeach()
 
+# Main VIC controller library
+# ---------------------------------
 generate_parameter_library(cartesian_vic_controller_parameters
   src/cartesian_vic_controller_parameters.yaml
 )
@@ -46,11 +48,6 @@ add_library(cartesian_vic_controller SHARED
   src/cartesian_vic_state.cpp
   src/compliance_frame_trajectory.cpp
   src/utils.cpp
-  # Vanilla VIC rules (basic admittance / impedance control laws)
-  src/rules/vanilla_cartesian_admittance_rule.cpp
-  src/rules/vanilla_cartesian_impedance_rule.cpp
-  # Impedance control for Force Dimension Haptic Interfaces
-  src/rules/fd_impedance_rule.cpp
 )
 target_compile_features(cartesian_vic_controller PUBLIC cxx_std_17)
 target_include_directories(cartesian_vic_controller PUBLIC
@@ -67,6 +64,22 @@ ament_target_dependencies(cartesian_vic_controller PUBLIC ${DEPENDENCIES})
 target_compile_definitions(cartesian_vic_controller PRIVATE "CARTESIAN_VIC_CONTROLLER_BUILDING_DLL")
 
 pluginlib_export_plugin_description_file(controller_interface cartesian_vic_controller.xml)
+
+# VIC rules library
+add_library(cartesian_vic_rules SHARED
+  # Vanilla VIC rules (basic admittance / impedance control laws)
+  src/rules/vanilla_cartesian_admittance_rule.cpp
+  src/rules/vanilla_cartesian_impedance_rule.cpp
+)
+target_compile_features(cartesian_vic_rules PUBLIC cxx_std_17)
+target_include_directories(cartesian_vic_rules PUBLIC
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include/cartesian_vic_controller>
+)
+target_link_libraries(cartesian_vic_rules PUBLIC
+  cartesian_vic_controller
+)
+ament_target_dependencies(cartesian_vic_rules PUBLIC ${DEPENDENCIES})
 pluginlib_export_plugin_description_file(cartesian_vic_controller cartesian_vic_rules.xml)
 
 if(BUILD_TESTING)
@@ -95,7 +108,10 @@ if(BUILD_TESTING)
     test/test_cartesian_vic_controller.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/test_params.yaml
   )
-  target_link_libraries(test_controller cartesian_vic_controller)
+  target_link_libraries(test_controller
+    cartesian_vic_controller
+    cartesian_vic_rules
+  )
   ament_target_dependencies(test_controller
     control_msgs
     controller_interface
@@ -109,7 +125,11 @@ install(
   DESTINATION include/cartesian_vic_controller
 )
 
-install(TARGETS cartesian_vic_controller cartesian_vic_controller_parameters
+install(
+  TARGETS
+    cartesian_vic_controller
+    cartesian_vic_controller_parameters
+    cartesian_vic_rules
   EXPORT export_cartesian_vic_controller
   RUNTIME DESTINATION bin
   ARCHIVE DESTINATION lib

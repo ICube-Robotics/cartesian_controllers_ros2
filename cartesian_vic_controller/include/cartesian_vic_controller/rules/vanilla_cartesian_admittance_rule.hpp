@@ -52,8 +52,21 @@ protected:
   bool reset_rule__internal_storage(const size_t num_joints);
 
   // Internal data for this rule
-  Eigen::Matrix<double, 6, 1> robot_command_twist_;
-  Eigen::Matrix<double, 6, 1> last_robot_commanded_twist_;
+  Eigen::Matrix<double, 6, 6> I_;
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> I_joint_space_;
+  Eigen::Matrix<double, 6, Eigen::Dynamic> J_;
+  Eigen::Matrix<double, Eigen::Dynamic, 6> J_pinv_;
+  Eigen::Matrix<double, 6, Eigen::Dynamic> J_dot_;
+
+  double alpha_pinv_ = 0.000005;
+
+  // Nullspace solver
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> nullspace_projection_;
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> M_nullspace_;
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> K_nullspace_;
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> D_nullspace_;
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> M_inv_nullspace_;
+  Eigen::VectorXd external_joint_torques_;
 };
 
 }  // namespace cartesian_vic_controller
