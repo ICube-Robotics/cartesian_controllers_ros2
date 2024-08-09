@@ -212,7 +212,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   // Implement "normal" impedance control
   Eigen::Matrix<double, 6, 1> commanded_cartesian_acc =
     reference_compliant_frame.acceleration + \
-    M_inv * (K * error_pose + D * error_velocity - F_ext);
+    M_inv * (K * error_pose + D * error_velocity - F_ext + reference_compliant_frame.wrench);
 
   // Copy previous command velocity (used for integration)
   auto previous_jnt_cmd_velocity = vic_command_data.joint_command_velocity;
