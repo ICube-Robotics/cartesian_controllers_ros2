@@ -166,7 +166,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     J_dot_
   );
   RCLCPP_DEBUG(logger_, "Computing J_pinv...");
-  J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).llt().solve(I_) * J_.transpose();
+  J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).inverse() * J_.transpose();
 
   if (!model_is_ok) {
     success = false;
@@ -181,7 +181,8 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   Eigen::Matrix<double, 6, 6> M_inv;
   if (parameters_.vic.use_natural_robot_inertia) {
     M = vic_input_data.natural_cartesian_inertia;
-    M_inv = vic_input_data.natural_cartesian_inertia.llt().solve(I_);
+    // M_inv = vic_input_data.natural_cartesian_inertia.llt().solve(I_);
+    M_inv = vic_input_data.natural_cartesian_inertia.inverse();
     RCLCPP_INFO_THROTTLE(
       logger_,
       internal_clock_,
@@ -189,7 +190,8 @@ bool VanillaCartesianImpedanceRule::compute_controls(
       "Using natural robot inertia as desired inertia matrix."
     );
   } else {
-    M_inv = M.llt().solve(I_);
+    // M_inv = M.llt().solve(I_);
+    M_inv = M.inverse();
   }
 
 
@@ -295,7 +297,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
       logger_,
       internal_clock_,
       10000,  // every 10 seconds
-      "WARNING! gravity compensation is disabled!"
+      "FYI: gravity compensation is disabled."
     );
   }
 
