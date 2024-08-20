@@ -86,6 +86,10 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   // --------------------------------
   RCLCPP_DEBUG(logger_, "Preparing data...");
 
+
+  // Copy previous command velocity (used for integration)
+  auto previous_jnt_cmd_velocity = vic_command_data.joint_command_velocity;
+
   // auto rot_base_control = vic_transforms_.base_control_.rotation();
   auto rot_base_admittance = vic_transforms_.base_vic_.rotation();
 
@@ -177,7 +181,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   );
 
   RCLCPP_DEBUG(logger_, "Computing J_pinv...");
-  J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).llt().solve(I_) * J_.transpose();
+  J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).inverse() * J_.transpose();
 
   if (!model_is_ok) {
     success = false;
@@ -192,7 +196,8 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   Eigen::Matrix<double, 6, 6> M_inv;
   if (parameters_.vic.use_natural_robot_inertia) {
     M = vic_input_data.natural_cartesian_inertia;
-    M_inv = vic_input_data.natural_cartesian_inertia.llt().solve(I_);
+    // M_inv = vic_input_data.natural_cartesian_inertia.llt().solve(I_);
+    M_inv = vic_input_data.natural_cartesian_inertia.inverse();
     RCLCPP_INFO_THROTTLE(
       logger_,
       internal_clock_,
@@ -200,7 +205,8 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
       "Using natural robot inertia as desired inertia matrix."
     );
   } else {
-    M_inv = M.llt().solve(I_);
+    // M_inv = M.llt().solve(I_);
+    M_inv = M.inverse();
   }
 
   // Compute admittance control law in the base frame
@@ -210,12 +216,15 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   //
   // -> commanded_acc = p_ddot_desired + inv(M) * (K * err_p + D * err_p_dot - F_ext + F_ref)
   // Implement "normal" impedance control
-  Eigen::Matrix<double, 6, 1> commanded_cartesian_acc =
-    reference_compliant_frame.acceleration + \
+  RCLCPP_DEBUG(logger_, "Cmd cartesian acc...");
+  Eigen::Matrix<double, 6, 1> commanded_cartesian_acc = reference_compliant_frame.acceleration + \
     M_inv * (K * error_pose + D * error_velocity - F_ext + reference_compliant_frame.wrench);
 
-  // Copy previous command velocity (used for integration)
-  auto previous_jnt_cmd_velocity = vic_command_data.joint_command_velocity;
+  // TODO(tpoignonec): clip cartesian acceleration in min/max range
+  // (and same for velocity if possible)
+
+  /*
+  // Basic scheme for reference (not great): integrate cartesian velocity
 
   // Compute commanded cartesian twist
   auto robot_command_twist = J_ * previous_jnt_cmd_velocity + commanded_cartesian_acc * dt;
@@ -225,11 +234,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     vic_input_data.control_frame,
     vic_command_data.joint_command_velocity
   );
-
-  /*
-  RCLCPP_DEBUG(logger_, "Cmd cartesian acc...");
-  Eigen::Matrix<double, 6, 1> commanded_cartesian_acc = reference_compliant_frame.acceleration + \
-    M_inv * (K * error_pose + D * error_velocity - F_ext + reference_compliant_frame.wrench);
+  */
 
   // Compute joint command accelerations
   RCLCPP_DEBUG(logger_, "Cmd joint acc...");
@@ -238,7 +243,6 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
 
   // Nullspace objective for stability
   // ------------------------------------------------
-
   if (vic_input_data.activate_nullspace_control) {
     RCLCPP_DEBUG(logger_, "Cmd nullspace joint acc...");
     nullspace_projection_ = I_joint_space_ - J_pinv_ * J_;
@@ -251,8 +255,8 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     // Add nullspace contribution to joint accelerations
     vic_command_data.joint_command_acceleration += nullspace_projection_ * M_inv_nullspace_ * (
       -D_nullspace_ * vic_input_data.joint_state_velocity +
-      K_nullspace_ * error_position_nullspace
-      + external_joint_torques_
+      K_nullspace_ * error_position_nullspace +
+      external_joint_torques_
     );
   } else {
     // Pure (small) damping in nullspace for stability
@@ -269,8 +273,6 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   RCLCPP_DEBUG(logger_, "Integration acc...");
   vic_command_data.joint_command_velocity += \
     vic_command_data.joint_command_acceleration * dt;
-  */
-
 
   // Filter joint command velocity
   double cutoff_freq_cmd = parameters_.filters.command_filter_cuttoff_freq;
