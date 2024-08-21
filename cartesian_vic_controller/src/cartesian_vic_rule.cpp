@@ -94,6 +94,9 @@ CartesianVicRule::configure(
   J_private_ = \
     Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
 
+  // J_dot_private_ = \
+  //  Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
+
   return controller_interface::return_type::OK;
 }
 
@@ -571,6 +574,7 @@ bool CartesianVicRule::update_kinematics(
   }
 
   // Update current robot joint velocity
+  //auto previous_joint_velocity = vic_state_.input_data.joint_state_velocity;
   double cutoff_jnt_velocity = parameters_.filters.state_velocity_filter_cuttoff_freq;
   if (dt > 0 && cutoff_jnt_velocity > 0.0) {
     double jnt_velocity_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_jnt_velocity);
@@ -606,6 +610,17 @@ bool CartesianVicRule::update_kinematics(
   if (dt > 0) {
     auto raw_acc = \
       (vic_state_.input_data.robot_current_velocity - last_robot_cartesian_velocity) / dt;
+    /*
+    auto joint_acc = (vic_state_.input_data.joint_state_velocity - previous_joint_velocity) / dt;
+    success &= dynamics_->calculate_jacobian_derivative(
+      vic_state_.input_data.joint_state_position,
+      vic_state_.input_data.joint_state_velocity,
+      vic_state_.input_data.control_frame,
+      J_dot_private_
+    );
+    auto raw_acc = J_private_ * joint_acc + J_dot_private_ *
+      vic_state_.input_data.joint_state_velocity;
+    */
     if (cutoff_acceleration > 0.0) {
       double cutoff_acceleration = 30.0;  // Hz
       double acceleration_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_acceleration);
