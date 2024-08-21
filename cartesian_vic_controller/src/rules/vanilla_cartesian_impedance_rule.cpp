@@ -55,7 +55,9 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   VicCommandData & vic_command_data)
 {
   bool success = true;
-  // auto num_joints = vic_input_data.joint_state_position.size();
+
+  size_t num_joints = vic_state_.input_data.joint_state_position.size();
+  size_t dims = 6;  // 6 DoF
 
   if (dt <= 0.0) {
     RCLCPP_ERROR(logger_, "Sampling time should be positive, received %f", dt);
