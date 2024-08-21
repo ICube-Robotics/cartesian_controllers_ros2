@@ -166,6 +166,16 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     J_dot_
   );
   RCLCPP_DEBUG(logger_, "Computing J_pinv...");
+  const Eigen::JacobiSVD<Eigen::MatrixXd> J_svd =
+    Eigen::JacobiSVD<Eigen::MatrixXd>(J_, Eigen::ComputeThinU | Eigen::ComputeThinV);
+  const Eigen::MatrixXd matrix_s = J_svd.singularValues().asDiagonal();
+  if (J_svd.singularValues()(0) / J_svd.singularValues()(dims - 1) > 30) {
+    success = false;
+    RCLCPP_ERROR(
+      logger_,
+      "Jacobian singularity detected!"
+    );
+  }
   J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).inverse() * J_.transpose();
 
   if (!model_is_ok) {
