@@ -90,6 +90,10 @@ CartesianVicRule::configure(
     return controller_interface::return_type::ERROR;
   }
 
+  // Allocate temporary matrices
+  J_private_ = \
+    Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
+
   return controller_interface::return_type::OK;
 }
 
@@ -431,13 +435,31 @@ CartesianVicRule::update_input_data(
     }
   }
 
-    // Update current robot kinematic state
+  // Update current robot kinematic state
   success &= update_kinematics(
       dt,
       measurement_data.get_joint_state()
   );
 
+  // Retrieve inertia matrices
+  // TODO(tpoignonec): move to a "update_dynamics()" function?
+  success &= dynamics_->calculate_inertia(
+    vic_state_.input_data.joint_state_position,
+    vic_state_.input_data.natural_joint_space_inertia
+  );
+  success &= dynamics_->calculate_jacobian(
+    vic_state_.input_data.joint_state_position,
+    vic_state_.input_data.control_frame,
+    J_private_
+  );
+  vic_state_.input_data.natural_cartesian_inertia = (J_private_ * \
+    vic_state_.input_data.natural_joint_space_inertia.inverse() * \
+    J_private_.transpose()).inverse();
+
   if (!success) {
+    RCLCPP_ERROR(
+        logger_,
+        "update_input_data(): failed to update input data!");
     return controller_interface::return_type::ERROR;
   }
   return controller_interface::return_type::OK;
@@ -571,12 +593,35 @@ bool CartesianVicRule::update_kinematics(
     vic_state_.input_data.robot_current_pose
   );
 
+  auto last_robot_cartesian_velocity = vic_state_.input_data.robot_current_velocity;
   success = dynamics_->convert_joint_deltas_to_cartesian_deltas(
     vic_state_.input_data.joint_state_position,
     vic_state_.input_data.joint_state_velocity,
     vic_state_.input_data.control_frame,
     vic_state_.input_data.robot_current_velocity
   );
+
+  // Estimation acceleration (finite diff.)
+  double cutoff_acceleration = parameters_.filters.state_acceleration_filter_cuttoff_freq;
+  if (dt > 0) {
+    auto raw_acc = \
+      (vic_state_.input_data.robot_current_velocity - last_robot_cartesian_velocity) / dt;
+    if (cutoff_acceleration > 0.0) {
+      double cutoff_acceleration = 30.0;  // Hz
+      double acceleration_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_acceleration);
+      for (size_t i = 0; i < 6; ++i) {
+        vic_state_.input_data.robot_estimated_acceleration(i) = filters::exponentialSmoothing(
+          raw_acc(i),
+          vic_state_.input_data.robot_estimated_acceleration(i),
+          acceleration_filter_coefficient
+        );
+      }
+    } else {
+      vic_state_.input_data.robot_estimated_acceleration = raw_acc;
+    }
+  } else {
+    vic_state_.input_data.robot_estimated_acceleration.setZero();
+  }
 
   // Pre-compute commonly used transformations
   if (parameters_.ft_sensor.is_enabled) {
