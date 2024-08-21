@@ -63,7 +63,7 @@ private:
 
   Eigen::VectorXd raw_joint_command_effort_;
 
-  double alpha_pinv_ = 0.000005;
+  double alpha_pinv_ = 0.0005;
 
   // Nullspace solver
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> nullspace_projection_;
