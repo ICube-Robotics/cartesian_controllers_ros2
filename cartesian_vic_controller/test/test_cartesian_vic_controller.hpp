@@ -437,7 +437,7 @@ protected:
   std::array<double, 6> vic_stiffness_ = {214.1, 214.2, 214.3, 214.4, 214.5, 214.6};
 
   std::array<double, 6> joint_command_values_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-  std::array<double, 6> joint_state_position_values_ = {0.0, -0.8, 0.0, 1.4, 0.0, -1.0, 0.0};
+  std::array<double, 6> joint_state_position_values_ = {0.0, 0.1, 0.2, 0.3, 0.4, 0.5};
 
   std::array<double, 6> joint_state_velocity_values_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
   std::array<double, 6> fts_state_values_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
