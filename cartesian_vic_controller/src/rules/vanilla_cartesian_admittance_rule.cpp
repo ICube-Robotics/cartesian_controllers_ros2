@@ -173,13 +173,13 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   RCLCPP_DEBUG(logger_, "computing J and J_dot...");
   bool model_is_ok = dynamics_->calculate_jacobian(
     vic_input_data.joint_state_position,
-    vic_input_data.control_frame,
+    vic_input_data.end_effector_frame,
     J_
   );
   model_is_ok &= dynamics_->calculate_jacobian_derivative(
     vic_input_data.joint_state_position,
     vic_input_data.joint_state_velocity,
-    vic_input_data.control_frame,
+    vic_input_data.end_effector_frame,
     J_dot_
   );
 
@@ -195,12 +195,13 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   RCLCPP_DEBUG(logger_, "Computing J_pinv...");
   const Eigen::JacobiSVD<Eigen::MatrixXd> J_svd =
     Eigen::JacobiSVD<Eigen::MatrixXd>(J_, Eigen::ComputeThinU | Eigen::ComputeThinV);
-  const Eigen::MatrixXd matrix_s = J_svd.singularValues().asDiagonal();
-  if (J_svd.singularValues()(0) / J_svd.singularValues()(dims - 1) > 30) {
+  double conditioning_J = J_svd.singularValues()(0) / J_svd.singularValues()(dims - 1);
+  if (conditioning_J > 30) {
     success = false;
     RCLCPP_ERROR(
       logger_,
-      "Jacobian singularity detected!"
+      "Jacobian singularity detected (max(singular values)/min(singular values) = %lf)!",
+      conditioning_J
     );
   }
   // J_pinv_ = J_svd.matrixV() * matrix_s.inverse() * J_svd.matrixU().transpose();
@@ -239,7 +240,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   success &= dynamics_->convert_cartesian_deltas_to_joint_deltas(
     vic_input_data.joint_state_position,
     robot_command_twist,
-    vic_input_data.control_frame,
+    vic_input_data.end_effector_frame,
     vic_command_data.joint_command_velocity
   );
 
@@ -348,7 +349,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   Eigen::Matrix<double, 6, Eigen::Dynamic> J_next = Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, dims);
   dynamics_->calculate_jacobian(
     next_joint_position,
-    vic_input_data.control_frame,
+    vic_input_data.end_effector_frame,
     J_next
   );
   const Eigen::JacobiSVD<Eigen::MatrixXd> next_svd = Eigen::JacobiSVD<Eigen::MatrixXd>(

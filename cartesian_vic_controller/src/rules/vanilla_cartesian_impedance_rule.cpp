@@ -158,24 +158,25 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   RCLCPP_DEBUG(logger_, "computing J and J_dot...");
   bool model_is_ok = dynamics_->calculate_jacobian(
     vic_input_data.joint_state_position,
-    vic_input_data.control_frame,
+    vic_input_data.end_effector_frame,
     J_
   );
   model_is_ok &= dynamics_->calculate_jacobian_derivative(
     vic_input_data.joint_state_position,
     vic_input_data.joint_state_velocity,
-    vic_input_data.control_frame,
+    vic_input_data.end_effector_frame,
     J_dot_
   );
   RCLCPP_DEBUG(logger_, "Computing J_pinv...");
   const Eigen::JacobiSVD<Eigen::MatrixXd> J_svd =
     Eigen::JacobiSVD<Eigen::MatrixXd>(J_, Eigen::ComputeThinU | Eigen::ComputeThinV);
-  const Eigen::MatrixXd matrix_s = J_svd.singularValues().asDiagonal();
-  if (J_svd.singularValues()(0) / J_svd.singularValues()(dims - 1) > 30) {
+  double conditioning_J = J_svd.singularValues()(0) / J_svd.singularValues()(dims - 1);
+  if (conditioning_J > 30) {
     success = false;
     RCLCPP_ERROR(
       logger_,
-      "Jacobian singularity detected!"
+      "Jacobian singularity detected (max(singular values)/min(singular values) = %lf)!",
+      conditioning_J
     );
   }
   J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).inverse() * J_.transpose();
