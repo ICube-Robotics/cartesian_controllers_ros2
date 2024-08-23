@@ -54,6 +54,8 @@ VicState::to_msg(cartesian_control_msgs::msg::VicControllerState & vic_state_msg
       success = false;
   }
 
+  // Fill frame names
+
   // Fill desired compliance
   auto desired_frame_0 = \
     input_data.reference_compliant_frames.get_compliant_frame(0);

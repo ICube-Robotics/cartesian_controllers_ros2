@@ -94,6 +94,9 @@ CartesianVicRule::configure(
   J_private_ = \
     Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
 
+  // J_dot_private_ = \
+  //  Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
+
   return controller_interface::return_type::OK;
 }
 
@@ -191,7 +194,7 @@ void CartesianVicRule::apply_parameters_update()
     parameters_.vic.activate_gravity_compensation;
 
   vic_state_.input_data.vic_frame = parameters_.vic.frame.id;
-  vic_state_.input_data.control_frame = parameters_.control.frame.id;
+  vic_state_.input_data.end_effector_frame = parameters_.end_effector_frame.frame.id;
   vic_state_.input_data.ft_sensor_frame = parameters_.ft_sensor.frame.id;
 
   if (!use_streamed_interaction_parameters_) {
@@ -318,7 +321,7 @@ CartesianVicRule::update_compliant_frame_trajectory(
   // Update reference compliant frames
   bool success = true;
   for (unsigned int i = 0; i < N; i++) {
-    // TODO(tpoignonec): Check the frame is correct (i.e., control w.r.t. base)!
+    // TODO(tpoignonec): Check the frame is correct (i.e., end-effector w.r.t. base)!
     success &= \
       vic_state_.input_data.reference_compliant_frames.fill_desired_robot_state_from_msg(
       i,
@@ -449,7 +452,7 @@ CartesianVicRule::update_input_data(
   );
   success &= dynamics_->calculate_jacobian(
     vic_state_.input_data.joint_state_position,
-    vic_state_.input_data.control_frame,
+    vic_state_.input_data.end_effector_frame,
     J_private_
   );
   vic_state_.input_data.natural_cartesian_inertia = (J_private_ * \
@@ -571,6 +574,7 @@ bool CartesianVicRule::update_kinematics(
   }
 
   // Update current robot joint velocity
+  // auto previous_joint_velocity = vic_state_.input_data.joint_state_velocity;
   double cutoff_jnt_velocity = parameters_.filters.state_velocity_filter_cuttoff_freq;
   if (dt > 0 && cutoff_jnt_velocity > 0.0) {
     double jnt_velocity_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_jnt_velocity);
@@ -589,7 +593,7 @@ bool CartesianVicRule::update_kinematics(
   // Update current cartesian pose and velocity from robot joint states
   success &= dynamics_->calculate_link_transform(
     vic_state_.input_data.joint_state_position,
-    vic_state_.input_data.control_frame,
+    vic_state_.input_data.end_effector_frame,
     vic_state_.input_data.robot_current_pose
   );
 
@@ -597,7 +601,7 @@ bool CartesianVicRule::update_kinematics(
   success = dynamics_->convert_joint_deltas_to_cartesian_deltas(
     vic_state_.input_data.joint_state_position,
     vic_state_.input_data.joint_state_velocity,
-    vic_state_.input_data.control_frame,
+    vic_state_.input_data.end_effector_frame,
     vic_state_.input_data.robot_current_velocity
   );
 
@@ -606,6 +610,17 @@ bool CartesianVicRule::update_kinematics(
   if (dt > 0) {
     auto raw_acc = \
       (vic_state_.input_data.robot_current_velocity - last_robot_cartesian_velocity) / dt;
+    /*
+    auto joint_acc = (vic_state_.input_data.joint_state_velocity - previous_joint_velocity) / dt;
+    success &= dynamics_->calculate_jacobian_derivative(
+      vic_state_.input_data.joint_state_position,
+      vic_state_.input_data.joint_state_velocity,
+      vic_state_.input_data.end_effector_frame,
+      J_dot_private_
+    );
+    auto raw_acc = J_private_ * joint_acc + J_dot_private_ *
+      vic_state_.input_data.joint_state_velocity;
+    */
     if (cutoff_acceleration > 0.0) {
       double cutoff_acceleration = 30.0;  // Hz
       double acceleration_filter_coefficient = 1.0 - exp(-dt * 2 * 3.14 * cutoff_acceleration);
@@ -635,12 +650,6 @@ bool CartesianVicRule::update_kinematics(
     // In theory, there is no reason to use it if no wrench is available, but you never know...
     vic_transforms_.base_ft_.setIdentity();
   }
-
-  success &= dynamics_->calculate_link_transform(
-    vic_state_.input_data.joint_state_position,
-    parameters_.dynamics.tip,
-    vic_transforms_.base_tip_
-  );
   success &= dynamics_->calculate_link_transform(
     vic_state_.input_data.joint_state_position,
     parameters_.fixed_world_frame.frame.id,
@@ -653,12 +662,12 @@ bool CartesianVicRule::update_kinematics(
   );
   success &= dynamics_->calculate_link_transform(
     vic_state_.input_data.joint_state_position,
-    parameters_.control.frame.id,
-    vic_transforms_.base_control_
+    parameters_.end_effector_frame.frame.id,
+    vic_transforms_.base_end_effector_
   );
   success &= dynamics_->calculate_link_transform(
     vic_state_.input_data.joint_state_position,
-    parameters_.control.frame.id,
+    parameters_.vic.frame.id,
     vic_transforms_.base_vic_
   );
   return true;
@@ -694,7 +703,7 @@ bool CartesianVicRule::process_wrench_measurements(
   new_wrench_world.block<3, 1>(0, 1) -= (rot_world_cog * cog_pos).cross(end_effector_weight);
 
   /*
-  // Wrench at interaction point (e.g., assumed to be control frame
+  // Wrench at interaction point (assumed to be end-effector frame)
   F_ext.block<3, 1>(0, 0) = rot_base_control.transpose() * F_ext_base.block<3, 1>(0, 0);
   // Evaluate torques at new interaction point
   F_ext.block<3, 1>(3, 0) = rot_base_control.transpose() * (

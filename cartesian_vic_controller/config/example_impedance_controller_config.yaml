@@ -41,7 +41,7 @@ cartesian_impedance_controller:
       is_enabled: false
       name: ""
 
-    control:
+    end_effector_frame:
       frame:
         id: interaction_point # Admittance calcs (displacement etc) are done in this frame. Usually the tool or end-effector
         external: false # control frame exists within URDF kinematic chain
