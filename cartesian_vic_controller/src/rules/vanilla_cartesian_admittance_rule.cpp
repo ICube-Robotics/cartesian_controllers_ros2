@@ -195,7 +195,12 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   RCLCPP_DEBUG(logger_, "Computing J_pinv...");
   const Eigen::JacobiSVD<Eigen::MatrixXd> J_svd =
     Eigen::JacobiSVD<Eigen::MatrixXd>(J_, Eigen::ComputeThinU | Eigen::ComputeThinV);
-  double conditioning_J = J_svd.singularValues()(0) / J_svd.singularValues()(dims - 1);
+  double conditioning_J = 1000.0;
+  if (J_.cols() < 6) {
+    conditioning_J = J_svd.singularValues()(0) / J_svd.singularValues()(J_.cols() - 1);
+  } else {
+    conditioning_J = J_svd.singularValues()(0) / J_svd.singularValues()(dims - 1);
+  }
   if (conditioning_J > 30) {
     success = false;
     RCLCPP_ERROR(
