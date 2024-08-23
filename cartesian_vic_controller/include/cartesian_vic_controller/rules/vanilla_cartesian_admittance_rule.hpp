@@ -58,7 +58,7 @@ protected:
   Eigen::Matrix<double, Eigen::Dynamic, 6> J_pinv_;
   Eigen::Matrix<double, 6, Eigen::Dynamic> J_dot_;
 
-  double alpha_pinv_ = 0.000005;
+  double alpha_pinv_ = 0.0005;
 
   // Nullspace solver
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> nullspace_projection_;

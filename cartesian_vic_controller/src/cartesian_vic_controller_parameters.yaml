@@ -111,11 +111,11 @@ cartesian_vic_controller:
       description: "Specifies the name of the external torque sensor in the robot description which will be used in the vic calculation."
     }
 
-  control:
+  end_effector_frame:
     frame:
       id: {
         type: string,
-        description: "Specifies the robot control frame in which the reference pose and velocities are expressed."
+        description: "Specifies the controlled robot end effector frame. Note that the pose and velocity are expressed w.r.t. the base frame (see dynamics plugin parameters)."
       }
 
   fixed_world_frame: # Gravity points down (neg. Z) in this frame (Usually: world or base_link)
@@ -149,7 +149,7 @@ cartesian_vic_controller:
     frame:
       id: {
         type: string,
-        description: "Specifies the control frame used for vic calculation."
+        description: "Specifies the frame in which the impedance matrices are expressed."
       }
     plugin_name: {
       type: string,
