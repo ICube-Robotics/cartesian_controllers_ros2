@@ -212,7 +212,6 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     M_inv = M.inverse();
   }
 
-
   // Compute impedance control law in the base frame
   // ------------------------------------------------
   // VIC rule: M * err_p_ddot + D * err_p_dot + K * err_p = F_ext - F_ref
@@ -278,12 +277,15 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   if (parameters_.vic.use_natural_robot_inertia) {
     raw_joint_command_effort_ = \
       vic_input_data.natural_joint_space_inertia.diagonal().asDiagonal() *
-      vic_command_data.joint_command_acceleration;  // F_ext is already cancelled in IC Eq.
+      vic_command_data.joint_command_acceleration;
+      // Note: F_ext is already cancelled in IC Eq.
+      // See https://www.diag.uniroma1.it/deluca/rob2_en/15_ImpedanceControl.pdf (page 9)
+      // J_.transpose() * (vic_input_data.natural_cartesian_inertia * M_inv - I_) * F_ext;
   } else {
     raw_joint_command_effort_ = \
-      vic_input_data.natural_joint_space_inertia.diagonal().asDiagonal() *
-      vic_command_data.joint_command_acceleration - \
-      J_.transpose() * F_ext;
+      vic_input_data.natural_joint_space_inertia.diagonal().asDiagonal()
+      * vic_command_data.joint_command_acceleration
+      + J_.transpose() * F_ext;
   }
 
   // Gravity compensation
