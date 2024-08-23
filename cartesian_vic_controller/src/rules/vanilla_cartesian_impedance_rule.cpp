@@ -55,7 +55,9 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   VicCommandData & vic_command_data)
 {
   bool success = true;
-  // auto num_joints = vic_input_data.joint_state_position.size();
+
+  size_t num_joints = vic_state_.input_data.joint_state_position.size();
+  size_t dims = 6;  // 6 DoF
 
   if (dt <= 0.0) {
     RCLCPP_ERROR(logger_, "Sampling time should be positive, received %f", dt);
@@ -156,17 +158,28 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   RCLCPP_DEBUG(logger_, "computing J and J_dot...");
   bool model_is_ok = dynamics_->calculate_jacobian(
     vic_input_data.joint_state_position,
-    vic_input_data.control_frame,
+    vic_input_data.end_effector_frame,
     J_
   );
   model_is_ok &= dynamics_->calculate_jacobian_derivative(
     vic_input_data.joint_state_position,
     vic_input_data.joint_state_velocity,
-    vic_input_data.control_frame,
+    vic_input_data.end_effector_frame,
     J_dot_
   );
   RCLCPP_DEBUG(logger_, "Computing J_pinv...");
-  J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).llt().solve(I_) * J_.transpose();
+  const Eigen::JacobiSVD<Eigen::MatrixXd> J_svd =
+    Eigen::JacobiSVD<Eigen::MatrixXd>(J_, Eigen::ComputeThinU | Eigen::ComputeThinV);
+  double conditioning_J = J_svd.singularValues()(0) / J_svd.singularValues()(dims - 1);
+  if (conditioning_J > 30) {
+    success = false;
+    RCLCPP_ERROR(
+      logger_,
+      "Jacobian singularity detected (max(singular values)/min(singular values) = %lf)!",
+      conditioning_J
+    );
+  }
+  J_pinv_ = (J_.transpose() * J_ + alpha_pinv_ * I_joint_space_).inverse() * J_.transpose();
 
   if (!model_is_ok) {
     success = false;
@@ -181,7 +194,8 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   Eigen::Matrix<double, 6, 6> M_inv;
   if (parameters_.vic.use_natural_robot_inertia) {
     M = vic_input_data.natural_cartesian_inertia;
-    M_inv = vic_input_data.natural_cartesian_inertia.llt().solve(I_);
+    // M_inv = vic_input_data.natural_cartesian_inertia.llt().solve(I_);
+    M_inv = vic_input_data.natural_cartesian_inertia.inverse();
     RCLCPP_INFO_THROTTLE(
       logger_,
       internal_clock_,
@@ -189,7 +203,8 @@ bool VanillaCartesianImpedanceRule::compute_controls(
       "Using natural robot inertia as desired inertia matrix."
     );
   } else {
-    M_inv = M.llt().solve(I_);
+    // M_inv = M.llt().solve(I_);
+    M_inv = M.inverse();
   }
 
 
@@ -295,7 +310,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
       logger_,
       internal_clock_,
       10000,  // every 10 seconds
-      "WARNING! gravity compensation is disabled!"
+      "FYI: gravity compensation is disabled."
     );
   }
 

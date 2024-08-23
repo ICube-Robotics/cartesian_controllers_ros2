@@ -206,6 +206,9 @@ private:
   /// Jacobian pre-allocation (used to compute cartesian inertia matrix)
   Eigen::Matrix<double, 6, Eigen::Dynamic> J_private_;
 
+  /// Jacobian pre-allocation (used to compute cartesian inertia matrix)
+  // Eigen::Matrix<double, 6, Eigen::Dynamic> J_dot_private_;
+
   /// Filtered external torques
   Eigen::VectorXd filtered_external_torques_;
 };

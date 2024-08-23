@@ -127,12 +127,12 @@ public:
   bool activate_nullspace_control = false;
   bool activate_gravity_compensation = false;
 
-  /// Name of the robot base frame
+  /// Name of the control frame in which is expressed the cartesian pose/vel/acc/wrench reference
   std::string base_frame;
   /// Name of the compliance (i.e., vic) frame in which compliance parameters are specified
   std::string vic_frame;
-  /// Name of the control frame in which is expressed the cartesian pose/vel/acc/wrench reference
-  std::string control_frame;
+  /// Name of the controlled robot end-effector frame
+  std::string end_effector_frame;
   /// Name of the force/torque sensor frame in which is expressed the measured wrench
   std::string ft_sensor_frame;
 
@@ -236,23 +236,16 @@ public:
 /// Transforms between frames used in the Vic controller
 struct VicTransforms
 {
-  // transformation from force torque sensor frame to base link frame at reference joint angles
-  Eigen::Isometry3d ref_base_ft_;
-  // transformation from force torque sensor frame to base link frame at reference + vic
-  // offset joint angles
-  Eigen::Isometry3d base_ft_;
-  // transformation from control frame to base link frame at reference + vic offset joint
-  // angles
-  Eigen::Isometry3d base_control_;
-  Eigen::Isometry3d base_vic_;
-  // transformation from end effector frame to base link frame at reference + vic offset
-  // joint angles
-  Eigen::Isometry3d base_tip_;
-  // transformation from center of gravity frame to base link frame at reference + vic offset
-  // joint angles
-  Eigen::Isometry3d base_cog_;
-  // transformation from world frame to base link frame
+  // transformation from fixed world frame to base link frame
   Eigen::Isometry3d world_base_;
+  // transformation from force torque sensor frame to base link frame
+  Eigen::Isometry3d base_ft_;
+  // transformation from controlled end effector (EE) frame to base link frame
+  Eigen::Isometry3d base_end_effector_;
+  // transformation from vic frame to base link frame
+  Eigen::Isometry3d base_vic_;
+  // transformation from CoG frame (i.e., post-sensor inertial frame) to base link frame
+  Eigen::Isometry3d base_cog_;
 };
 
 
