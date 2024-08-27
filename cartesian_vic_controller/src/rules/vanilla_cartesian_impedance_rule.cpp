@@ -255,11 +255,23 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     auto error_position_nullspace = \
       vic_input_data.nullspace_desired_joint_positions - vic_input_data.joint_state_position;
     // Add nullspace contribution to joint accelerations
-    vic_command_data.joint_command_acceleration += nullspace_projection_ * M_inv_nullspace_ * (
-      -D_nullspace_ * vic_input_data.joint_state_velocity +
-      K_nullspace_ * error_position_nullspace +
-      external_joint_torques_
-    );
+    if (vic_input_data.has_external_torque_sensor()) {
+      RCLCPP_DEBUG(logger_, "Cmd nullspace joint acc with external torques...");
+      vic_command_data.joint_command_acceleration += nullspace_projection_ * M_inv_nullspace_ * (
+        -D_nullspace_ * vic_input_data.joint_state_velocity +
+        K_nullspace_ * error_position_nullspace +
+        external_joint_torques_
+      );
+    } else {
+      // Use natural joint space inertia
+      RCLCPP_DEBUG(
+        logger_,
+        "Cmd nullspace joint acc with natural joint inertia (no ext torque sensor)...");
+      vic_command_data.joint_command_acceleration += nullspace_projection_ * (
+        -D_nullspace_ * vic_input_data.joint_state_velocity +
+        K_nullspace_ * error_position_nullspace
+      );
+    }
   } else {
     // Pure (small) damping in nullspace for stability
     RCLCPP_WARN_THROTTLE(
@@ -283,9 +295,9 @@ bool VanillaCartesianImpedanceRule::compute_controls(
       // J_.transpose() * (vic_input_data.natural_cartesian_inertia * M_inv - I_) * F_ext;
   } else {
     raw_joint_command_effort_ = \
-      vic_input_data.natural_joint_space_inertia.diagonal().asDiagonal()
-      * vic_command_data.joint_command_acceleration
-      + J_.transpose() * F_ext;
+      vic_input_data.natural_joint_space_inertia.diagonal().asDiagonal() *
+      vic_command_data.joint_command_acceleration +
+      J_.transpose() * F_ext;
   }
 
   // Gravity compensation
