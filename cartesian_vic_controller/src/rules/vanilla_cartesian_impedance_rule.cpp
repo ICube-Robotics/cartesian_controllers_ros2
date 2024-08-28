@@ -80,37 +80,28 @@ bool VanillaCartesianImpedanceRule::compute_controls(
 
   // auto rot_base_control = vic_transforms_.base_control_.rotation();
   auto rot_base_impedance = vic_transforms_.base_vic_.rotation();
+
   // Express M, K, D matrices in base (provided in base_vic frame)
-
-  Eigen::Matrix<double, 6, 6> K = Eigen::Matrix<double, 6, 6>::Zero();
-  K.block<3, 3>(0, 0) =
-    rot_base_impedance * \
-    vic_command_data.stiffness.block<3, 3>(0, 0) * \
-    rot_base_impedance.transpose();
-  K.block<3, 3>(3, 3) =
-    rot_base_impedance * \
-    vic_command_data.stiffness.block<3, 3>(3, 3) * \
-    rot_base_impedance.transpose();
-
-  Eigen::Matrix<double, 6, 6> D = Eigen::Matrix<double, 6, 6>::Zero();
-  D.block<3, 3>(0, 0) =
-    rot_base_impedance * \
-    vic_command_data.damping.block<3, 3>(0, 0) * \
-    rot_base_impedance.transpose();
-  D.block<3, 3>(3, 3) =
-    rot_base_impedance * \
-    vic_command_data.damping.block<3, 3>(3, 3) * \
-    rot_base_impedance.transpose();
-
+  auto registration_MKD = [&rot_base_impedance](
+    const Eigen::Matrix<double, 6, 6> & matrix_in_adm_frame,
+    Eigen::Matrix<double, 6, 6> & matrix_in_base_frame)
+    {
+      matrix_in_base_frame.block<3, 3>(0, 0) =
+        rot_base_impedance * \
+        matrix_in_adm_frame.block<3, 3>(0, 0) * \
+        rot_base_impedance.transpose();
+      matrix_in_base_frame.block<3, 3>(3, 3) =
+        rot_base_impedance * \
+        matrix_in_adm_frame.block<3, 3>(3, 3) * \
+        rot_base_impedance.transpose();
+      return;
+    };
   Eigen::Matrix<double, 6, 6> M = Eigen::Matrix<double, 6, 6>::Zero();
-  M.block<3, 3>(0, 0) =
-    rot_base_impedance * \
-    vic_command_data.inertia.block<3, 3>(0, 0) * \
-    rot_base_impedance.transpose();
-  M.block<3, 3>(3, 3) =
-    rot_base_impedance * \
-    vic_command_data.inertia.block<3, 3>(3, 3) * \
-    rot_base_impedance.transpose();
+  Eigen::Matrix<double, 6, 6> K = Eigen::Matrix<double, 6, 6>::Zero();
+  Eigen::Matrix<double, 6, 6> D = Eigen::Matrix<double, 6, 6>::Zero();
+  registration_MKD(vic_command_data.inertia, M);
+  registration_MKD(vic_command_data.stiffness, K);
+  registration_MKD(vic_command_data.damping, D);
 
   // Compute pose tracking errors
   Eigen::Matrix<double, 6, 1> error_pose;
@@ -167,20 +158,34 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     vic_input_data.end_effector_frame,
     J_dot_
   );
+
   RCLCPP_DEBUG(logger_, "Computing J_pinv...");
   const Eigen::JacobiSVD<Eigen::MatrixXd> J_svd =
     Eigen::JacobiSVD<Eigen::MatrixXd>(J_, Eigen::ComputeThinU | Eigen::ComputeThinV);
   double conditioning_J = 1000.0;
   if (J_.cols() < 6) {
+    RCLCPP_WARN_THROTTLE(
+      logger_, internal_clock_, 5000, "Jacobian has only %u columns, expecting at least 6!!!",
+        J_.cols());
     conditioning_J = J_svd.singularValues()(0) / J_svd.singularValues()(J_.cols() - 1);
   } else {
     conditioning_J = J_svd.singularValues()(0) / J_svd.singularValues()(dims - 1);
   }
-  if (conditioning_J > 30) {
+  if (conditioning_J > 40) {
     success = false;
+    std::cerr << "J_svd.singularValues() = " << J_svd.singularValues().transpose() << std::endl;
     RCLCPP_ERROR(
       logger_,
       "Jacobian singularity detected (max(singular values)/min(singular values) = %lf)!",
+      conditioning_J
+    );
+  } else if (conditioning_J > 15) {
+    RCLCPP_WARN_THROTTLE(
+      logger_,
+      internal_clock_,
+      5000,
+      "Nearing Jacobian singularity (max(singular values)/min(singular values) = %lf), "
+      "proceed with caution!",
       conditioning_J
     );
   }
