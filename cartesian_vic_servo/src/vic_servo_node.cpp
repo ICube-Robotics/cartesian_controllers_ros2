@@ -27,7 +27,7 @@ CartesianVicServo::CartesianVicServo(std::string node_name)
 }
 bool CartesianVicServo::init()
 {
-  // Setup joint state subscribers
+  // Setup joint state subscriber
   auto joint_state_callback =
     [this](const std::shared_ptr<sensor_msgs::msg::JointState> msg)
     {rt_buffer_joint_state_.writeFromNonRT(msg);};
@@ -35,9 +35,14 @@ bool CartesianVicServo::init()
     this->create_subscription<sensor_msgs::msg::JointState>("joint_states", 1,
       joint_state_callback);
 
-  /*
+  
+  // Setup wrench  subscriber
+  auto wrench_callback =
+    [this](const std::shared_ptr<geometry_msgs::msg::WrenchStamped> msg)
+    {rt_buffer_wrench_.writeFromNonRT(msg);};
   subscriber_wrench_ = \
-    this->create_subscription<geometry_msgs::msg::Wrench>();
+    this->create_subscription<geometry_msgs::msg::WrenchStamped>("wrench", 1, wrench_callback);
+  /*
   subscriber_vic_trajectory_ = \
     this->create_subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>();
   */
@@ -101,6 +106,34 @@ bool CartesianVicServo::get_joint_state(
     RCLCPP_ERROR(
       this->get_logger(),
       "Timeout on joint state message!");
+    return false;
+  }
+
+  return true;
+}
+
+bool CartesianVicServo::get_wrench(
+  geometry_msgs::msg::WrenchStamped & wrench_msg,
+  double timeout /*seconds*/)
+{
+  // Get msg from RT buffer
+  wrench_msg_ptr_ = \
+    *rt_buffer_wrench_.readFromRT();
+  if (wrench_msg_ptr_.get()) {
+    wrench_msg = *wrench_msg_ptr_.get();
+  } else {
+    RCLCPP_ERROR(
+      this->get_logger(),
+      "Failed to get wrench message!");
+    return false;
+  }
+
+  // Check timeout
+  double delay = (this->now() - wrench_msg.header.stamp).nanoseconds();
+  if (delay > timeout * 1e9) {
+    RCLCPP_ERROR(
+      this->get_logger(),
+      "Timeout on wrench message!");
     return false;
   }
 

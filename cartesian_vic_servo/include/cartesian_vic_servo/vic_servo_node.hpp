@@ -24,7 +24,7 @@
 #include "realtime_tools/realtime_buffer.h"
 
 #include "geometry_msgs/msg/twist.hpp"
-#include "geometry_msgs/msg/wrench.hpp"
+#include "geometry_msgs/msg/wrench_stamped.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 
 #include "cartesian_control_msgs/msg/compliant_frame_trajectory.hpp"
@@ -68,8 +68,12 @@ protected:
       sensor_msgs::msg::JointState>> rt_buffer_joint_state_;
   std::shared_ptr<sensor_msgs::msg::JointState> joint_state_msg_ptr_;
 
-  rclcpp::Subscription<geometry_msgs::msg::Wrench>::SharedPtr
+  rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr
     subscriber_wrench_;
+  realtime_tools::RealtimeBuffer<std::shared_ptr<
+      geometry_msgs::msg::WrenchStamped>> rt_buffer_wrench_;
+  std::shared_ptr<geometry_msgs::msg::WrenchStamped> wrench_msg_ptr_;
+
   rclcpp::Subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>::SharedPtr
     subscriber_vic_trajectory_;
 
@@ -81,6 +85,11 @@ protected:
 
   bool get_joint_state(
     sensor_msgs::msg::JointState & msg,
+    double timeout = 0.01 /*seconds*/);
+
+
+  bool get_wrench(
+    geometry_msgs::msg::WrenchStamped & msg,
     double timeout = 0.01 /*seconds*/);
 };
 
