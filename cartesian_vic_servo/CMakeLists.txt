@@ -6,26 +6,29 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 set(DEPENDENCIES
+  rclcpp
+  realtime_tools
+  # Msgs
   geometry_msgs
   sensor_msgs
-  rclcpp
   cartesian_control_msgs
 )
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
 foreach(Dependency IN ITEMS ${DEPENDENCIES})
   find_package(${Dependency} REQUIRED)
 endforeach()
 
-add_executable(vic_servo_node src/vic_servo_node.cpp)
+add_executable(
+  vic_servo_node
+    src/vic_servo_node.cpp
+)
 target_include_directories(vic_servo_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
 target_compile_features(vic_servo_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+ament_target_dependencies(vic_servo_node PUBLIC ${DEPENDENCIES})
 
 install(TARGETS vic_servo_node
   DESTINATION lib/${PROJECT_NAME})
