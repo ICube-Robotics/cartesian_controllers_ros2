@@ -1,32 +1,31 @@
 #include <cstdio>
 
-int main(int argc, char ** argv)
+#include "rclcpp/rclcpp.hpp"
+#include "geometry_msgs/msg/Twist.hpp"
+#include "geometry_msgs/msg/Wrench.hpp"
+#include "sensor_msgs/msg/JointState.hpp"
+#include "cartesian_control_msgs/msg/compliant_frame_trajectory.hpp"
+#include "cartesian_control_msgs/msg/vic_controller_state.hpp"
+
+
+
+bool CartesianVicServo::init()
 {
-  (void) argc;
-  (void) argv;
-
-  /*subscribers (real time)
-    joint_state
-    wrench
-    vic_ref (impedance + trajectory)
-    (status)
-  */
-
-  /*functions
-    synchronize joint_state and wrench
-    registration (impedance, trajctory in appropriate frame)
-    safety (time out)
-
-    update
-  */
-
-  /*publisher (real time)
-    vic_state
-    twist (for moveit)
-  */
+  // Subscribers
+  subscriber_joint_state_ = this->create_subscription<sensor_msgs::msg::JointState>("joint_state_topic", 1, jointState_callback);
+  subscriber_wrench_ = this->create_subscription<geometry_msgs::msg::Wrench>();
+  subscriber_vic_trajectory_ = this->create_subscription<cartesian_control_msgs::msg::ComplianceFrameTrajectory>();
 
 
+  // Publishers
+  publisher_vic_state_ = this->create_publisher<cartesian_control_msgs::msg::VicControllerState>("input_vic_state", 1);
+  publisher_twist_ = this->create_publisher<geometry_msgs::msg::Twist>("/twist_command", 1);
 
-  printf("hello world cartesian_vic_servo package\n");
-  return 0;
+  return true;
+}
+
+auto jointState_callback(sensor_msgs::msg::JointState msg)
+{
+  this->jointState = msg;
+
 }
