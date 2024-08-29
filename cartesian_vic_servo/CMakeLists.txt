@@ -11,6 +11,7 @@ set(DEPENDENCIES
   # Msgs
   geometry_msgs
   sensor_msgs
+  cartesian_vic_controller
   cartesian_control_msgs
 )
 
