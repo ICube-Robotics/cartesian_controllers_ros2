@@ -163,9 +163,18 @@ bool CartesianVicServo::update()
     }
   }
 
+  auto execute_fallback_policy = [this] ()
+    {
+      RCLCPP_ERROR(
+    get_logger(),
+    "Fallback policy triggered! Setting velocity / force controls to zero!");
+
+    // TODO(dmeckes): send twist_cmd = 0
+    };
+
   // Send zero twist if not all OK
   if(!all_ok) {
-    // TODO(dmeckes): send twist_cmd = 0
+    execute_fallback_policy();
     return false;
   }
 
@@ -192,7 +201,7 @@ bool CartesianVicServo::update()
 
   // Send zero twist if not all OK
   if(!all_ok) {
-    // TODO(dmeckes): send twist_cmd = 0
+    execute_fallback_policy();
     return false;
   }
 
