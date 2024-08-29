@@ -22,6 +22,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "realtime_tools/realtime_buffer.h"
+#include "realtime_tools/realtime_publisher.h"
 
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/wrench_stamped.hpp"
@@ -81,10 +82,13 @@ protected:
   std::shared_ptr<cartesian_control_msgs::msg::CompliantFrameTrajectory> vic_trajectory_msg_ptr_;
 
     // PUblishers
-  rclcpp::Publisher<cartesian_control_msgs::msg::VicControllerState>::SharedPtr
-    publisher_vic_state_;
-  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr
-    publisher_twist_;
+  //rclcpp::Publisher<cartesian_control_msgs::msg::VicControllerState>::SharedPtr publisher_vic_state_;
+  std::shared_ptr<rclcpp::Publisher<cartesian_control_msgs::msg::VicControllerState>> publisher_vic_state_;
+  std::shared_ptr<realtime_tools::RealtimePublisher<cartesian_control_msgs::msg::VicControllerState>> rt_publisher_vic_state;
+
+  //rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_twist_;
+  std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::Twist>> publisher_twist_;
+  std::shared_ptr<realtime_tools::RealtimePublisher<geometry_msgs::msg::Twist>> rt_publisher_twist_;
 
   bool get_joint_state(
     sensor_msgs::msg::JointState & msg,

@@ -54,15 +54,18 @@ bool CartesianVicServo::init()
   
 
   // Publishers
-  /*
+  
   publisher_vic_state_ = this->create_publisher<cartesian_control_msgs::msg::VicControllerState>("input_vic_state", 1);
   publisher_twist_ = this->create_publisher<geometry_msgs::msg::Twist>("/twist_command", 1);
-  */
+
+  // Realtime publisher
+  rt_publisher_vic_state =
+    std::make_unique<realtime_tools::RealtimePublisher<cartesian_control_msgs::msg::VicControllerState>>(publisher_vic_state_);
+
+  rt_publisher_twist_ =
+    std::make_unique<realtime_tools::RealtimePublisher<geometry_msgs::msg::Twist>>(publisher_twist_);
 
   /*
-  state_publisher_ =
-    std::make_unique<realtime_tools::RealtimePublisher<ControllerStateMsg>>(s_publisher_);
-
   // How to use:
   state_publisher_->lock();
   // state_publisher_->msg_ = vic_->get_controller_state();
