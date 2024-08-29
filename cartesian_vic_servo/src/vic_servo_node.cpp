@@ -108,11 +108,21 @@ bool CartesianVicServo::init()
 
 bool CartesianVicServo::start()
 {
+  // TODO(dmeckes): connect to moveit servo
+
+  // TODO(dmeckes): start timer with update() as callback
   return false;
 }
 
 bool CartesianVicServo::stop()
 {
+  // TODO(dmeckes): stop timer
+
+  // TODO(dmeckes): send twist = 0 to moveit servo
+
+  // TODO(dmeckes): stop moveit servo
+
+  // TODO(dmeckes): disconnect from moveit servo
   return false;
 }
 
@@ -207,11 +217,15 @@ bool CartesianVicServo::update()
 
   // 2) Send twist command
 
+  // TODO(dmeckes): chack that moveit servo is running
+
   // TODO(dmeckes): send the twist cmd to moveit servo
 
   // 3) Send controller VIC state
 
   // TODO(dmeckes): send the state msg
+
+  return true;
 }
 
 // -----------------------------------------------------
