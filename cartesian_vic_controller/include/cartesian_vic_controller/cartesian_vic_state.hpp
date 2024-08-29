@@ -174,6 +174,7 @@ public:
   explicit VicCommandData(size_t num_joints)
   {
     // Allocate and reset command
+    twist_command.setZero();
     joint_command_position = Eigen::VectorXd::Zero(num_joints);
     joint_command_velocity = Eigen::VectorXd::Zero(num_joints);
     joint_command_acceleration = Eigen::VectorXd::Zero(num_joints);
@@ -193,6 +194,7 @@ public:
   // Computed command
   //------------------------
   // Commanded joint state computed from "robot_command_twist"
+  Eigen::Vector<double, 6> twist_command;
   Eigen::VectorXd joint_command_position;
   Eigen::VectorXd joint_command_velocity;
   Eigen::VectorXd joint_command_acceleration;
@@ -200,6 +202,7 @@ public:
 
   // Command availability
   //------------------------
+  bool has_twist_command = false;
   bool has_position_command = false;
   bool has_velocity_command = false;
   bool has_acceleration_command = false;

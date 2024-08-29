@@ -548,6 +548,46 @@ CartesianVicRule::compute_controls(
   return controller_interface::return_type::OK;
 }
 
+
+controller_interface::return_type
+CartesianVicRule::compute_controls(
+  const rclcpp::Duration & period,
+  geometry_msgs::msg::Twist & twist_command)
+{
+  bool success = true;   // return flag
+  const double dt = period.seconds();
+  // Compute controls
+  success &= compute_controls(dt, vic_state_.input_data, vic_state_.command_data);
+
+  // If an error is detected, set commanded velocity to zero
+  if (!success) {
+    RCLCPP_ERROR(
+      logger_,
+      "Failed to compute the controls!"
+    );
+    // Set twist command to zero
+    twist_command = geometry_msgs::msg::Twist();
+    return controller_interface::return_type::ERROR;
+  }
+  // Otherwise, return computed twist command
+  if (vic_state_.command_data.has_twist_command) {
+    twist_command.linear.x = vic_state_.command_data.twist_command[0];
+    twist_command.linear.y = vic_state_.command_data.twist_command[1];
+    twist_command.linear.z = vic_state_.command_data.twist_command[2];
+    twist_command.angular.x = vic_state_.command_data.twist_command[3];
+    twist_command.angular.y = vic_state_.command_data.twist_command[4];
+    twist_command.angular.z = vic_state_.command_data.twist_command[5];
+    return controller_interface::return_type::OK;
+  } else {
+    // Set twist command to zero
+    twist_command = geometry_msgs::msg::Twist();
+    RCLCPP_ERROR(
+      logger_,
+      "Rule plugin did not return computed twist command!");
+    return controller_interface::return_type::ERROR;
+  }
+}
+
 // Internal functions
 
 bool CartesianVicRule::update_kinematics(
