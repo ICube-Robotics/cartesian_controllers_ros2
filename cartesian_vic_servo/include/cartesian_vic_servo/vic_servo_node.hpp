@@ -76,6 +76,9 @@ protected:
 
   rclcpp::Subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>::SharedPtr
     subscriber_vic_trajectory_;
+  realtime_tools::RealtimeBuffer<std::shared_ptr<
+      cartesian_control_msgs::msg::CompliantFrameTrajectory>> rt_buffer_vic_trajectory_;
+  std::shared_ptr<cartesian_control_msgs::msg::CompliantFrameTrajectory> vic_trajectory_msg_ptr_;
 
     // PUblishers
   rclcpp::Publisher<cartesian_control_msgs::msg::VicControllerState>::SharedPtr
@@ -87,10 +90,17 @@ protected:
     sensor_msgs::msg::JointState & msg,
     double timeout = 0.01 /*seconds*/);
 
+  bool get_vic_trajectory(
+    cartesian_control_msgs::msg::CompliantFrameTrajectory & msg,
+    double timeout = 0.01 /*seconds*/);
+
 
   bool get_wrench(
     geometry_msgs::msg::WrenchStamped & msg,
     double timeout = 0.01 /*seconds*/);
+
+
+
 };
 
 }  // namespace cartesian_vic_servo

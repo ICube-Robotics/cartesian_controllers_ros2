@@ -25,6 +25,7 @@ CartesianVicServo::CartesianVicServo(std::string node_name)
 {
   // Nothing to do
 }
+
 bool CartesianVicServo::init()
 {
   // Setup joint state subscriber
@@ -42,10 +43,15 @@ bool CartesianVicServo::init()
     {rt_buffer_wrench_.writeFromNonRT(msg);};
   subscriber_wrench_ = \
     this->create_subscription<geometry_msgs::msg::WrenchStamped>("wrench", 1, wrench_callback);
-  /*
+  
+
+  // Setup vic trajectory subscriber
+  auto vic_trajectory_callback =
+    [this](const std::shared_ptr<cartesian_control_msgs::msg::CompliantFrameTrajectory> msg)
+    {rt_buffer_vic_trajectory_.writeFromNonRT(msg);};
   subscriber_vic_trajectory_ = \
-    this->create_subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>();
-  */
+    this->create_subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>("vic_trajectory", 1, vic_trajectory_callback);
+  
 
   // Publishers
   /*
@@ -136,9 +142,39 @@ bool CartesianVicServo::get_wrench(
       "Timeout on wrench message!");
     return false;
   }
+  return true;
+
+}
+
+bool CartesianVicServo::get_vic_trajectory(
+  cartesian_control_msgs::msg::CompliantFrameTrajectory & vic_trajectory_msg,
+  double timeout /*seconds*/)
+{
+  // Get msg from RT buffer
+  vic_trajectory_msg_ptr_ = \
+    *rt_buffer_vic_trajectory_.readFromRT();
+  if (vic_trajectory_msg_ptr_.get()) {
+    vic_trajectory_msg = *vic_trajectory_msg_ptr_.get();
+  } else {
+    RCLCPP_ERROR(
+      this->get_logger(),
+      "Failed to get vic trajectory message!");
+    return false;
+  }
+
+  // Check timeout
+  double delay = (this->now() - vic_trajectory_msg.header.stamp).nanoseconds();
+  if (delay > timeout * 1e9) {
+    RCLCPP_ERROR(
+      this->get_logger(),
+      "Timeout on vic trajectory message!");
+    return false;
+  }
 
   return true;
 }
+
+
 // -----------------------------------------------------
 // Utils
 // -----------------------------------------------------
