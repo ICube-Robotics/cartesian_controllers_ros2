@@ -217,7 +217,7 @@ bool CartesianVicServo::update()
 
   // 2) Send twist command
 
-  // TODO(dmeckes): chack that moveit servo is running
+  // TODO(dmeckes): check that moveit servo is running
 
   // TODO(dmeckes): send the twist cmd to moveit servo
 
