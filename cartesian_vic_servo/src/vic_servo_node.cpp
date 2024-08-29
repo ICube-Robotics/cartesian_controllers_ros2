@@ -66,7 +66,7 @@ bool CartesianVicServo::init()
   rt_publisher_twist_ = std::make_unique<realtime_tools::RealtimePublisher<
         geometry_msgs::msg::Twist>>(publisher_twist_);
 
-  // initialize controller config
+  // initialize VIC rule plugin
   try {
     parameter_handler_ =
       std::make_shared<cartesian_vic_controller::ParamListener>(shared_from_this());
