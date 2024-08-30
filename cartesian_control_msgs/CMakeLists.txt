@@ -19,12 +19,18 @@ find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
 set(msg_files
+# General cartesian msgs
   msg/CartesianState.msg
   msg/CartesianTrajectoryPoint.msg
   msg/CartesianTrajectory.msg
   msg/CartesianCompliance.msg
+  # VIC msgs
   msg/CompliantFrameTrajectory.msg
   msg/VicControllerState.msg
+  # Teleoperation msgs
+  msg/TeleopControllerState.msg
+  msg/TeleopCompliance.msg
+  # Debug msgs
   msg/KeyValues.msg
 )
 
