@@ -176,13 +176,21 @@ bool CartesianVicServo::start()
   //timer
   Ts_ = 5.0; //5 milliseconds -> 200Hz (find a way to read from launch file)
   timer_ = this->create_wall_timer(std::chrono::milliseconds(500), std::bind(&CartesianVicServo::CartesianVicServo::update, this));
-  
+  RCLCPP_ERROR(
+        get_logger(),
+        "Timer: started!");
+
   return false;
 }
 
 bool CartesianVicServo::stop()
 {
   // TODO(dmeckes): stop timer
+  timer_.reset();
+  RCLCPP_ERROR(
+        get_logger(),
+        "Timer: stopped!");
+
 
   // TODO(dmeckes): send twist = 0 to moveit servo
   null_twist_->header.stamp = this->now(); //add time
