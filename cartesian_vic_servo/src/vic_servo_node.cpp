@@ -66,6 +66,9 @@ bool CartesianVicServo::init()
   num_joints_ = parameters.joints.size();
   RCLCPP_INFO(get_logger(), "Configuring controller with %li joints", num_joints_);
 
+  //frame_id used for the null twist
+  base_frame_ = parameters.dynamics.base;
+
   
 
   // allocate dynamic memory
@@ -147,7 +150,7 @@ bool CartesianVicServo::init()
   null_twist_->twist.angular.x = 0.0;
   null_twist_->twist.angular.y = 0.0;
   null_twist_->twist.angular.z = 0.0;
-  null_twist_->header.frame_id = "null_twist";
+  null_twist_->header.frame_id = base_frame_; //frame_id is not important here, but it has to exist
   //time stamp at the moment the null twist will be send
 
   return true;
@@ -174,7 +177,11 @@ bool CartesianVicServo::stop()
   // TODO(dmeckes): stop timer
 
   // TODO(dmeckes): send twist = 0 to moveit servo
-  null_twist_->header.stamp = this->now();
+  null_twist_->header.stamp = this->now(); //add time
+  rt_publisher_twist_->lock();
+  rt_publisher_twist_->msg_ = *null_twist_;
+  rt_publisher_twist_->unlockAndPublish();
+  
 
   // TODO(dmeckes): stop moveit servo
 
@@ -224,6 +231,9 @@ bool CartesianVicServo::update()
 
     // TODO(dmeckes): send twist_cmd = 0
       null_twist_->header.stamp = this->now();
+      rt_publisher_twist_->lock();
+      rt_publisher_twist_->msg_ = *null_twist_;
+      rt_publisher_twist_->unlockAndPublish();
     };
 
   // -----------------------

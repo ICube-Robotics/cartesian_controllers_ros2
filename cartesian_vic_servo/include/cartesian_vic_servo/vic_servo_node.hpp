@@ -119,6 +119,7 @@ protected:
 
   // Null twist
   std::unique_ptr<geometry_msgs::msg::TwistStamped> null_twist_;
+  std::string base_frame_;
 
 
   bool update_measurement_data();
