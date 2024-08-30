@@ -121,6 +121,10 @@ protected:
   std::unique_ptr<geometry_msgs::msg::TwistStamped> null_twist_;
   std::string base_frame_;
 
+  // timer
+  rclcpp::TimerBase::SharedPtr timer_;
+  double Ts_; //period
+
 
   bool update_measurement_data();
 

@@ -152,6 +152,7 @@ bool CartesianVicServo::init()
   null_twist_->header.frame_id = base_frame_; //frame_id is not important here, but it has to exist
   //time stamp at the moment the null twist will be send
 
+
   return true;
 }
 
@@ -172,6 +173,10 @@ bool CartesianVicServo::start()
   rt_publisher_twist_->unlockAndPublish();
 
   // TODO(dmeckes): start timer with update() as callback
+  //timer
+  Ts_ = 5.0; //5 milliseconds -> 200Hz (find a way to read from launch file)
+  timer_ = this->create_wall_timer(std::chrono::milliseconds(500), std::bind(&CartesianVicServo::CartesianVicServo::update, this));
+  
   return false;
 }
 
