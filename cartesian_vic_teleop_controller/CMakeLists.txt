@@ -75,7 +75,6 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE "cartesian_vic_teleop_control
 
 pluginlib_export_plugin_description_file(controller_interface cartesian_vic_teleop_controller.xml)
 
-
 # VIC-based teleoperation rule plugins library
 add_library(cartesian_vic_teleop_rules SHARED
   src/rules/vanilla_teleop_rule.cpp
