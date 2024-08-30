@@ -136,6 +136,8 @@ bool PassiveVicTeleopLogic::internal_init(
   auto rule_plugin_name_param_name = param_namespace + ".rule_plugin_name";
   auto rule_plugin_package_param_name = param_namespace + ".rule_plugin_package";
 
+  #if CARTESIAN_VIC_TELEOP_CONTROLLER_JAZZY || CARTESIAN_VIC_TELEOP_CONTROLLER_ROLLING
+  // Does not work seem to work humble
   rcl_interfaces::msg::ParameterDescriptor rule_plugin_param_desc;
   rule_plugin_param_desc.name = "rule_plugin_name";
   rule_plugin_param_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_STRING;
@@ -150,6 +152,7 @@ bool PassiveVicTeleopLogic::internal_init(
     rule_plugin_name_param_name, rclcpp::ParameterValue(""), rule_plugin_param_desc);
   parameters_interface->declare_parameter(
     rule_plugin_package_param_name, rclcpp::ParameterValue(""), rule_plugin_package_param_desc);
+  #endif
 
   auto rule_plugin_name_param = rclcpp::Parameter();
   auto rule_plugin_package_param = rclcpp::Parameter();
