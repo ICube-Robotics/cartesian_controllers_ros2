@@ -69,7 +69,6 @@ bool CartesianVicServo::init()
   //frame_id used for the null twist
   base_frame_ = parameters.dynamics.base;
 
-  
 
   // allocate dynamic memory
   measurement_data_ = cartesian_vic_controller::MeasurementData(parameters.joints.size());
@@ -185,7 +184,7 @@ bool CartesianVicServo::stop()
   rt_publisher_twist_->lock();
   rt_publisher_twist_->msg_ = *null_twist_;
   rt_publisher_twist_->unlockAndPublish();
-  
+
 
   // TODO(dmeckes): stop moveit servo
 
