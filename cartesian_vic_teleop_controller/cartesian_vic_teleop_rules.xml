@@ -1,4 +1,4 @@
-<library path="teleoperation_rules">
+<library path="cartesian_vic_teleop_rules">
   <class name="cartesian_vic_teleop_controller/VanillaTeleopRule"
          type="cartesian_vic_teleop_controller::VanillaTeleopRule"
          base_class_type="cartesian_vic_teleop_controller::TeleopRule">

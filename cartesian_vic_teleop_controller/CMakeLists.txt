@@ -76,35 +76,24 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE "cartesian_vic_teleop_control
 pluginlib_export_plugin_description_file(controller_interface cartesian_vic_teleop_controller.xml)
 
 
-# Teleop rules library
-
-find_package(proxsuite REQUIRED)  # QP solver, only for the rule!
-find_package(ortools_vendor REQUIRED)  # LP solver, only for the rule!
-find_package(ortools CONFIG QUIET)
-if(NOT ortools_FOUND)
-  message(FATAL_ERROR "Failed to find OR-Tools library!")
-endif()
-
-add_library(teleoperation_rules SHARED
+# VIC-based teleoperation rule plugins library
+add_library(cartesian_vic_teleop_rules SHARED
   src/rules/vanilla_teleop_rule.cpp
 )
-target_compile_features(teleoperation_rules PUBLIC cxx_std_17)
-target_include_directories(teleoperation_rules PUBLIC
+target_compile_features(cartesian_vic_teleop_rules PUBLIC cxx_std_17)
+target_include_directories(cartesian_vic_teleop_rules PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include/cartesian_vic_teleop_controller>
 )
-target_link_libraries(teleoperation_rules PUBLIC
+target_link_libraries(cartesian_vic_teleop_rules PUBLIC
   cartesian_vic_teleop_controller
 )
 ament_target_dependencies(
-  teleoperation_rules
+  cartesian_vic_teleop_rules
   PUBLIC
     ${DEPENDENCIES}
-    proxsuite
-    ortools_vendor
 )
-target_link_libraries(teleoperation_rules PUBLIC ortools::ortools)
-pluginlib_export_plugin_description_file(cartesian_vic_teleop_controller teleoperation_rules.xml)
+pluginlib_export_plugin_description_file(cartesian_vic_teleop_controller cartesian_vic_teleop_rules.xml)
 
 install(
   DIRECTORY include/
@@ -114,7 +103,7 @@ install(
 install(
   TARGETS
     ${PROJECT_NAME}
-    teleoperation_rules
+    cartesian_vic_teleop_rules
   EXPORT export_cartesian_vic_teleop_controller
   RUNTIME DESTINATION bin
   ARCHIVE DESTINATION lib
