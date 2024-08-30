@@ -167,6 +167,10 @@ bool CartesianVicServo::start()
   // see: https://github.com/moveit/moveit2/blob/main/moveit_ros/moveit_servo/include/moveit_servo/servo_node.hpp#L126
 
   // TODO(dmeckes): send twist = 0 to moveit servo
+  null_twist_->header.stamp = this->now(); //add time
+  rt_publisher_twist_->lock();
+  rt_publisher_twist_->msg_ = *null_twist_;
+  rt_publisher_twist_->unlockAndPublish();
 
   // TODO(dmeckes): start timer with update() as callback
   return false;
