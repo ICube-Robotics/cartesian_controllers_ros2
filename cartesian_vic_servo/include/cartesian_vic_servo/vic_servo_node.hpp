@@ -24,7 +24,7 @@
 #include "realtime_tools/realtime_buffer.h"
 #include "realtime_tools/realtime_publisher.h"
 
-#include "geometry_msgs/msg/twist.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
 #include "geometry_msgs/msg/wrench_stamped.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 
@@ -114,8 +114,9 @@ protected:
   std::shared_ptr<realtime_tools::RealtimePublisher<
       cartesian_control_msgs::msg::VicControllerState>> rt_publisher_vic_state;
 
-  std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::Twist>> publisher_twist_;
-  std::shared_ptr<realtime_tools::RealtimePublisher<geometry_msgs::msg::Twist>> rt_publisher_twist_;
+  std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::TwistStamped>> publisher_twist_;
+  std::shared_ptr<realtime_tools::RealtimePublisher<geometry_msgs::msg::TwistStamped>>
+  rt_publisher_twist_;
 
   bool update_measurement_data();
 

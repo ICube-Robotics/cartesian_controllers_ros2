@@ -16,6 +16,7 @@
 
 // #include "rcutils/logging_macros.h"
 #include "rclcpp/logging.hpp"
+#include <realtime_tools/thread_priority.hpp>
 
 namespace cartesian_vic_servo
 {
@@ -23,11 +24,47 @@ namespace cartesian_vic_servo
 CartesianVicServo::CartesianVicServo(std::string node_name)
 : Node(node_name)
 {
-  // Nothing to do
+  // Configure SCHED_FIFO and priority
+  int thread_priority = 40;  // High priority for this control thread
+  if (realtime_tools::configure_sched_fifo(thread_priority)) {
+    RCLCPP_INFO_STREAM(get_logger(), "Enabled SCHED_FIFO and higher thread priority.");
+  } else {
+    RCLCPP_WARN_STREAM(get_logger(),
+        "Could not enable FIFO RT scheduling policy. Continuing with the default.");
+  }
+
+  // Check if a realtime kernel is available
+  if (!realtime_tools::has_realtime_kernel()) {
+    RCLCPP_WARN_STREAM(get_logger(), "Realtime kernel is recommended for better performance.");
+  }
 }
 
 bool CartesianVicServo::init()
 {
+  // Setup parameter handler
+  try {
+    parameter_handler_ =
+      std::make_shared<cartesian_vic_controller::ParamListener>(shared_from_this());
+  } catch (const std::exception & e) {
+    std::string error_msg = std::string(e.what());
+    RCLCPP_ERROR(
+      get_logger(),
+      "Caught exception while initializing parameter handler: %s",
+      error_msg.c_str());
+    return false;
+  }
+
+  // load parameters to be used by the VIC rule
+  if (!parameter_handler_) {
+    RCLCPP_ERROR(get_logger(), "Parameter handler not initialized!");
+    return false;
+  }
+  cartesian_vic_controller::Params parameters = parameter_handler_->get_params();
+
+  // number of joints in controllers is fixed after initialization
+  num_joints_ = parameters.joints.size();
+  RCLCPP_INFO(get_logger(), "Configuring controller with %li joints", num_joints_);
+
   // Setup joint state subscriber
   auto joint_state_callback =
     [this](const std::shared_ptr<sensor_msgs::msg::JointState> msg)
@@ -36,46 +73,11 @@ bool CartesianVicServo::init()
     this->create_subscription<sensor_msgs::msg::JointState>("joint_states", 1,
       joint_state_callback);
 
+  // allocate dynamic memory
+  measurement_data_ = cartesian_vic_controller::MeasurementData(parameters.joints.size());
 
-  // Setup wrench  subscriber
-  auto wrench_callback =
-    [this](const std::shared_ptr<geometry_msgs::msg::WrenchStamped> msg)
-    {rt_buffer_wrench_.writeFromNonRT(msg);};
-  subscriber_wrench_ = \
-    this->create_subscription<geometry_msgs::msg::WrenchStamped>("wrench", 1, wrench_callback);
-
-
-  // Setup vic trajectory subscriber
-  auto vic_trajectory_callback =
-    [this](const std::shared_ptr<cartesian_control_msgs::msg::CompliantFrameTrajectory> msg)
-    {rt_buffer_vic_trajectory_.writeFromNonRT(msg);};
-  subscriber_vic_trajectory_ = \
-    this->create_subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>(
-      "vic_trajectory", 1, vic_trajectory_callback);
-
-  // Publishers
-  publisher_vic_state_ =
-    this->create_publisher<cartesian_control_msgs::msg::VicControllerState>("input_vic_state", 1);
-  publisher_twist_ = this->create_publisher<geometry_msgs::msg::Twist>("/twist_command", 1);
-
-  // Realtime publisher
-  rt_publisher_vic_state =
-    std::make_unique<realtime_tools::RealtimePublisher<
-        cartesian_control_msgs::msg::VicControllerState>>(publisher_vic_state_);
-
-  rt_publisher_twist_ = std::make_unique<realtime_tools::RealtimePublisher<
-        geometry_msgs::msg::Twist>>(publisher_twist_);
-
-  // initialize VIC rule plugin
+  // Initialize VIC rule plugin
   try {
-    parameter_handler_ =
-      std::make_shared<cartesian_vic_controller::ParamListener>(shared_from_this());
-    cartesian_vic_controller::Params parameters = parameter_handler_->get_params();
-    // number of joints in controllers is fixed after initialization
-    num_joints_ = parameters.joints.size();
-    RCLCPP_INFO(get_logger(), "Configuring controller with %li joints", num_joints_);
-    // allocate dynamic memory
-    measurement_data_ = cartesian_vic_controller::MeasurementData(parameters.joints.size());
     if (!parameters.vic.plugin_name.empty() &&
       !parameters.vic.plugin_package.empty())
     {
@@ -98,17 +100,55 @@ bool CartesianVicServo::init()
       return false;
     }
   } catch (const std::exception & e) {
+    std::string error_msg = std::string(e.what());
     RCLCPP_ERROR(
       get_logger(), "Exception thrown during configure stage with message: %s \n",
-      e.what());
+      error_msg.c_str());
     return false;
   }
+
+  // Setup wrench  subscriber
+  auto wrench_callback =
+    [this](const std::shared_ptr<geometry_msgs::msg::WrenchStamped> msg)
+    {rt_buffer_wrench_.writeFromNonRT(msg);};
+  subscriber_wrench_ = \
+    this->create_subscription<geometry_msgs::msg::WrenchStamped>("wrench", 1, wrench_callback);
+
+
+  // Setup vic trajectory subscriber
+  auto vic_trajectory_callback =
+    [this](const std::shared_ptr<cartesian_control_msgs::msg::CompliantFrameTrajectory> msg)
+    {rt_buffer_vic_trajectory_.writeFromNonRT(msg);};
+  subscriber_vic_trajectory_ = \
+    this->create_subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>(
+      "vic_trajectory", 1, vic_trajectory_callback);
+
+  // Publishers
+  publisher_vic_state_ =
+    this->create_publisher<cartesian_control_msgs::msg::VicControllerState>("input_vic_state", 1);
+  publisher_twist_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/twist_command", 1);
+
+  // Realtime publisher
+  rt_publisher_vic_state =
+    std::make_unique<realtime_tools::RealtimePublisher<
+        cartesian_control_msgs::msg::VicControllerState>>(publisher_vic_state_);
+
+  rt_publisher_twist_ = std::make_unique<realtime_tools::RealtimePublisher<
+        geometry_msgs::msg::TwistStamped>>(publisher_twist_);
   return true;
 }
 
 bool CartesianVicServo::start()
 {
-  // TODO(dmeckes): connect to moveit servo
+  // TODO(dmeckes): connect to moveit servo / check it exists...
+
+  // TODO(dmeckes): start moveit servo in velocity mode
+  // see: https://github.com/moveit/moveit2/blob/main/moveit_ros/moveit_servo/include/moveit_servo/servo_node.hpp#L125C3-L125C87
+
+  // TODO(dmeckes): start moveit servo
+  // see: https://github.com/moveit/moveit2/blob/main/moveit_ros/moveit_servo/include/moveit_servo/servo_node.hpp#L126
+
+  // TODO(dmeckes): send twist = 0 to moveit servo
 
   // TODO(dmeckes): start timer with update() as callback
   return false;
@@ -151,12 +191,27 @@ bool CartesianVicServo::update()
       this->get_logger(),
       "Failed to get state message!");
   }
+
+  // -----------------------
+  // Prepare fallback policy
+  // -----------------------
+
+  geometry_msgs::msg::TwistStamped twist_cmd;
+  twist_cmd.header.stamp = this->now();
+  twist_cmd.header.frame_id = vic_->get_input_data().base_frame;
+
+  auto execute_fallback_policy = [this] ()
+    {
+      RCLCPP_ERROR(
+      get_logger(),
+      "Fallback policy triggered! Setting velocity / force controls to zero!");
+
+    // TODO(dmeckes): send twist_cmd = 0
+    };
+
   // -----------------------
   // Run vic
   // -----------------------
-  geometry_msgs::msg::Twist twist_cmd;
-  // twist_cmd.header.stamp = this->now();
-  // twist_cmd.header.frame_id = base_link_;
   bool all_ok = is_state_valid;
   if (!is_vic_initialized_ && !is_state_valid) {
     // Exit and wait for valid data...
@@ -172,15 +227,6 @@ bool CartesianVicServo::update()
       "Failed to initialize the reference compliance frame trajectory.");
     }
   }
-
-  auto execute_fallback_policy = [this] ()
-    {
-      RCLCPP_ERROR(
-    get_logger(),
-    "Fallback policy triggered! Setting velocity / force controls to zero!");
-
-    // TODO(dmeckes): send twist_cmd = 0
-    };
 
   // Send zero twist if not all OK
   if(!all_ok) {
@@ -201,7 +247,7 @@ bool CartesianVicServo::update()
       "Failed to update VIC!");
     all_ok = false;
   }
-  ret_vic = vic_->compute_controls(period, twist_cmd);
+  ret_vic = vic_->compute_controls(period, twist_cmd.twist);
   if (ret_vic != controller_interface::return_type::OK) {
     RCLCPP_ERROR(
       this->get_logger(),
@@ -275,6 +321,8 @@ bool CartesianVicServo::get_wrench(
       "Failed to get wrench message!");
     return false;
   }
+
+  // TODO(dmeckes): check that the frame_id is correct
 
   // Check timeout
   double delay = (this->now() - wrench_msg.header.stamp).nanoseconds();
