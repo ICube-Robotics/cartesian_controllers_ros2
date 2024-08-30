@@ -61,13 +61,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 ament_target_dependencies(${PROJECT_NAME} PUBLIC ${DEPENDENCIES})
 
-# Coin-Clp LP solver
-# sudo apt-get install  coinor-clp coinor-libclp-dev -y
-set(COIN_CLP_HEADERS /usr/include/coin)
-set(COIN_CLP_LIBRARIES Clp ClpSolver)
-target_include_directories(${PROJECT_NAME} PUBLIC ${COIN_CLP_HEADERS})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${COIN_CLP_LIBRARIES})
-
 # Causes the visibility macros to use dllexport rather than dllimport,
 # which is appropriate when building the dll but not consuming it.
 target_compile_definitions(${PROJECT_NAME} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
