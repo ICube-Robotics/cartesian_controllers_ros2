@@ -46,11 +46,11 @@
 
 namespace cartesian_vic_teleop_controller
 {
-class PassiveVicTeleopController : public cartesian_vic_controller::CartesianVicController
+class CartesianVicTeleopController : public cartesian_vic_controller::CartesianVicController
 {
 public:
-  PassiveVicTeleopController();
-  virtual ~PassiveVicTeleopController() = default;
+  CartesianVicTeleopController();
+  virtual ~CartesianVicTeleopController() = default;
 
   CARTESIAN_VIC_TELEOP_CONTROLLER_PUBLIC
   controller_interface::CallbackReturn on_init() override;

@@ -20,7 +20,7 @@
 namespace cartesian_vic_teleop_controller
 {
 
-PassiveVicTeleopController::PassiveVicTeleopController()
+CartesianVicTeleopController::CartesianVicTeleopController()
 : Base::CartesianVicController()
 {
     // TODO(tpoignonec) : check if this is needed
@@ -28,14 +28,14 @@ PassiveVicTeleopController::PassiveVicTeleopController()
 }
 
 controller_interface::CallbackReturn
-PassiveVicTeleopController::on_init()
+CartesianVicTeleopController::on_init()
 {
   auto ret = Base::on_init();
   return ret;
 }
 
 controller_interface::CallbackReturn
-PassiveVicTeleopController::on_configure(const rclcpp_lifecycle::State & previous_state)
+CartesianVicTeleopController::on_configure(const rclcpp_lifecycle::State & previous_state)
 {
   auto ret = Base::on_configure(previous_state);
   if (ret != controller_interface::CallbackReturn::SUCCESS) {
@@ -97,7 +97,7 @@ PassiveVicTeleopController::on_configure(const rclcpp_lifecycle::State & previou
 }
 
 controller_interface::return_type
-PassiveVicTeleopController::update(const rclcpp::Time & time, const rclcpp::Duration & period)
+CartesianVicTeleopController::update(const rclcpp::Time & time, const rclcpp::Duration & period)
 {
   (void) time;
 
@@ -346,7 +346,7 @@ PassiveVicTeleopController::update(const rclcpp::Time & time, const rclcpp::Dura
 }
 
 controller_interface::CallbackReturn
-PassiveVicTeleopController::on_activate(const rclcpp_lifecycle::State & previous_state)
+CartesianVicTeleopController::on_activate(const rclcpp_lifecycle::State & previous_state)
 {
   auto ret = Base::on_activate(previous_state);
   return ret;
@@ -354,14 +354,14 @@ PassiveVicTeleopController::on_activate(const rclcpp_lifecycle::State & previous
 
 
 controller_interface::CallbackReturn
-PassiveVicTeleopController::on_deactivate(const rclcpp_lifecycle::State & previous_state)
+CartesianVicTeleopController::on_deactivate(const rclcpp_lifecycle::State & previous_state)
 {
   auto ret = Base::on_deactivate(previous_state);
   return ret;
 }
 
 controller_interface::CallbackReturn
-PassiveVicTeleopController::on_cleanup(const rclcpp_lifecycle::State & previous_state)
+CartesianVicTeleopController::on_cleanup(const rclcpp_lifecycle::State & previous_state)
 {
   auto ret = Base::on_cleanup(previous_state);
   return ret;
@@ -369,7 +369,7 @@ PassiveVicTeleopController::on_cleanup(const rclcpp_lifecycle::State & previous_
 
 
 controller_interface::CallbackReturn
-PassiveVicTeleopController::on_error(const rclcpp_lifecycle::State & previous_state)
+CartesianVicTeleopController::on_error(const rclcpp_lifecycle::State & previous_state)
 {
   auto ret = Base::on_error(previous_state);
   return ret;
@@ -380,6 +380,6 @@ PassiveVicTeleopController::on_error(const rclcpp_lifecycle::State & previous_st
 #include "pluginlib/class_list_macros.hpp"
 
 PLUGINLIB_EXPORT_CLASS(
-  cartesian_vic_teleop_controller::PassiveVicTeleopController,
+  cartesian_vic_teleop_controller::CartesianVicTeleopController,
   controller_interface::ControllerInterface
 )
