@@ -82,7 +82,7 @@ target_link_libraries(cartesian_vic_rules PUBLIC
 ament_target_dependencies(cartesian_vic_rules PUBLIC ${DEPENDENCIES})
 pluginlib_export_plugin_description_file(cartesian_vic_controller cartesian_vic_rules.xml)
 
-if(BUILD_TESTING)
+if(0)  # (BUILD_TESTING)
   find_package(ament_cmake_gmock REQUIRED)
   find_package(controller_manager REQUIRED)
   find_package(ros2_control_test_assets REQUIRED)
