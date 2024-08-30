@@ -37,6 +37,7 @@ CartesianVicServo::CartesianVicServo(std::string node_name)
   if (!realtime_tools::has_realtime_kernel()) {
     RCLCPP_WARN_STREAM(get_logger(), "Realtime kernel is recommended for better performance.");
   }
+
 }
 
 bool CartesianVicServo::init()
@@ -137,6 +138,18 @@ bool CartesianVicServo::init()
 
   rt_publisher_twist_ = std::make_unique<realtime_tools::RealtimePublisher<
         geometry_msgs::msg::TwistStamped>>(publisher_twist_);
+
+  //Null twist
+  null_twist_ = std::make_unique<geometry_msgs::msg::TwistStamped>();
+  null_twist_->twist.linear.x = 0.0;
+  null_twist_->twist.linear.y = 0.0;
+  null_twist_->twist.linear.z = 0.0;
+  null_twist_->twist.angular.x = 0.0;
+  null_twist_->twist.angular.y = 0.0;
+  null_twist_->twist.angular.z = 0.0;
+  null_twist_->header.frame_id = "null_twist";
+  //time stamp at the moment the null twist will be send
+
   return true;
 }
 
@@ -161,6 +174,7 @@ bool CartesianVicServo::stop()
   // TODO(dmeckes): stop timer
 
   // TODO(dmeckes): send twist = 0 to moveit servo
+  null_twist_->header.stamp = this->now();
 
   // TODO(dmeckes): stop moveit servo
 
@@ -209,6 +223,7 @@ bool CartesianVicServo::update()
       "Fallback policy triggered! Setting velocity / force controls to zero!");
 
     // TODO(dmeckes): send twist_cmd = 0
+      null_twist_->header.stamp = this->now();
     };
 
   // -----------------------

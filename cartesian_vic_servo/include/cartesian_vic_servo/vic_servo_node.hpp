@@ -117,6 +117,10 @@ protected:
   std::shared_ptr<realtime_tools::RealtimePublisher<geometry_msgs::msg::TwistStamped>>
   rt_publisher_twist_;
 
+  // Null twist
+  std::unique_ptr<geometry_msgs::msg::TwistStamped> null_twist_;
+
+
   bool update_measurement_data();
 
   bool get_joint_state(
