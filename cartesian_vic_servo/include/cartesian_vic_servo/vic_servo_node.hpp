@@ -82,7 +82,6 @@ protected:
   // measurement data used by the vic controller
   //   - joint state: current joint readings from the hardware
   //   - measured wrench: values read from the ft sensor (optional)
-  //   - external torques: values read from the external torque sensor (optional)
   cartesian_vic_controller::MeasurementData measurement_data_{0};
 
   sensor_msgs::msg::JointState joint_state_msg_;

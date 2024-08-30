@@ -65,13 +65,7 @@ bool CartesianVicServo::init()
   num_joints_ = parameters.joints.size();
   RCLCPP_INFO(get_logger(), "Configuring controller with %li joints", num_joints_);
 
-  // Setup joint state subscriber
-  auto joint_state_callback =
-    [this](const std::shared_ptr<sensor_msgs::msg::JointState> msg)
-    {rt_buffer_joint_state_.writeFromNonRT(msg);};
-  joint_state_subscriber_ = \
-    this->create_subscription<sensor_msgs::msg::JointState>("joint_states", 1,
-      joint_state_callback);
+  
 
   // allocate dynamic memory
   measurement_data_ = cartesian_vic_controller::MeasurementData(parameters.joints.size());
@@ -106,6 +100,14 @@ bool CartesianVicServo::init()
       error_msg.c_str());
     return false;
   }
+
+  // Setup joint state subscriber
+  auto joint_state_callback =
+    [this](const std::shared_ptr<sensor_msgs::msg::JointState> msg)
+    {rt_buffer_joint_state_.writeFromNonRT(msg);};
+  joint_state_subscriber_ = \
+    this->create_subscription<sensor_msgs::msg::JointState>("joint_states", 1,
+      joint_state_callback);
 
   // Setup wrench  subscriber
   auto wrench_callback =
