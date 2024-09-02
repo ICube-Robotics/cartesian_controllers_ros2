@@ -125,9 +125,11 @@ controller_interface::return_type CartesianVicController::update(
         *reference_compliant_frame_trajectory_msg_.get());
     }
     // apply vic control to reference to determine desired state
-
+    auto theoretical_period = rclcpp::Duration::from_seconds( 1.0 / this->get_update_rate());
+    // "period" would be better, but it doesn't work as expected (!= actual measured period)
+    // TODO(anyone): investigate this and find a way to use the period variable...
     auto ret_vic = vic_->update(
-        period,
+        theoretical_period,
         measurement_data_,
         joint_command_
     );
