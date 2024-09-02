@@ -476,6 +476,7 @@ CartesianVicRule::compute_controls(
   bool success = true;   // return flag
   const double dt = period.seconds();
   // Compute controls
+  vic_state_.diagnostic_data["period"] = dt;  // log ros-control period
   success &= compute_controls(dt, vic_state_.input_data, vic_state_.command_data);
 
   // If an error is detected, set commanded velocity to zero
