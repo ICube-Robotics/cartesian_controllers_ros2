@@ -348,8 +348,8 @@ bool VanillaCartesianImpedanceRule::compute_controls(
         vic_command_data.joint_command_effort.size()); i++)
     {
       vic_command_data.joint_command_effort(i) = filters::exponentialSmoothing(
-        vic_command_data.joint_command_effort(i),
         raw_joint_command_effort_(i),
+        vic_command_data.joint_command_effort(i),
         cmd_filter_coefficient
       );
     }
