@@ -114,7 +114,7 @@ bool CartesianVicServo::init()
     [this](const std::shared_ptr<sensor_msgs::msg::JointState> msg)
     {rt_buffer_joint_state_.writeFromNonRT(msg);};
   joint_state_subscriber_ = \
-    this->create_subscription<sensor_msgs::msg::JointState>("joint_states", 1,
+    this->create_subscription<sensor_msgs::msg::JointState>("/joint_states", 1,
       joint_state_callback);
 
   // Setup wrench  subscriber
@@ -122,7 +122,7 @@ bool CartesianVicServo::init()
     [this](const std::shared_ptr<geometry_msgs::msg::WrenchStamped> msg)
     {rt_buffer_wrench_.writeFromNonRT(msg);};
   subscriber_wrench_ = \
-    this->create_subscription<geometry_msgs::msg::WrenchStamped>("wrench", 1, wrench_callback);
+    this->create_subscription<geometry_msgs::msg::WrenchStamped>("/wrench", 1, wrench_callback);
 
 
   // Setup vic trajectory subscriber
@@ -131,12 +131,13 @@ bool CartesianVicServo::init()
     {rt_buffer_vic_trajectory_.writeFromNonRT(msg);};
   subscriber_vic_trajectory_ = \
     this->create_subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>(
-      "vic_trajectory", 1, vic_trajectory_callback);
+      "/cartesian_vic_controller/reference_compliant_frame_trajectory", 1, vic_trajectory_callback);
 
   // Publishers
   publisher_vic_state_ =
-    this->create_publisher<cartesian_control_msgs::msg::VicControllerState>("input_vic_state", 1);
-  publisher_twist_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/twist_command", 1);
+    this->create_publisher<cartesian_control_msgs::msg::VicControllerState>("/cartesian_vic_controller/status", 1);
+  publisher_twist_ = this->create_publisher<geometry_msgs::msg::TwistStamped>(
+    "/" + servo_node_name_ + "/delta_twist_cmds", 1);
 
   // Realtime publisher
   rt_publisher_vic_state =
@@ -349,9 +350,11 @@ bool CartesianVicServo::update()
 
   // 2) Send twist command
 
-  // TODO(dmeckes): check that moveit servo is running
+  // TODO(dmeckes): check that moveit servo is running (/servo_node/status)
 
   // TODO(dmeckes): send the twist cmd to moveit servo
+
+  cmd_twist_->header.stamp = this->now();
 
   // 3) Send controller VIC state
 

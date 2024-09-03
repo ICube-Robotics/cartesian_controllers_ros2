@@ -133,6 +133,9 @@ protected:
   std::unique_ptr<geometry_msgs::msg::TwistStamped> null_twist_;
   std::string base_frame_;
 
+  // Twist command
+  std::unique_ptr<geometry_msgs::msg::TwistStamped> cmd_twist_;
+
   // timer
   rclcpp::TimerBase::SharedPtr timer_;
   double Ts_; //period
