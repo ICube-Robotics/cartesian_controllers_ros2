@@ -21,6 +21,8 @@
 namespace cartesian_vic_servo
 {
 
+using namespace std::chrono_literals;
+
 CartesianVicServo::CartesianVicServo(std::string node_name)
 : Node(node_name)
 {
@@ -68,6 +70,9 @@ bool CartesianVicServo::init()
 
   //frame_id used for the null twist
   base_frame_ = parameters.dynamics.base;
+
+  // MoveIt
+  servo_node_name_ = "servo_node";
 
 
   // allocate dynamic memory
@@ -158,13 +163,47 @@ bool CartesianVicServo::init()
 
 bool CartesianVicServo::start()
 {
-  // TODO(dmeckes): connect to moveit servo / check it exists...
+  switch_command_type_srv_ = \
+    this->create_client<moveit_msgs::srv::ServoCommandType>(servo_node_name_ + "/switch_command_type");
 
+  int compteur = 0;
+  while (!switch_command_type_srv_->wait_for_service(1s)) {
+    compteur++;
+    if (!rclcpp::ok()) {
+      RCLCPP_ERROR(get_logger(), "Interrupted while waiting for the service. Exiting.");
+      return false;
+    }
+    if (compteur > 5) {
+      RCLCPP_ERROR(get_logger(), "Five failled attempts! Exiting.");
+      return false;
+    }
+    RCLCPP_INFO(get_logger(), "service not available, waiting again...");
+  }
   // TODO(dmeckes): start moveit servo in velocity mode
   // see: https://github.com/moveit/moveit2/blob/main/moveit_ros/moveit_servo/include/moveit_servo/servo_node.hpp#L125C3-L125C87
 
+  auto cmd_type_request = std::make_shared<moveit_msgs::srv::ServoCommandType::Request>();
+  cmd_type_request->command_type = cmd_type_request->TWIST;
+  auto result = switch_command_type_srv_->async_send_request(cmd_type_request);
+
+  // Wait for the result.
+  bool moveit_servo_all_ok = false;
+  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result) ==
+    rclcpp::FutureReturnCode::SUCCESS)
+  {
+    moveit_servo_all_ok = result.get()->success;
+  } else {
+    RCLCPP_ERROR(get_logger(), "Failed to call service 'switch_command_type'!");
+    return false;
+  }
+
   // TODO(dmeckes): start moveit servo
   // see: https://github.com/moveit/moveit2/blob/main/moveit_ros/moveit_servo/include/moveit_servo/servo_node.hpp#L126
+
+  if (!moveit_servo_all_ok) {
+    // TODO error
+    return false;
+  }
 
   // TODO(dmeckes): send twist = 0 to moveit servo
   null_twist_->header.stamp = this->now(); //add time
@@ -174,8 +213,8 @@ bool CartesianVicServo::start()
 
   // TODO(dmeckes): start timer with update() as callback
   //timer
-  Ts_ = 5.0; //5 milliseconds -> 200Hz (find a way to read from launch file)
-  timer_ = this->create_wall_timer(std::chrono::milliseconds(500), std::bind(&CartesianVicServo::CartesianVicServo::update, this));
+  Ts_ = 5e-3; //5 milliseconds -> 200Hz (find a way to read from launch file)
+  timer_ = this->create_wall_timer(std::chrono::milliseconds(int(Ts_*1000)), std::bind(&CartesianVicServo::CartesianVicServo::update, this));
   if(timer_)
   {
     RCLCPP_ERROR(
@@ -183,7 +222,7 @@ bool CartesianVicServo::start()
           "Timer: started!");
     return true;
   }
-  
+
   return false;
 }
 

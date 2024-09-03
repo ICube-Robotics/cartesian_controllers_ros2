@@ -13,7 +13,9 @@ set(DEPENDENCIES
   sensor_msgs
   cartesian_vic_controller
   cartesian_control_msgs
+
   moveit_ros_planning_interface
+  moveit_msgs
 )
 
 # find dependencies

@@ -29,7 +29,10 @@
 #include "sensor_msgs/msg/joint_state.hpp"
 
 #include "moveit/move_group_interface/move_group_interface.h"
-#include "moveit/planning_scene_interface/planning_scene_interface.h"
+#include "moveit_msgs/srv/servo_command_type.hpp"
+#include "moveit_msgs/msg/servo_status.hpp"
+#include "std_srvs/srv/set_bool.hpp"
+
 
 #include "cartesian_vic_controller/measurement_data.hpp"
 #include "cartesian_vic_controller/cartesian_vic_rule.hpp"
@@ -70,6 +73,8 @@ protected:
 
   // number of robot controlled joints
   size_t num_joints_ = 0;
+
+  std::string servo_node_name_;
 
   // Vic rule loader
   std::shared_ptr<pluginlib::ClassLoader<cartesian_vic_controller::CartesianVicRule>>
@@ -119,6 +124,10 @@ protected:
   std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::TwistStamped>> publisher_twist_;
   std::shared_ptr<realtime_tools::RealtimePublisher<geometry_msgs::msg::TwistStamped>>
   rt_publisher_twist_;
+
+  // services
+  rclcpp::Client<moveit_msgs::srv::ServoCommandType>::SharedPtr switch_command_type_srv_;
+
 
   // Null twist
   std::unique_ptr<geometry_msgs::msg::TwistStamped> null_twist_;
