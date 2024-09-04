@@ -499,7 +499,10 @@ bool CartesianVicServo::update_measurement_data()
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<cartesian_vic_servo::CartesianVicServo>());
+  auto node = std::make_shared<cartesian_vic_servo::CartesianVicServo>();
+  node->init();
+  node->start();
+  rclcpp::spin(node);
   rclcpp::shutdown();
   return 0;
 }
