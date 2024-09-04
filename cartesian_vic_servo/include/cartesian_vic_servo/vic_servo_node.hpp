@@ -133,8 +133,9 @@ protected:
   std::unique_ptr<geometry_msgs::msg::TwistStamped> null_twist_;
   std::string base_frame_;
 
-  // Twist command
-  std::unique_ptr<geometry_msgs::msg::TwistStamped> cmd_twist_;
+
+  // VIC state
+  cartesian_control_msgs::msg::VicControllerState vic_state_;
 
   // timer
   rclcpp::TimerBase::SharedPtr timer_;

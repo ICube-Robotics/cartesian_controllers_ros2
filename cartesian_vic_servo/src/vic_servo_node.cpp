@@ -352,13 +352,22 @@ bool CartesianVicServo::update()
 
   // TODO(dmeckes): check that moveit servo is running (/servo_node/status)
 
-  // TODO(dmeckes): send the twist cmd to moveit servo
-
-  cmd_twist_->header.stamp = this->now();
+  rt_publisher_twist_->lock();
+  rt_publisher_twist_->msg_ = twist_cmd;
+  rt_publisher_twist_->unlockAndPublish();
 
   // 3) Send controller VIC state
 
-  // TODO(dmeckes): send the state msg
+  if(vic_->controller_state_to_msg(vic_state_) == controller_interface::return_type::OK)
+  {
+    rt_publisher_vic_state->lock();
+    rt_publisher_vic_state->msg_ = vic_state_;
+    rt_publisher_vic_state->unlockAndPublish();
+  } else {
+    RCLCPP_ERROR(
+      this->get_logger(),
+      "Failed to retreive state message");
+  }
 
   return true;
 }
