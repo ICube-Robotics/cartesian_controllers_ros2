@@ -115,6 +115,8 @@ protected:
       cartesian_control_msgs::msg::CompliantFrameTrajectory>> rt_buffer_vic_trajectory_;
   std::shared_ptr<cartesian_control_msgs::msg::CompliantFrameTrajectory> vic_trajectory_msg_ptr_;
 
+  bool ref_has_been_received_in_the_past_ = false;
+
   // Publishers
   std::shared_ptr<rclcpp::Publisher<cartesian_control_msgs::msg::VicControllerState>>
   publisher_vic_state_;

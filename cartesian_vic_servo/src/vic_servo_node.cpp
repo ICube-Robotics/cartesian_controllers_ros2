@@ -14,7 +14,7 @@
 
 #include "cartesian_vic_servo/vic_servo_node.hpp"
 
-// #include "rcutils/logging_macros.h"
+#include "rcutils/logging_macros.h"
 #include "rclcpp/logging.hpp"
 #include <realtime_tools/thread_priority.hpp>
 
@@ -99,6 +99,7 @@ bool CartesianVicServo::init()
     }
     // Initialize vic rule plugin
     if (vic_->init(parameter_handler_) == controller_interface::return_type::ERROR) {
+      RCLCPP_ERROR(get_logger(), "Failled to initialize VIC rule plugin!");
       return false;
     }
   } catch (const std::exception & e) {
@@ -215,12 +216,12 @@ bool CartesianVicServo::start()
   // TODO(dmeckes): start timer with update() as callback
   //timer
   Ts_ = 5e-3; //5 milliseconds -> 200Hz (find a way to read from launch file)
-  timer_ = this->create_wall_timer(std::chrono::milliseconds(int(Ts_*1000)), std::bind(&CartesianVicServo::CartesianVicServo::update, this));
+  timer_ = this->create_wall_timer(
+    std::chrono::milliseconds(int(Ts_*1000)),
+    std::bind(&CartesianVicServo::CartesianVicServo::update, this));
   if(timer_)
   {
-    RCLCPP_ERROR(
-          get_logger(),
-          "Timer: started!");
+    RCLCPP_INFO(get_logger(), "Timer: started!");
     return true;
   }
 
@@ -263,8 +264,6 @@ bool CartesianVicServo::update()
   is_state_valid &= get_joint_state(joint_state_msg_, timeout);
   // Get wrench
   is_state_valid &= get_wrench(wrench_msg_, timeout);
-  // Get vic trajectory
-  is_state_valid &= get_vic_trajectory(vic_trajectory_msg_, timeout);
 
   if (is_state_valid) {
     is_state_valid &= update_measurement_data();
@@ -274,6 +273,10 @@ bool CartesianVicServo::update()
       this->get_logger(),
       "Failed to get state message!");
   }
+
+
+  // Get vic trajectory
+  bool is_vic_ref_valid = get_vic_trajectory(vic_trajectory_msg_, timeout);
 
   // -----------------------
   // Prepare fallback policy
@@ -285,11 +288,7 @@ bool CartesianVicServo::update()
 
   auto execute_fallback_policy = [this] ()
     {
-      RCLCPP_ERROR(
-      get_logger(),
-      "Fallback policy triggered! Setting velocity / force controls to zero!");
-
-    // TODO(dmeckes): send twist_cmd = 0
+      // send twist_cmd = 0
       null_twist_->header.stamp = this->now();
       rt_publisher_twist_->lock();
       rt_publisher_twist_->msg_ = *null_twist_;
@@ -302,8 +301,13 @@ bool CartesianVicServo::update()
   bool all_ok = is_state_valid;
   if (!is_vic_initialized_ && !is_state_valid) {
     // Exit and wait for valid data...
+    auto clock = this->get_clock();
+    RCLCPP_WARN_THROTTLE(
+      this->get_logger(), *clock, 1000, "Waiting for valid data to init VIC plugin!");
     all_ok = false;
   } else if (!is_vic_initialized_ && is_state_valid) {
+    RCLCPP_INFO(get_logger(), "Init VIC plugin...");
+    ref_has_been_received_in_the_past_ = false;
     // Init current desired pose from current joint position
     is_vic_initialized_ = (vic_->init_reference_frame_trajectory(
         measurement_data_.get_joint_state()) == controller_interface::return_type::OK);
@@ -313,6 +317,7 @@ bool CartesianVicServo::update()
       get_logger(),
       "Failed to initialize the reference compliance frame trajectory.");
     }
+    RCLCPP_INFO(get_logger(), "VIC plugin is ready...");
   }
 
   // Send zero twist if not all OK
@@ -324,6 +329,26 @@ bool CartesianVicServo::update()
   // Otherwise, proceed to control logic
   // 1) Update vic
   rclcpp::Duration period = rclcpp::Duration::from_seconds(Ts);
+
+  if (is_vic_ref_valid) {
+    if (!ref_has_been_received_in_the_past_) {
+      RCLCPP_INFO(get_logger(), "VIC ref has been received for the first time! Way to go :)");
+    }
+      ref_has_been_received_in_the_past_ = true;
+      vic_->update_compliant_frame_trajectory(vic_trajectory_msg_);
+  }
+  if (!is_vic_ref_valid && !ref_has_been_received_in_the_past_) {
+    // Cas 1: on attend de le recevoir pour la premier fois
+    //    --> RCLCPP_WARN_THROTTLE avec msg "warning, didn't yet received..."
+    // TODO(dmeckes): a faire
+  }
+  if (!is_vic_ref_valid && ref_has_been_received_in_the_past_) {
+    // Cas 2: on a deja recu des refs avant!!! Donc erreur!!!
+    RCLCPP_ERROR(this->get_logger(), "Invalid VIC ref trajectory!");
+    execute_fallback_policy();
+    return false;
+  }
+
   auto ret_vic = vic_->update_input_data(
       period,
       measurement_data_
@@ -443,9 +468,9 @@ bool CartesianVicServo::get_vic_trajectory(
   if (vic_trajectory_msg_ptr_.get()) {
     vic_trajectory_msg = *vic_trajectory_msg_ptr_.get();
   } else {
-    RCLCPP_ERROR(
-      this->get_logger(),
-      "Failed to get vic trajectory message!");
+    auto clock = this->get_clock();
+    RCLCPP_WARN_THROTTLE(
+      this->get_logger(), *clock, 1000, "Failed to get vic trajectory message!");
     return false;
   }
 
