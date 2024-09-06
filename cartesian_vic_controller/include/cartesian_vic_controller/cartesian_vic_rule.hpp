@@ -63,7 +63,7 @@ public:
 
   /// Configure vic rule
   virtual controller_interface::return_type configure(
-    const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
+    const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface> & parameters_interface,
     const size_t num_joint);
 
   /// Soft reset vic rule (set cartesian ref as current pose)

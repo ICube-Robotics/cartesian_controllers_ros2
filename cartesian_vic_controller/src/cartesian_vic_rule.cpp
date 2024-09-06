@@ -55,7 +55,7 @@ CartesianVicRule::init(
 
 controller_interface::return_type
 CartesianVicRule::configure(
-  const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
+    const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface> & parameters_interface,
   const size_t num_joints)
 {
   num_joints_ = num_joints;
@@ -70,8 +70,7 @@ CartesianVicRule::configure(
         "dynamics_interface::DynamicsInterface");
       dynamics_ = std::unique_ptr<dynamics_interface::DynamicsInterface>(
         dynamics_loader_->createUnmanagedInstance(parameters_.dynamics.plugin_name));
-      if (!dynamics_->initialize(
-          node->get_node_parameters_interface(), parameters_.dynamics.tip))
+      if (!dynamics_->initialize(parameters_interface, parameters_.dynamics.tip))
       {
         return controller_interface::return_type::ERROR;
       }

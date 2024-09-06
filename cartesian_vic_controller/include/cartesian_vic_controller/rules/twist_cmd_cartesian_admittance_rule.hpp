@@ -35,7 +35,7 @@ public:
 
   /// Configure admittance solver
   controller_interface::return_type configure(
-    const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
+    const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface> & parameters_interface,
     const size_t num_joints
   ) override;
 

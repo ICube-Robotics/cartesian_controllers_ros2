@@ -35,11 +35,11 @@ controller_interface::return_type VanillaCartesianAdmittanceRule::init(
 }
 
 controller_interface::return_type VanillaCartesianAdmittanceRule::configure(
-  const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
+  const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface> & parameters_interface,
   const size_t num_joints)
 {
   // Configure CartesianVicRule
-  auto ret = CartesianVicRule::configure(node, num_joints);
+  auto ret = CartesianVicRule::configure(parameters_interface, num_joints);
 
   // Reset internal data
   reset_rule__internal_storage(num_joints);

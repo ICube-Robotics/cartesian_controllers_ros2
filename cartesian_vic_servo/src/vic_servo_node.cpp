@@ -111,8 +111,8 @@ bool CartesianVicServo::init()
   }
 
   // Configure VIC rule
-  if (vic_->configure(this->get_node_base_interface(), num_joints_) == controller_interface::return_type::ERROR) {
-    return controller_interface::CallbackReturn::ERROR;
+  if (vic_->configure(this->get_node_parameters_interface(), num_joints_) == controller_interface::return_type::ERROR) {
+    return false;
   }
 
   // Setup joint state subscriber

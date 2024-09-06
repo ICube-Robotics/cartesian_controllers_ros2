@@ -372,7 +372,7 @@ controller_interface::CallbackReturn CartesianVicController::on_configure(
   }
 
   // configure vic rule
-  if (vic_->configure(get_node(), num_joints_) == controller_interface::return_type::ERROR) {
+  if (vic_->configure(get_node()->get_node_parameters_interface(), num_joints_) == controller_interface::return_type::ERROR) {
     return controller_interface::CallbackReturn::ERROR;
   }
 

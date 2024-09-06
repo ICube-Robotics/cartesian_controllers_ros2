@@ -36,11 +36,11 @@ controller_interface::return_type VanillaCartesianImpedanceRule::init(
 }
 
 controller_interface::return_type VanillaCartesianImpedanceRule::configure(
-  const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
+  const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface> & parameters_interface,
   const size_t num_joints)
 {
   reset_rule__internal_storage(num_joints);
-  return CartesianVicRule::configure(node, num_joints);
+  return CartesianVicRule::configure(parameters_interface, num_joints);
 }
 
 controller_interface::return_type VanillaCartesianImpedanceRule::reset(const size_t num_joints)
