@@ -233,9 +233,9 @@ bool VanillaCartesianImpedanceRule::compute_controls(
     RCLCPP_DEBUG(logger_, "Cmd joint acc...");
     // Simplified impedance controller without F/T sensor
     // see https://www.diag.uniroma1.it/~deluca/rob2_en/15_ImpedanceControl.pdf (page 13)
-    vic_command_data.joint_command_acceleration = J_pinv_ * \
+    vic_command_data.joint_command_acceleration = M * J_pinv_ * \
       (reference_compliant_frame.acceleration - J_dot_ * vic_input_data.joint_state_velocity) + \
-      J_.transpose() * (K * error_pose + D * error_velocity + reference_compliant_frame.wrench);
+      J_.transpose() * (K * error_pose + D * error_velocity );
   } else {
     // Implement "normal" impedance control
     RCLCPP_DEBUG(logger_, "Cmd cartesian acc...");
@@ -294,7 +294,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   if (parameters_.vic.use_natural_robot_inertia) {
     raw_joint_command_effort_ = \
       vic_input_data.natural_joint_space_inertia.diagonal().asDiagonal() *
-      vic_command_data.joint_command_acceleration;
+      vic_command_data.joint_command_acceleration +  J_.transpose() * reference_compliant_frame.wrench; \\ TODO(tpoignonec): check this line
       // Note: F_ext is already cancelled in IC Eq.
       // See https://www.diag.uniroma1.it/deluca/rob2_en/15_ImpedanceControl.pdf (page 9)
       // J_.transpose() * (vic_input_data.natural_cartesian_inertia * M_inv - I_) * F_ext;
@@ -348,8 +348,8 @@ bool VanillaCartesianImpedanceRule::compute_controls(
         vic_command_data.joint_command_effort.size()); i++)
     {
       vic_command_data.joint_command_effort(i) = filters::exponentialSmoothing(
-        vic_command_data.joint_command_effort(i),
         raw_joint_command_effort_(i),
+        vic_command_data.joint_command_effort(i),
         cmd_filter_coefficient
       );
     }
