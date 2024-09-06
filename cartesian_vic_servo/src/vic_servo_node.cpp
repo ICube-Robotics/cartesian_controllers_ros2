@@ -57,6 +57,40 @@ bool CartesianVicServo::init()
     return false;
   }
 
+
+  // Try to retrieve urdf (used by kinematics / dynamics plugin)
+  RCLCPP_INFO(get_logger(), "Trying to retrieve 'robot_description' parameter...");
+
+  rcl_interfaces::msg::ParameterDescriptor urdf_param_desc;
+  urdf_param_desc.name = "rule_plugin_package";
+  urdf_param_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_STRING;
+  urdf_param_desc.description = "URDF description of the robot";
+  this->get_node_parameters_interface()->declare_parameter(
+    "robot_description", rclcpp::ParameterValue(""), urdf_param_desc);
+
+  auto urdf_param = rclcpp::Parameter();
+  if (!this->get_node_parameters_interface()->get_parameter("robot_description", urdf_param))
+  {
+    RCLCPP_ERROR(get_logger(), "parameter 'robot_description' not set");
+    return false;
+  }
+  std::string urdf_string = urdf_param.as_string();
+
+  if (urdf_string.empty()) {
+    RCLCPP_ERROR(
+      get_logger(),
+      "Could not find 'robot_description' parameter! Trying to retrieve URDF from param server...");
+    // TODO(tpoignonec): get URDF from param server
+    urdf_string = getUrdfFromServer();
+    if (urdf_string.empty()) {
+      RCLCPP_ERROR(get_logger(), "Could not retrieve URDF from param server!");
+      return false;
+    } else {
+      rclcpp::Parameter robot_description_param("robot_description", urdf_string);
+      this->set_parameter(robot_description_param);
+    }
+  }
+
   // load parameters to be used by the VIC rule
   if (!parameter_handler_) {
     RCLCPP_ERROR(get_logger(), "Parameter handler not initialized!");
@@ -275,7 +309,7 @@ bool CartesianVicServo::update()
   } else {
     // Invalid state detected!
     RCLCPP_ERROR(
-      this->get_logger(),
+      get_logger(),
       "Failed to get state message!");
   }
 
@@ -308,7 +342,7 @@ bool CartesianVicServo::update()
     // Exit and wait for valid data...
     auto clock = this->get_clock();
     RCLCPP_WARN_THROTTLE(
-      this->get_logger(), *clock, 1000, "Waiting for valid data to init VIC plugin!");
+      get_logger(), *clock, 1000, "Waiting for valid data to init VIC plugin!");
     all_ok = false;
   } else if (!is_vic_initialized_ && is_state_valid) {
     RCLCPP_INFO(get_logger(), "Init VIC plugin...");
@@ -349,7 +383,7 @@ bool CartesianVicServo::update()
   }
   if (!is_vic_ref_valid && ref_has_been_received_in_the_past_) {
     // Cas 2: on a deja recu des refs avant!!! Donc erreur!!!
-    RCLCPP_ERROR(this->get_logger(), "Invalid VIC ref trajectory!");
+    RCLCPP_ERROR(get_logger(), "Invalid VIC ref trajectory!");
     execute_fallback_policy();
     return false;
   }
@@ -360,14 +394,14 @@ bool CartesianVicServo::update()
   );
   if (ret_vic != controller_interface::return_type::OK) {
     RCLCPP_ERROR(
-      this->get_logger(),
+      get_logger(),
       "Failed to update VIC!");
     all_ok = false;
   }
   ret_vic = vic_->compute_controls(period, twist_cmd.twist);
   if (ret_vic != controller_interface::return_type::OK) {
     RCLCPP_ERROR(
-      this->get_logger(),
+      get_logger(),
       "Failed to get commands from VIC rule!");
     all_ok = false;
   }
@@ -395,7 +429,7 @@ bool CartesianVicServo::update()
     rt_publisher_vic_state->unlockAndPublish();
   } else {
     RCLCPP_ERROR(
-      this->get_logger(),
+      get_logger(),
       "Failed to retreive state message");
   }
 
@@ -417,7 +451,7 @@ bool CartesianVicServo::get_joint_state(
     joint_state_msg = *joint_state_msg_ptr_.get();
   } else {
     RCLCPP_ERROR(
-      this->get_logger(),
+      get_logger(),
       "Failed to get joint state message!");
     return false;
   }
@@ -426,7 +460,7 @@ bool CartesianVicServo::get_joint_state(
   double delay = (this->now() - joint_state_msg.header.stamp).nanoseconds();
   if (delay > timeout * 1e9) {
     RCLCPP_ERROR(
-      this->get_logger(),
+      get_logger(),
       "Timeout on joint state message!");
     return false;
   }
@@ -445,7 +479,7 @@ bool CartesianVicServo::get_wrench(
     wrench_msg = *wrench_msg_ptr_.get();
   } else {
     RCLCPP_ERROR(
-      this->get_logger(),
+      get_logger(),
       "Failed to get wrench message!");
     return false;
   }
@@ -456,7 +490,7 @@ bool CartesianVicServo::get_wrench(
   double delay = (this->now() - wrench_msg.header.stamp).nanoseconds();
   if (delay > timeout * 1e9) {
     RCLCPP_ERROR(
-      this->get_logger(),
+      get_logger(),
       "Timeout on wrench message!");
     return false;
   }
@@ -475,7 +509,7 @@ bool CartesianVicServo::get_vic_trajectory(
   } else {
     auto clock = this->get_clock();
     RCLCPP_WARN_THROTTLE(
-      this->get_logger(), *clock, 1000, "Failed to get vic trajectory message!");
+      get_logger(), *clock, 1000, "Failed to get vic trajectory message!");
     return false;
   }
 
@@ -483,7 +517,7 @@ bool CartesianVicServo::get_vic_trajectory(
   double delay = (this->now() - vic_trajectory_msg.header.stamp).nanoseconds();
   if (delay > timeout * 1e9) {
     RCLCPP_ERROR(
-      this->get_logger(),
+      get_logger(),
       "Timeout on vic trajectory message!");
     return false;
   }
@@ -515,7 +549,7 @@ bool CartesianVicServo::update_measurement_data()
   if (state_has_nan) {
     all_ok = false;
     RCLCPP_ERROR(
-      this->get_logger(),
+      get_logger(),
       "NaN detected in state message!");
   }
   // Update ft sensor wrench
@@ -523,6 +557,96 @@ bool CartesianVicServo::update_measurement_data()
 
   return all_ok;
 }
+
+
+std::string CartesianVicServo::getUrdfFromServer() const
+{
+  std::string urdf_string;
+
+  using namespace std::chrono_literals;
+
+  // Setup internal node for parameter client
+  rclcpp::executors::SingleThreadedExecutor executor;
+  rclcpp::Node::SharedPtr async_node;
+  std::unique_ptr<std::thread> node_thread;
+
+  RCLCPP_INFO(
+    get_logger(),
+    "Setting up internal parameters client... please wait...");
+  rclcpp::NodeOptions options;
+  std::string node_name =
+    "cartesian_vic_controller_internal_parameters_client_" + std::to_string(std::rand());
+  RCLCPP_INFO(get_logger(), "Internal node name: %s", node_name.c_str());
+  options.arguments({"--ros-args", "-r", "__node:=" + node_name});
+  async_node = rclcpp::Node::make_shared("_", options);
+  node_thread = std::make_unique<std::thread>(
+    [&]()
+    {
+      executor.add_node(async_node);
+      executor.spin();
+      executor.remove_node(async_node);
+    });
+
+  auto parameters_client = std::make_shared<rclcpp::AsyncParametersClient>(
+    async_node, robot_description_node_);
+  while (!parameters_client->wait_for_service(0.5s)) {
+    if (!rclcpp::ok()) {
+      RCLCPP_ERROR(
+        get_logger(), "Interrupted while waiting for %s service. Exiting.",
+        robot_description_node_.c_str());
+      return 0;
+    }
+    RCLCPP_ERROR(
+      get_logger(), "%s service not available, waiting again...",
+      robot_description_node_.c_str());
+  }
+
+  std::string robot_description_param = "robot_description";
+  RCLCPP_INFO(
+    get_logger(), "connected to service (%s), asking for '%s'...",
+    robot_description_node_.c_str(),
+    robot_description_param.c_str());
+
+  // search and wait for robot_description on param server
+  while (urdf_string.empty()) {
+    RCLCPP_DEBUG(
+      get_logger(), "param_name = '%s'",
+      robot_description_param.c_str());
+
+    // get parameters
+    try {
+      auto results = parameters_client->get_parameters({robot_description_param});
+      RCLCPP_INFO(
+        get_logger(), "Waiting for and answer from param server...");
+      if (results.wait_for(5s) != std::future_status::ready) {
+        RCLCPP_INFO(get_logger(), "No answer from param server, trying again...");
+        continue;
+      }
+      std::vector<rclcpp::Parameter> values = results.get();
+      urdf_string = values[0].as_string();
+    } catch (const std::exception & e) {
+      RCLCPP_ERROR(get_logger(), "%s", e.what());
+    }
+    if (!urdf_string.empty()) {
+      break;
+    } else {
+      RCLCPP_ERROR(
+        get_logger(),
+        "Waiting for model URDF in parameter [%s] on the ROS param server.",
+        robot_description_param.c_str());
+    }
+    // std::this_thread::sleep_for(std::chrono::microseconds(100000));
+  }
+  RCLCPP_INFO(get_logger(), "Received URDF from param server");
+
+  executor.cancel();
+  node_thread->join();
+  node_thread.reset();
+  async_node.reset();
+
+  return urdf_string;
+}
+
 
 }  // namespace cartesian_vic_servo
 

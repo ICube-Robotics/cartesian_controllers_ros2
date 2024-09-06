@@ -143,6 +143,9 @@ protected:
   rclcpp::TimerBase::SharedPtr timer_;
   double Ts_; //period
 
+  /// fallback for robot description ROS parameters
+  // TODO(tpoignonec): make this a parameter
+  std::string robot_description_node_ = "robot_state_publisher";
 
   bool update_measurement_data();
 
@@ -157,6 +160,8 @@ protected:
   bool get_vic_trajectory(
     cartesian_control_msgs::msg::CompliantFrameTrajectory & msg,
     double timeout = 0.01 /*seconds*/);
+
+  std::string getUrdfFromServer() const;
 };
 
 }  // namespace cartesian_vic_servo
