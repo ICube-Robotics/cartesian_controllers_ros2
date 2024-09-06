@@ -120,7 +120,6 @@ CartesianVicRule::init_reference_frame_trajectory(
     return controller_interface::return_type::ERROR;
   }
 
-  RCLCPP_INFO(logger_, "TAG 3");
   // Reset robot command
   // TODO(tpoignonec): move elsewhere?
   vic_state_.command_data.joint_command_position = vic_state_.input_data.joint_state_position;
@@ -140,8 +139,6 @@ CartesianVicRule::init_reference_frame_trajectory(
   auto N = vic_state_.input_data.reference_compliant_frames.N();
   Eigen::Matrix<double, 6, 1> null_vector_6D = Eigen::Matrix<double, 6, 1>::Zero();
 
-
-  RCLCPP_INFO(logger_, "TAG 4");
   bool success = true;
   for (unsigned int i = 0; i < N; i++) {
     // TODO(tpoignonec): Check the frame is correct (i.e., control w.r.t. base)!
