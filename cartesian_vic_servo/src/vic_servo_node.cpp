@@ -110,6 +110,11 @@ bool CartesianVicServo::init()
     return false;
   }
 
+  // Configure VIC rule
+  if (vic_->configure(this->get_node_base_interface(), num_joints_) == controller_interface::return_type::ERROR) {
+    return controller_interface::CallbackReturn::ERROR;
+  }
+
   // Setup joint state subscriber
   auto joint_state_callback =
     [this](const std::shared_ptr<sensor_msgs::msg::JointState> msg)
