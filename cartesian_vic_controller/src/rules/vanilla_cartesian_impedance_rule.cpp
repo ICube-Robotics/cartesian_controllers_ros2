@@ -294,7 +294,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   if (parameters_.vic.use_natural_robot_inertia) {
     raw_joint_command_effort_ = \
       vic_input_data.natural_joint_space_inertia.diagonal().asDiagonal() *
-      vic_command_data.joint_command_acceleration +  J_.transpose() * reference_compliant_frame.wrench; \\ TODO(tpoignonec): check this line
+      vic_command_data.joint_command_acceleration +  J_.transpose() * reference_compliant_frame.wrench; // TODO(tpoignonec): check this line
       // Note: F_ext is already cancelled in IC Eq.
       // See https://www.diag.uniroma1.it/deluca/rob2_en/15_ImpedanceControl.pdf (page 9)
       // J_.transpose() * (vic_input_data.natural_cartesian_inertia * M_inv - I_) * F_ext;
