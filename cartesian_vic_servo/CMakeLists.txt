@@ -16,6 +16,10 @@ set(DEPENDENCIES
 
   moveit_ros_planning_interface
   moveit_msgs
+  # Servo deps (see demos)
+  moveit_servo
+  moveit_ros_planning
+  moveit_ros_planning_interface
 )
 
 # find dependencies
@@ -34,7 +38,18 @@ target_include_directories(vic_servo_node PUBLIC
 target_compile_features(vic_servo_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 ament_target_dependencies(vic_servo_node PUBLIC ${DEPENDENCIES})
 
-install(TARGETS vic_servo_node
+
+add_executable(
+  demo_twist
+    src/demo_twist.cpp
+)
+target_include_directories(demo_twist PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
+target_compile_features(demo_twist PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+ament_target_dependencies(demo_twist PUBLIC ${DEPENDENCIES})
+
+install(TARGETS vic_servo_node demo_twist
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
