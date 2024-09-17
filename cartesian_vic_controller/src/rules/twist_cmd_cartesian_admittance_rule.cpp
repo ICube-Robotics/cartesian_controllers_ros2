@@ -230,7 +230,7 @@ bool TwistCmdCartesianAdmittanceRule::compute_controls(
   return success;
 }
 
-bool TwistCmdCartesianAdmittanceRule::reset_rule__internal_storage(const size_t num_joints)
+bool TwistCmdCartesianAdmittanceRule::reset_rule__internal_storage(const size_t /* num_joints */)
 {
   // Nothing to do
   return true;

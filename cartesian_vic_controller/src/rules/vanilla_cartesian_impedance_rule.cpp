@@ -165,7 +165,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   double conditioning_J = 1000.0;
   if (J_.cols() < 6) {
     RCLCPP_WARN_THROTTLE(
-      logger_, internal_clock_, 5000, "Jacobian has only %u columns, expecting at least 6!!!",
+      logger_, internal_clock_, 5000, "Jacobian has only %lu columns, expecting at least 6!!!",
         J_.cols());
     conditioning_J = J_svd.singularValues()(0) / J_svd.singularValues()(J_.cols() - 1);
   } else {
