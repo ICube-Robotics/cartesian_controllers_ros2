@@ -40,6 +40,7 @@
  */
 
 #include <chrono>
+
 #include <moveit_servo/servo.hpp>
 #include <moveit_servo/utils/common.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -51,7 +52,7 @@
 
 using namespace moveit_servo;
 
-int main(int argc, char* argv[])
+int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
 
@@ -62,17 +63,18 @@ int main(int argc, char* argv[])
   // Get the servo parameters.
   const std::string param_namespace = "moveit_servo";
   const std::shared_ptr<const servo::ParamListener> servo_param_listener =
-      std::make_shared<const servo::ParamListener>(demo_node, param_namespace);
+    std::make_shared<const servo::ParamListener>(demo_node, param_namespace);
   const servo::Params servo_params = servo_param_listener->get_params();
 
   // The publisher to send trajectory message to the robot controller.
   rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>::SharedPtr trajectory_outgoing_cmd_pub =
-      demo_node->create_publisher<trajectory_msgs::msg::JointTrajectory>(servo_params.command_out_topic,
+    demo_node->create_publisher<trajectory_msgs::msg::JointTrajectory>(
+    servo_params.command_out_topic,
                                                                          rclcpp::SystemDefaultsQoS());
 
   // Create the servo object
   const planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor =
-      createPlanningSceneMonitor(demo_node, servo_params);
+    createPlanningSceneMonitor(demo_node, servo_params);
 
   // Changing the collision detector to Bullet
   // planning_scene_monitor->setActiveCollisionDetector(collision_detection::CollisionDetectorAllocatorBullet::create());
@@ -85,15 +87,15 @@ int main(int argc, char* argv[])
 
   // Get the robot state and joint model group info.
   auto robot_state = planning_scene_monitor->getStateMonitor()->getCurrentState();
-  const moveit::core::JointModelGroup* joint_model_group =
-      robot_state->getJointModelGroup(servo_params.move_group_name);
+  const moveit::core::JointModelGroup * joint_model_group =
+    robot_state->getJointModelGroup(servo_params.move_group_name);
 
   // Set the command type for servo.
   servo.setCommandType(CommandType::TWIST);
 
   // Move end effector in the +z direction at 5 cm/s
   // while turning around z axis in the +ve direction at 0.4 rad/s
-  TwistCommand target_twist{ "iiwa_base", { 0.05, 0.0, 0.0, 0.0, 0.0, 0 } };
+  TwistCommand target_twist{"iiwa_base", {0.05, 0.0, 0.0, 0.0, 0.0, 0}};
 
   // Frequency at which commands will be sent to the robot controller.
   rclcpp::WallRate rate(1.0 / servo_params.publish_period);
@@ -105,11 +107,11 @@ int main(int argc, char* argv[])
   // create command queue to build trajectory message and add current robot state
   std::deque<KinematicState> joint_cmd_rolling_window;
   KinematicState current_state = servo.getCurrentRobotState();
-  updateSlidingWindow(current_state, joint_cmd_rolling_window, servo_params.max_expected_latency, demo_node->now());
+  updateSlidingWindow(current_state, joint_cmd_rolling_window, servo_params.max_expected_latency,
+    demo_node->now());
 
   RCLCPP_INFO_STREAM(demo_node->get_logger(), servo.getStatusMessage());
-  while (rclcpp::ok())
-  {
+  while (rclcpp::ok()) {
     KinematicState joint_state = servo.getNextJointState(robot_state, target_twist);
     const StatusCode status = servo.getStatus();
 
@@ -124,22 +126,20 @@ int main(int argc, char* argv[])
 
     const auto current_time = std::chrono::steady_clock::now();
     time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(current_time - start_time);
-    if (time_elapsed > timeout_duration)
-    {
+    if (time_elapsed > timeout_duration) {
       RCLCPP_INFO_STREAM(demo_node->get_logger(), "Timed out");
       break;
-    }
-    else if (status != StatusCode::INVALID)
-    {
-      updateSlidingWindow(joint_state, joint_cmd_rolling_window, servo_params.max_expected_latency, demo_node->now());
-      if (const auto msg = composeTrajectoryMessage(servo_params, joint_cmd_rolling_window))
-      {
+    } else if (status != StatusCode::INVALID) {
+      updateSlidingWindow(joint_state, joint_cmd_rolling_window, servo_params.max_expected_latency,
+        demo_node->now());
+      if (const auto msg = composeTrajectoryMessage(servo_params, joint_cmd_rolling_window)) {
         trajectory_outgoing_cmd_pub->publish(msg.value());
       }
-      if (!joint_cmd_rolling_window.empty())
-      {
-        robot_state->setJointGroupPositions(joint_model_group, joint_cmd_rolling_window.back().positions);
-        robot_state->setJointGroupVelocities(joint_model_group, joint_cmd_rolling_window.back().velocities);
+      if (!joint_cmd_rolling_window.empty()) {
+        robot_state->setJointGroupPositions(joint_model_group,
+          joint_cmd_rolling_window.back().positions);
+        robot_state->setJointGroupVelocities(joint_model_group,
+          joint_cmd_rolling_window.back().velocities);
       }
     }
     rate.sleep();

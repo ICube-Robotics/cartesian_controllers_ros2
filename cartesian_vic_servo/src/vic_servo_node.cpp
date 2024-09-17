@@ -40,10 +40,16 @@ CartesianVicServo::CartesianVicServo(std::string node_name)
     RCLCPP_WARN_STREAM(get_logger(), "Realtime kernel is recommended for better performance.");
   }
 
+  is_initialized_ = false;
+  is_running_ = false;
 }
 
 bool CartesianVicServo::init()
 {
+  if (is_initialized_) {
+    RCLCPP_WARN(get_logger(), "CartesianVicServo is already initialized...");
+    return true;
+  }
   // Setup parameter handler
   try {
     parameter_handler_ =
@@ -61,16 +67,16 @@ bool CartesianVicServo::init()
   // Try to retrieve urdf (used by kinematics / dynamics plugin)
   RCLCPP_INFO(get_logger(), "Trying to retrieve 'robot_description' parameter...");
 
-  rcl_interfaces::msg::ParameterDescriptor urdf_param_desc;
-  urdf_param_desc.name = "rule_plugin_package";
-  urdf_param_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_STRING;
-  urdf_param_desc.description = "URDF description of the robot";
-  this->get_node_parameters_interface()->declare_parameter(
-    "robot_description", rclcpp::ParameterValue(""), urdf_param_desc);
-
+  if (!this->get_node_parameters_interface()->has_parameter("robot_description")) {
+    rcl_interfaces::msg::ParameterDescriptor urdf_param_desc;
+    urdf_param_desc.name = "rule_plugin_package";
+    urdf_param_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_STRING;
+    urdf_param_desc.description = "URDF description of the robot";
+    this->get_node_parameters_interface()->declare_parameter(
+      "robot_description", rclcpp::ParameterValue(""), urdf_param_desc);
+  }
   auto urdf_param = rclcpp::Parameter();
-  if (!this->get_node_parameters_interface()->get_parameter("robot_description", urdf_param))
-  {
+  if (!this->get_node_parameters_interface()->get_parameter("robot_description", urdf_param)) {
     RCLCPP_ERROR(get_logger(), "parameter 'robot_description' not set");
     return false;
   }
@@ -105,13 +111,10 @@ bool CartesianVicServo::init()
   //frame_id used for the null twist
   base_frame_ = parameters.dynamics.base;
 
-  // MoveIt
-  servo_node_name_ = "servo_node";
-
-
   // allocate dynamic memory
   measurement_data_ = cartesian_vic_controller::MeasurementData(parameters.joints.size());
 
+  // ----------------------- VIC -----------------------
   // Initialize VIC rule plugin
   try {
     if (!parameters.vic.plugin_name.empty() &&
@@ -133,7 +136,7 @@ bool CartesianVicServo::init()
     }
     // Initialize vic rule plugin
     if (vic_->init(parameter_handler_) == controller_interface::return_type::ERROR) {
-      RCLCPP_ERROR(get_logger(), "Failled to initialize VIC rule plugin!");
+      RCLCPP_ERROR(get_logger(), "Failed to initialize VIC rule plugin!");
       return false;
     }
   } catch (const std::exception & e) {
@@ -145,25 +148,68 @@ bool CartesianVicServo::init()
   }
 
   // Configure VIC rule
-  if (vic_->configure(this->get_node_parameters_interface(), num_joints_) == controller_interface::return_type::ERROR) {
+  if (vic_->configure(this->get_node_parameters_interface(),
+      num_joints_) == controller_interface::return_type::ERROR)
+  {
     return false;
   }
 
-  // Setup joint state subscriber
-  auto joint_state_callback =
-    [this](const std::shared_ptr<sensor_msgs::msg::JointState> msg)
-    {rt_buffer_joint_state_.writeFromNonRT(msg);};
-  joint_state_subscriber_ = \
-    this->create_subscription<sensor_msgs::msg::JointState>("/joint_states", 1,
-      joint_state_callback);
+  // ----------------------- MoveIt servo -----------------------
+
+  // Get the servo parameters.
+  const std::string param_namespace = "moveit_servo";
+  const std::shared_ptr<const servo::ParamListener> servo_param_listener =
+    std::make_shared<const servo::ParamListener>(shared_from_this(), param_namespace);
+  servo_params_ = servo_param_listener->get_params();
+
+  try {
+    // Create the servo object
+    planning_scene_monitor_ = moveit_servo::createPlanningSceneMonitor(
+      shared_from_this(), servo_params_);
+
+    // Setup servo logic
+    servo_ = std::make_unique<moveit_servo::Servo>(
+      shared_from_this(), servo_param_listener, planning_scene_monitor_);
+
+    // Initialize the robot state and joint model group
+    robot_state_ = planning_scene_monitor_->getStateMonitor()->getCurrentState();
+  } catch (const std::exception & e) {
+    std::string error_msg = std::string(e.what());
+    RCLCPP_ERROR(
+      get_logger(),
+      "Exception thrown during configure stage when setting up MoveIt servo with message: %s \n",
+      error_msg.c_str());
+    return false;
+  }
+
+  if (!robot_state_) {
+    RCLCPP_ERROR(get_logger(), "Failed to get robot state from planning scene monitor!");
+    return false;
+  }
+
+  // Set the command type for servo.
+  servo_->setCommandType(moveit_servo::CommandType::TWIST);
+
+  // Store relevant servoing parameters
+  joint_model_group_name_ = servo_params_.move_group_name;
+  Ts_ = servo_params_.publish_period;
+  max_expected_latency_ = 3 * Ts_;
+  use_trajectory_cmd_ = servo_params_.command_out_type == "trajectory_msgs/JointTrajectory";
+
+  if (!use_trajectory_cmd_) {
+    RCLCPP_ERROR(
+      get_logger(),
+      "Please set 'moveit_servo.command_out_type' to 'trajectory_msgs/JointTrajectory'!");
+    return false;
+  }
+  // ----------------------- Communication -----------------------
 
   // Setup wrench  subscriber
   auto wrench_callback =
     [this](const std::shared_ptr<geometry_msgs::msg::WrenchStamped> msg)
     {rt_buffer_wrench_.writeFromNonRT(msg);};
   subscriber_wrench_ = \
-    this->create_subscription<geometry_msgs::msg::WrenchStamped>("/wrench", 1, wrench_callback);
-
+    this->create_subscription<geometry_msgs::msg::WrenchStamped>("~/wrench", 1, wrench_callback);
 
   // Setup vic trajectory subscriber
   auto vic_trajectory_callback =
@@ -171,96 +217,70 @@ bool CartesianVicServo::init()
     {rt_buffer_vic_trajectory_.writeFromNonRT(msg);};
   subscriber_vic_trajectory_ = \
     this->create_subscription<cartesian_control_msgs::msg::CompliantFrameTrajectory>(
-      "/cartesian_vic_controller/reference_compliant_frame_trajectory", 1, vic_trajectory_callback);
+      "~/reference_compliant_frame_trajectory", 1, vic_trajectory_callback);
 
   // Publishers
   publisher_vic_state_ =
-    this->create_publisher<cartesian_control_msgs::msg::VicControllerState>("/cartesian_vic_controller/status", 1);
-  publisher_twist_ = this->create_publisher<geometry_msgs::msg::TwistStamped>(
-    "/" + servo_node_name_ + "/delta_twist_cmds", 1);
+    this->create_publisher<cartesian_control_msgs::msg::VicControllerState>(
+      "~/status", rclcpp::SystemDefaultsQoS());
+  publisher_joint_cmd_ = this->create_publisher<trajectory_msgs::msg::JointTrajectory>(
+    servo_params_.command_out_topic, rclcpp::SystemDefaultsQoS());
 
   // Realtime publisher
   rt_publisher_vic_state =
     std::make_unique<realtime_tools::RealtimePublisher<
         cartesian_control_msgs::msg::VicControllerState>>(publisher_vic_state_);
 
-  rt_publisher_twist_ = std::make_unique<realtime_tools::RealtimePublisher<
-        geometry_msgs::msg::TwistStamped>>(publisher_twist_);
-
-  //Null twist
-  null_twist_ = std::make_unique<geometry_msgs::msg::TwistStamped>();
-  null_twist_->twist.linear.x = 0.0;
-  null_twist_->twist.linear.y = 0.0;
-  null_twist_->twist.linear.z = 0.0;
-  null_twist_->twist.angular.x = 0.0;
-  null_twist_->twist.angular.y = 0.0;
-  null_twist_->twist.angular.z = 0.0;
-  null_twist_->header.frame_id = base_frame_; //frame_id is not important here, but it has to exist
-  //time stamp at the moment the null twist will be send
-
+  rt_publisher_joint_cmd_ = std::make_unique<realtime_tools::RealtimePublisher<
+        trajectory_msgs::msg::JointTrajectory>>(publisher_joint_cmd_);
 
   return true;
 }
 
 bool CartesianVicServo::start()
 {
-  switch_command_type_srv_ = \
-    this->create_client<moveit_msgs::srv::ServoCommandType>(servo_node_name_ + "/switch_command_type");
-
-  int compteur = 0;
-  while (!switch_command_type_srv_->wait_for_service(1s)) {
-    compteur++;
-    if (!rclcpp::ok()) {
-      RCLCPP_ERROR(get_logger(), "Interrupted while waiting for the service. Exiting.");
-      return false;
-    }
-    if (compteur > 5) {
-      RCLCPP_ERROR(get_logger(), "Five failled attempts! Exiting.");
-      return false;
-    }
-    RCLCPP_INFO(get_logger(), "service not available, waiting again...");
+  // Initialize if not yet done
+  if (!is_initialized_) {
+    RCLCPP_WARN(get_logger(), "CartesianVicServo is not yet initialized...");
+    is_initialized_ = this->init();
   }
-  // TODO(dmeckes): start moveit servo in velocity mode
-  // see: https://github.com/moveit/moveit2/blob/main/moveit_ros/moveit_servo/include/moveit_servo/servo_node.hpp#L125C3-L125C87
+  if (!is_initialized_) {
+    RCLCPP_ERROR(get_logger(), "CartesianVicServo failed to initialize!");
+    return false;
+  }
 
-  auto cmd_type_request = std::make_shared<moveit_msgs::srv::ServoCommandType::Request>();
-  cmd_type_request->command_type = cmd_type_request->TWIST;
-  auto result = switch_command_type_srv_->async_send_request(cmd_type_request);
+  // Check if already started
+  if (is_running_ && timer_) {
+    RCLCPP_WARN(get_logger(), "CartesianVicServo is already running!");
+    return true;
+  }
 
-  // Wait for the result.
-  bool moveit_servo_all_ok = false;
-  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result) ==
-    rclcpp::FutureReturnCode::SUCCESS)
+  // Wait for joint state and planning scene
+  size_t attempts = 0;
+  size_t max_attemps = 10;
+  while(!planning_scene_monitor_->getStateMonitor()->waitForCurrentState(
+    rclcpp::Clock(RCL_ROS_TIME).now(), 1.0 /* seconds */))
   {
-    moveit_servo_all_ok = result.get()->success;
-  } else {
-    RCLCPP_ERROR(get_logger(), "Failed to call service 'switch_command_type'!");
-    return false;
+    RCLCPP_INFO(get_logger(), "Waiting for robot state...");
+    ++attempts;
+    if(attempts > max_attemps) {
+      RCLCPP_ERROR(get_logger(), "Failed to get robot state after %d attempts!", attempts);
+      return false;
+    }
   }
 
-  // TODO(dmeckes): start moveit servo
-  // see: https://github.com/moveit/moveit2/blob/main/moveit_ros/moveit_servo/include/moveit_servo/servo_node.hpp#L126
+  // Reset command queue
+  auto current_state = servo_->getCurrentRobotState();
+  moveit_servo::updateSlidingWindow(
+    current_state, joint_cmd_rolling_window_, max_expected_latency_, this->now());
 
-  if (!moveit_servo_all_ok) {
-    // TODO error
-    return false;
-  }
-
-  // TODO(dmeckes): send twist = 0 to moveit servo
-  null_twist_->header.stamp = this->now(); //add time
-  rt_publisher_twist_->lock();
-  rt_publisher_twist_->msg_ = *null_twist_;
-  rt_publisher_twist_->unlockAndPublish();
-
-  // TODO(dmeckes): start timer with update() as callback
-  //timer
-  Ts_ = 5e-3; //5 milliseconds -> 200Hz (find a way to read from launch file)
+  // Start control loop
   timer_ = this->create_wall_timer(
-    std::chrono::milliseconds(int(Ts_*1000)),
+    std::chrono::milliseconds(int(Ts_ * 1000)),
     std::bind(&CartesianVicServo::CartesianVicServo::update, this));
-  if(timer_)
-  {
-    RCLCPP_INFO(get_logger(), "Timer: started!");
+  if(timer_) {
+    RCLCPP_INFO(get_logger(), "Control loop has started!");
+    is_running_ = true;
     return true;
   }
 
@@ -274,19 +294,8 @@ bool CartesianVicServo::stop()
   RCLCPP_ERROR(
         get_logger(),
         "Timer: stopped!");
-
-
-  // TODO(dmeckes): send twist = 0 to moveit servo
-  null_twist_->header.stamp = this->now(); //add time
-  rt_publisher_twist_->lock();
-  rt_publisher_twist_->msg_ = *null_twist_;
-  rt_publisher_twist_->unlockAndPublish();
-
-
-  // TODO(dmeckes): stop moveit servo
-
-  // TODO(dmeckes): disconnect from moveit servo
-  return false;
+  is_running_ = false;
+  return true;
 }
 
 bool CartesianVicServo::update()
@@ -294,6 +303,7 @@ bool CartesianVicServo::update()
   // TODO(dmeckes): move to init() (+ make those node parameters?)
   double timeout = 0.01;
   double Ts = 0.005;  // 200 Hz
+  is_running_ = true;
 
   // -----------------------
   // Prepare data for vic
@@ -325,13 +335,20 @@ bool CartesianVicServo::update()
   twist_cmd.header.stamp = this->now();
   twist_cmd.header.frame_id = vic_->get_input_data().base_frame;
 
-  auto execute_fallback_policy = [this] ()
+  auto execute_fallback_policy = [this, &twist_cmd] () -> bool
     {
-      // send twist_cmd = 0
-      null_twist_->header.stamp = this->now();
-      rt_publisher_twist_->lock();
-      rt_publisher_twist_->msg_ = *null_twist_;
-      rt_publisher_twist_->unlockAndPublish();
+      // Send zero twist command
+      twist_cmd.twist.linear.x = 0.0;
+      twist_cmd.twist.linear.y = 0.0;
+      twist_cmd.twist.linear.z = 0.0;
+      twist_cmd.twist.angular.x = 0.0;
+      twist_cmd.twist.angular.y = 0.0;
+      twist_cmd.twist.angular.z = 0.0;
+      if (!send_twist_command(twist_cmd)) {
+        RCLCPP_ERROR(get_logger(), "Failed to send zero twist command!");
+        return false;
+      }
+      return true;
     };
 
   // -----------------------
@@ -373,8 +390,8 @@ bool CartesianVicServo::update()
     if (!ref_has_been_received_in_the_past_) {
       RCLCPP_INFO(get_logger(), "VIC ref has been received for the first time! Way to go :)");
     }
-      ref_has_been_received_in_the_past_ = true;
-      vic_->update_compliant_frame_trajectory(vic_trajectory_msg_);
+    ref_has_been_received_in_the_past_ = true;
+    vic_->update_compliant_frame_trajectory(vic_trajectory_msg_);
   }
   if (!is_vic_ref_valid && !ref_has_been_received_in_the_past_) {
     // Cas 1: on attend de le recevoir pour la premier fois
@@ -412,25 +429,23 @@ bool CartesianVicServo::update()
     return false;
   }
 
-  // 2) Send twist command
+  // 2) Compute and send twist command using moveit servo
 
-  // TODO(dmeckes): check that moveit servo is running (/servo_node/status)
-
-  rt_publisher_twist_->lock();
-  rt_publisher_twist_->msg_ = twist_cmd;
-  rt_publisher_twist_->unlockAndPublish();
+  if (!send_twist_command(twist_cmd)) {
+    RCLCPP_ERROR(get_logger(), "Failed to send twist command!");
+    return false;
+  }
 
   // 3) Send controller VIC state
 
-  if(vic_->controller_state_to_msg(vic_state_) == controller_interface::return_type::OK)
-  {
+  if(vic_->controller_state_to_msg(vic_state_) == controller_interface::return_type::OK) {
     rt_publisher_vic_state->lock();
     rt_publisher_vic_state->msg_ = vic_state_;
     rt_publisher_vic_state->unlockAndPublish();
   } else {
     RCLCPP_ERROR(
       get_logger(),
-      "Failed to retreive state message");
+      "Failed to retrieve state message");
   }
 
   return true;
@@ -439,34 +454,6 @@ bool CartesianVicServo::update()
 // -----------------------------------------------------
 //  Subscribers callbacks
 // -----------------------------------------------------
-
-bool CartesianVicServo::get_joint_state(
-  sensor_msgs::msg::JointState & joint_state_msg,
-  double timeout /*seconds*/)
-{
-  // Get msg from RT buffer
-  joint_state_msg_ptr_ = \
-    *rt_buffer_joint_state_.readFromRT();
-  if (joint_state_msg_ptr_.get()) {
-    joint_state_msg = *joint_state_msg_ptr_.get();
-  } else {
-    RCLCPP_ERROR(
-      get_logger(),
-      "Failed to get joint state message!");
-    return false;
-  }
-
-  // Check timeout
-  double delay = (this->now() - joint_state_msg.header.stamp).nanoseconds();
-  if (delay > timeout * 1e9) {
-    RCLCPP_ERROR(
-      get_logger(),
-      "Timeout on joint state message!");
-    return false;
-  }
-
-  return true;
-}
 
 bool CartesianVicServo::get_wrench(
   geometry_msgs::msg::WrenchStamped & wrench_msg,
@@ -530,6 +517,41 @@ bool CartesianVicServo::get_vic_trajectory(
 // Utils
 // -----------------------------------------------------
 
+bool CartesianVicServo::get_joint_state(
+  sensor_msgs::msg::JointState & joint_state_msg,
+  double timeout /*seconds*/)
+{
+  const auto current_time = this->now();
+
+  // Get joint state from planning scene monitor
+  const moveit::core::JointModelGroup * joint_model_group = \
+    robot_state_->getJointModelGroup(joint_model_group_name_);
+  const auto joint_names = joint_model_group->getActiveJointModelNames();
+  if (joint_names.size() != num_joints_) {
+    RCLCPP_ERROR(
+      get_logger(),
+      "Number of joints in the joint model group does not match the number of joints in the VIC controller!");
+    return false;
+  }
+
+  joint_state_msg.header.stamp = planning_scene_monitor_->getStateMonitor()->getCurrentStateTime();
+  joint_state_msg.name = joint_names;
+  robot_state_->copyJointGroupPositions(joint_model_group, joint_state_msg.position);
+  robot_state_->copyJointGroupVelocities(joint_model_group, joint_state_msg.velocity);
+  // robot_state->copyJointGroupAccelerations(joint_model_group, joint_state_msg.accelerations);
+
+  // Check timeout
+  double delay = (current_time - joint_state_msg.header.stamp).nanoseconds();
+  if (delay > timeout * 1e9) {
+    RCLCPP_ERROR(
+      get_logger(),
+      "Timeout on joint state message!");
+    return false;
+  }
+
+  return true;
+}
+
 bool CartesianVicServo::update_measurement_data()
 {
   measurement_data_.reset_data_availability();
@@ -558,6 +580,68 @@ bool CartesianVicServo::update_measurement_data()
   return all_ok;
 }
 
+
+bool CartesianVicServo::send_twist_command(
+  const geometry_msgs::msg::TwistStamped & twist_cmd)
+{
+  if (!servo_) {
+    RCLCPP_ERROR(get_logger(), "Servo not initialized!");
+    return false;
+  }
+
+  // Populate servo twist command
+  moveit_servo::TwistCommand target_twist{base_frame_, {
+      twist_cmd.twist.linear.x, twist_cmd.twist.linear.y, twist_cmd.twist.linear.z,
+      twist_cmd.twist.angular.x, twist_cmd.twist.angular.y, twist_cmd.twist.angular.z}
+  };
+
+  // Get current joint state (actual state or current ref, depending on use_trajectory_cmd_)
+  moveit_servo::KinematicState current_state;
+  if (use_trajectory_cmd_ && !joint_cmd_rolling_window_.empty() &&
+    joint_cmd_rolling_window_.back().time_stamp > now())
+  {
+    current_state = joint_cmd_rolling_window_.back();
+  } else {
+    // if all joint_cmd_rolling_window_ is empty or all commands in it are outdated, use current robot state
+    joint_cmd_rolling_window_.clear();
+    current_state = servo_->getCurrentRobotState();
+    current_state.velocities *= 0.0;
+  }
+
+  // update robot state values
+  const moveit::core::JointModelGroup * joint_model_group = \
+    robot_state_->getJointModelGroup(joint_model_group_name_);
+  robot_state_->setJointGroupPositions(joint_model_group, current_state.positions);
+  robot_state_->setJointGroupVelocities(joint_model_group, current_state.velocities);
+
+
+  // Compute next joint state from twist command
+  moveit_servo::KinematicState next_joint_state = servo_->getNextJointState(robot_state_,
+      target_twist);
+  const moveit_servo::StatusCode status = servo_->getStatus();
+
+  if (status != moveit_servo::StatusCode::INVALID) {
+    moveit_servo::updateSlidingWindow(
+      next_joint_state, joint_cmd_rolling_window_, max_expected_latency_, this->now());
+    if (const auto msg = moveit_servo::composeTrajectoryMessage(servo_params_,
+        joint_cmd_rolling_window_))
+    {
+      rt_publisher_joint_cmd_->lock();
+      rt_publisher_joint_cmd_->msg_ = msg.value();
+      rt_publisher_joint_cmd_->unlockAndPublish();
+    }
+    if (!joint_cmd_rolling_window_.empty()) {
+      const moveit::core::JointModelGroup * joint_model_group = \
+        robot_state_->getJointModelGroup(joint_model_group_name_);
+      robot_state_->setJointGroupPositions(joint_model_group,
+          joint_cmd_rolling_window_.back().positions);
+      robot_state_->setJointGroupVelocities(joint_model_group,
+          joint_cmd_rolling_window_.back().velocities);
+    }
+  }
+
+  return true;
+}
 
 std::string CartesianVicServo::getUrdfFromServer() const
 {

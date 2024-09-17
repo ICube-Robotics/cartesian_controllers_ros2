@@ -16,6 +16,7 @@
 #ifndef CARTESIAN_VIC_SERVO__VIC_SERVO_NODE_HPP_
 #define CARTESIAN_VIC_SERVO__VIC_SERVO_NODE_HPP_
 
+#include <deque>
 #include <memory>
 #include <string>
 #include <vector>
@@ -27,6 +28,9 @@
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "geometry_msgs/msg/wrench_stamped.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
+
+#include <moveit_servo/servo.hpp>
+#include <moveit_servo/utils/common.hpp>
 
 #include "moveit/move_group_interface/move_group_interface.h"
 #include "moveit_msgs/srv/servo_command_type.hpp"
@@ -58,33 +62,35 @@ public:
   bool update();
 
 protected:
-    // void callback_new_joint_state_msg(...);
-    // + wrench (StampedWrench ou Wrench)
-    // + vic ref (voir cartesian_control_msgs)
-
-    // bool send_servo_command(const Eigen::Vector<double, 6> & twist_cmd);
-
-protected:
-    /// @brief True if init() called successfully
+  /// @brief True if init() called successfully
   bool is_initialized_ = false;
 
-    /// @brief True when ready to compute VIC commands
-  bool is_ready_ = false;
+  /// @brief True when ready to compute VIC commands
+  bool is_running_ = false;
 
-  // number of robot controlled joints
+  /// @brief number of robot controlled joints
   size_t num_joints_ = 0;
 
-  std::string servo_node_name_;
+  /// @brief Name of the base frame where the wrench and commands are expressed
+  std::string base_frame_;
 
-  // Vic rule loader
+  /// @brief controller sampling time in seconds
+  double Ts_;
+
+  // timer
+  rclcpp::TimerBase::SharedPtr timer_;
+
+  // ---------- VIC ----------
+
+  /// Vic rule loader
   std::shared_ptr<pluginlib::ClassLoader<cartesian_vic_controller::CartesianVicRule>>
   vic_loader_;
 
-  // Vic rule
+  /// Vic rule
   std::unique_ptr<cartesian_vic_controller::CartesianVicRule> vic_;
   bool is_vic_initialized_ = false;
 
-  // vic parameters
+  /// vic parameters
   std::shared_ptr<cartesian_vic_controller::ParamListener> parameter_handler_;
 
   // measurement data used by the vic controller
@@ -96,13 +102,34 @@ protected:
   geometry_msgs::msg::WrenchStamped wrench_msg_;
   cartesian_control_msgs::msg::CompliantFrameTrajectory vic_trajectory_msg_;
 
-  // Subscriber joint state
-  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr
-    joint_state_subscriber_;
-  realtime_tools::RealtimeBuffer<std::shared_ptr<
-      sensor_msgs::msg::JointState>> rt_buffer_joint_state_;
-  std::shared_ptr<sensor_msgs::msg::JointState> joint_state_msg_ptr_;
+  // ---------- MoveIt servo ----------
 
+  // MoveIt Servo instance
+  std::unique_ptr<moveit_servo::Servo> servo_;
+  servo::Params servo_params_;
+
+  // Planning scene monitor
+  planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor_;
+
+  // Pointer towards the current robot state
+  moveit::core::RobotStatePtr robot_state_;
+
+  // Joint model group interface name
+  std::string joint_model_group_name_;
+
+  // Joint command queue (rolling window)
+  std::deque<moveit_servo::KinematicState> joint_cmd_rolling_window_;
+
+
+  /// @brief maximum expected latency in seconds (N.B., >= 3*Ts)
+  double max_expected_latency_;
+
+  /// @brief whether we use trajectory command or not
+  bool use_trajectory_cmd_;
+
+  // ---------- ROS2 communication ----------
+
+  // Subscribers
   rclcpp::Subscription<geometry_msgs::msg::WrenchStamped>::SharedPtr
     subscriber_wrench_;
   realtime_tools::RealtimeBuffer<std::shared_ptr<
@@ -122,32 +149,21 @@ protected:
   publisher_vic_state_;
   std::shared_ptr<realtime_tools::RealtimePublisher<
       cartesian_control_msgs::msg::VicControllerState>> rt_publisher_vic_state;
-
-  std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::TwistStamped>> publisher_twist_;
-  std::shared_ptr<realtime_tools::RealtimePublisher<geometry_msgs::msg::TwistStamped>>
-  rt_publisher_twist_;
-
-  // services
-  rclcpp::Client<moveit_msgs::srv::ServoCommandType>::SharedPtr switch_command_type_srv_;
-
-
-  // Null twist
-  std::unique_ptr<geometry_msgs::msg::TwistStamped> null_twist_;
-  std::string base_frame_;
-
-
-  // VIC state
   cartesian_control_msgs::msg::VicControllerState vic_state_;
 
-  // timer
-  rclcpp::TimerBase::SharedPtr timer_;
-  double Ts_; //period
+  std::shared_ptr<rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>> publisher_joint_cmd_;
+  std::shared_ptr<realtime_tools::RealtimePublisher<trajectory_msgs::msg::JointTrajectory>>
+  rt_publisher_joint_cmd_;
 
   /// fallback for robot description ROS parameters
   // TODO(tpoignonec): make this a parameter
   std::string robot_description_node_ = "robot_state_publisher";
 
+  // ---------- Utils ----------
+
   bool update_measurement_data();
+
+  bool send_twist_command(const geometry_msgs::msg::TwistStamped & twist_cmd);
 
   bool get_joint_state(
     sensor_msgs::msg::JointState & msg,
