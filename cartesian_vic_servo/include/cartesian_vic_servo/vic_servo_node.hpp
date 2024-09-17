@@ -65,16 +65,28 @@ protected:
     // bool send_servo_command(const Eigen::Vector<double, 6> & twist_cmd);
 
 protected:
-    /// @brief True if init() called successfully
+  /// @brief True if init() called successfully
   bool is_initialized_ = false;
 
-    /// @brief True when ready to compute VIC commands
+  /// @brief True when ready to compute VIC commands
   bool is_ready_ = false;
 
-  // number of robot controlled joints
+  /// @brief True if the update() timer is running
+  bool is_running_ = false;
+
+  /// @brief number of robot controlled joints
   size_t num_joints_ = 0;
 
-  std::string servo_node_name_;
+  /// @brief Name of the base frame where the wrench and commands are expressed
+  std::string base_frame_;
+
+  /// @brief controller sampling time in seconds
+  double Ts_;
+
+  // timer
+  rclcpp::TimerBase::SharedPtr timer_;
+
+  // ---------- VIC ----------
 
   // Vic rule loader
   std::shared_ptr<pluginlib::ClassLoader<cartesian_vic_controller::CartesianVicRule>>
@@ -127,21 +139,22 @@ protected:
   std::shared_ptr<realtime_tools::RealtimePublisher<geometry_msgs::msg::TwistStamped>>
   rt_publisher_twist_;
 
+  // VIC state msg
+  cartesian_control_msgs::msg::VicControllerState vic_state_;
+
+  // ---------- MoveIt servo ----------
+
+  /// @brief name of the servo node
+  std::string servo_node_name_;
+
   // services
   rclcpp::Client<moveit_msgs::srv::ServoCommandType>::SharedPtr switch_command_type_srv_;
 
-
   // Null twist
   std::unique_ptr<geometry_msgs::msg::TwistStamped> null_twist_;
-  std::string base_frame_;
 
 
-  // VIC state
-  cartesian_control_msgs::msg::VicControllerState vic_state_;
-
-  // timer
-  rclcpp::TimerBase::SharedPtr timer_;
-  double Ts_; //period
+  // ---------- Utils ----------
 
   /// fallback for robot description ROS parameters
   // TODO(tpoignonec): make this a parameter

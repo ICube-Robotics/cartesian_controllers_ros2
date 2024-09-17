@@ -40,10 +40,17 @@ CartesianVicServo::CartesianVicServo(std::string node_name)
     RCLCPP_WARN_STREAM(get_logger(), "Realtime kernel is recommended for better performance.");
   }
 
+  is_initialized_ = false;
+  is_running_ = false;
 }
 
 bool CartesianVicServo::init()
 {
+  if (is_initialized_) {
+    RCLCPP_WARN(get_logger(), "CartesianVicServo is already initialized...");
+    return true;
+  }
+
   // Setup parameter handler
   try {
     parameter_handler_ =
@@ -61,15 +68,17 @@ bool CartesianVicServo::init()
   // Try to retrieve urdf (used by kinematics / dynamics plugin)
   RCLCPP_INFO(get_logger(), "Trying to retrieve 'robot_description' parameter...");
 
-  rcl_interfaces::msg::ParameterDescriptor urdf_param_desc;
-  urdf_param_desc.name = "rule_plugin_package";
-  urdf_param_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_STRING;
-  urdf_param_desc.description = "URDF description of the robot";
-  this->get_node_parameters_interface()->declare_parameter(
-    "robot_description", rclcpp::ParameterValue(""), urdf_param_desc);
+  if (!this->get_node_parameters_interface()->has_parameter("robot_description")) {
+      rcl_interfaces::msg::ParameterDescriptor urdf_param_desc;
+      urdf_param_desc.name = "rule_plugin_package";
+      urdf_param_desc.type = rcl_interfaces::msg::ParameterType::PARAMETER_STRING;
+      urdf_param_desc.description = "URDF description of the robot";
+      this->get_node_parameters_interface()->declare_parameter(
+        "robot_description", rclcpp::ParameterValue(""), urdf_param_desc);
+    }
 
   auto urdf_param = rclcpp::Parameter();
-  if (!this->get_node_parameters_interface()->get_parameter("robot_description", urdf_param))
+  if (!this->get_node_parameters_interface()->get_parameter("robot_description", urdf_param)) {}
   {
     RCLCPP_ERROR(get_logger(), "parameter 'robot_description' not set");
     return false;
@@ -97,6 +106,8 @@ bool CartesianVicServo::init()
     return false;
   }
   cartesian_vic_controller::Params parameters = parameter_handler_->get_params();
+
+  Ts_ = 0.005;  // 200 Hz
 
   // number of joints in controllers is fixed after initialization
   num_joints_ = parameters.joints.size();
@@ -133,7 +144,7 @@ bool CartesianVicServo::init()
     }
     // Initialize vic rule plugin
     if (vic_->init(parameter_handler_) == controller_interface::return_type::ERROR) {
-      RCLCPP_ERROR(get_logger(), "Failled to initialize VIC rule plugin!");
+      RCLCPP_ERROR(get_logger(), "Failed to initialize VIC rule plugin!");
       return false;
     }
   } catch (const std::exception & e) {
@@ -145,7 +156,9 @@ bool CartesianVicServo::init()
   }
 
   // Configure VIC rule
-  if (vic_->configure(this->get_node_parameters_interface(), num_joints_) == controller_interface::return_type::ERROR) {
+  if (vic_->configure(this->get_node_parameters_interface(), num_joints_) ==
+      controller_interface::return_type::ERROR)
+  {
     return false;
   }
 
@@ -204,6 +217,23 @@ bool CartesianVicServo::init()
 
 bool CartesianVicServo::start()
 {
+  // Initialize if not yet done
+  if (!is_initialized_) {
+    RCLCPP_WARN(get_logger(), "CartesianVicServo is not yet initialized...");
+    is_initialized_ = this->init();
+  }
+  if (!is_initialized_) {
+    RCLCPP_ERROR(get_logger(), "CartesianVicServo failed to initialize!");
+    return false;
+  }
+
+  // Check if already started
+  if (is_running_ && timer_) {
+    RCLCPP_WARN(get_logger(), "CartesianVicServo is already running!");
+    return true;
+  }
+
+  // Make sure Servo node is running and expecting TWIST commands
   switch_command_type_srv_ = \
     this->create_client<moveit_msgs::srv::ServoCommandType>(servo_node_name_ + "/switch_command_type");
 
@@ -260,8 +290,9 @@ bool CartesianVicServo::start()
     std::bind(&CartesianVicServo::CartesianVicServo::update, this));
   if(timer_)
   {
-    RCLCPP_INFO(get_logger(), "Timer: started!");
-    return true;
+    RCLCPP_INFO(get_logger(), "Control loop has started!");
+    is_running_ = true;
+    return is_running_;
   }
 
   return false;
@@ -275,6 +306,7 @@ bool CartesianVicServo::stop()
         get_logger(),
         "Timer: stopped!");
 
+  is_running_ = false;
 
   // TODO(dmeckes): send twist = 0 to moveit servo
   null_twist_->header.stamp = this->now(); //add time
@@ -293,7 +325,7 @@ bool CartesianVicServo::update()
 {
   // TODO(dmeckes): move to init() (+ make those node parameters?)
   double timeout = 0.01;
-  double Ts = 0.005;  // 200 Hz
+  is_running_ = true;
 
   // -----------------------
   // Prepare data for vic
@@ -367,7 +399,7 @@ bool CartesianVicServo::update()
 
   // Otherwise, proceed to control logic
   // 1) Update vic
-  rclcpp::Duration period = rclcpp::Duration::from_seconds(Ts);
+  rclcpp::Duration period = rclcpp::Duration::from_seconds(Ts_);
 
   if (is_vic_ref_valid) {
     if (!ref_has_been_received_in_the_past_) {
@@ -430,7 +462,7 @@ bool CartesianVicServo::update()
   } else {
     RCLCPP_ERROR(
       get_logger(),
-      "Failed to retreive state message");
+      "Failed to retrieve state message");
   }
 
   return true;
