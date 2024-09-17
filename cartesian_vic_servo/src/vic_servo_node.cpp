@@ -106,6 +106,7 @@ bool CartesianVicServo::init()
 
   // number of joints in controllers is fixed after initialization
   num_joints_ = parameters.joints.size();
+  joint_names_ = parameters.joints;
   RCLCPP_INFO(get_logger(), "Configuring controller with %li joints", num_joints_);
 
   //frame_id used for the null twist
@@ -302,7 +303,6 @@ bool CartesianVicServo::update()
 {
   // TODO(dmeckes): move to init() (+ make those node parameters?)
   double timeout = 0.01;
-  double Ts = 0.005;  // 200 Hz
   is_running_ = true;
 
   // -----------------------
@@ -384,7 +384,7 @@ bool CartesianVicServo::update()
 
   // Otherwise, proceed to control logic
   // 1) Update vic
-  rclcpp::Duration period = rclcpp::Duration::from_seconds(Ts);
+  rclcpp::Duration period = rclcpp::Duration::from_seconds(Ts_);
 
   if (is_vic_ref_valid) {
     if (!ref_has_been_received_in_the_past_) {
@@ -517,6 +517,43 @@ bool CartesianVicServo::get_vic_trajectory(
 // Utils
 // -----------------------------------------------------
 
+bool CartesianVicServo::reorder_joint_state(
+  const sensor_msgs::msg::JointState & joint_state_msg,
+  sensor_msgs::msg::JointState & joint_state_msg_reordered)
+{
+  if (joint_state_msg.name.size() != num_joints_) {
+    RCLCPP_ERROR(
+      get_logger(),
+      "Number of joints in the joint state does not match the number of joints in the VIC controller!");
+    return false;
+  }
+
+  // copy msg
+  joint_state_msg_reordered = joint_state_msg;
+
+  // reorder joint names and data
+  for (size_t i = 0; i < num_joints_; ++i)
+  {
+    int idx_in_msg = std::find(
+      joint_state_msg.name.begin(), joint_state_msg.name.end(), joint_names_[i]) - joint_state_msg.name.begin();
+    joint_state_msg_reordered.name[i] = joint_state_msg.name[idx_in_msg];
+    joint_state_msg_reordered.position[i] = joint_state_msg.position[idx_in_msg];
+    joint_state_msg_reordered.velocity[i] = joint_state_msg.velocity[idx_in_msg];
+    if (joint_state_msg.effort.size() > 0) // check if there is an effort field
+    {
+      joint_state_msg_reordered.effort[i] = joint_state_msg.effort[idx_in_msg];
+    }
+    if (idx_in_msg != i) {
+      RCLCPP_DEBUG(
+        get_logger(),
+        "Reordered joint state '%s' %lu (msg) -> %lu (internal model)",
+        joint_state_msg.name[idx_in_msg], idx_in_msg, i);
+    }
+  }
+
+  return true;
+}
+
 bool CartesianVicServo::get_joint_state(
   sensor_msgs::msg::JointState & joint_state_msg,
   double timeout /*seconds*/)
@@ -534,11 +571,18 @@ bool CartesianVicServo::get_joint_state(
     return false;
   }
 
-  joint_state_msg.header.stamp = planning_scene_monitor_->getStateMonitor()->getCurrentStateTime();
-  joint_state_msg.name = joint_names;
-  robot_state_->copyJointGroupPositions(joint_model_group, joint_state_msg.position);
-  robot_state_->copyJointGroupVelocities(joint_model_group, joint_state_msg.velocity);
-  // robot_state->copyJointGroupAccelerations(joint_model_group, joint_state_msg.accelerations);
+  sensor_msgs::msg::JointState unordered_joint_state_msg;
+  unordered_joint_state_msg.header.stamp = planning_scene_monitor_->getStateMonitor()->getCurrentStateTime();
+  unordered_joint_state_msg.name = joint_names;
+  robot_state_->copyJointGroupPositions(joint_model_group, unordered_joint_state_msg.position);
+  robot_state_->copyJointGroupVelocities(joint_model_group, unordered_joint_state_msg.velocity);
+  // robot_state->copyJointGroupAccelerations(joint_model_group, unordered_joint_state_msg.accelerations);
+
+  // Reorder joint state
+  if (!reorder_joint_state(unordered_joint_state_msg, joint_state_msg)) {
+    RCLCPP_ERROR(get_logger(), "Failed to reorder joint state!");
+    return false;
+  }
 
   // Check timeout
   double delay = (current_time - joint_state_msg.header.stamp).nanoseconds();

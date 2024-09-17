@@ -71,6 +71,9 @@ protected:
   /// @brief number of robot controlled joints
   size_t num_joints_ = 0;
 
+  /// @brief name of the robot controlled joints
+  std::vector<std::string> joint_names_;
+
   /// @brief Name of the base frame where the wrench and commands are expressed
   std::string base_frame_;
 
@@ -160,6 +163,10 @@ protected:
   std::string robot_description_node_ = "robot_state_publisher";
 
   // ---------- Utils ----------
+
+  bool reorder_joint_state(
+    const sensor_msgs::msg::JointState & joint_state_msg,
+    sensor_msgs::msg::JointState & joint_state_msg_reordered);
 
   bool update_measurement_data();
 
