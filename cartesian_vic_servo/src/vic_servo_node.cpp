@@ -337,6 +337,7 @@ bool CartesianVicServo::update()
 
   auto execute_fallback_policy = [this, &twist_cmd] () -> bool
     {
+      RCLCPP_DEBUG(get_logger(), "Executing fallback policy...");
       // Send zero twist command
       twist_cmd.twist.linear.x = 0.0;
       twist_cmd.twist.linear.y = 0.0;
@@ -362,7 +363,7 @@ bool CartesianVicServo::update()
       get_logger(), *clock, 1000, "Waiting for valid data to init VIC plugin!");
     all_ok = false;
   } else if (!is_vic_initialized_ && is_state_valid) {
-    RCLCPP_INFO(get_logger(), "Init VIC plugin...");
+    RCLCPP_INFO(get_logger(), "Initializing VIC plugin...");
     ref_has_been_received_in_the_past_ = false;
     // Init current desired pose from current joint position
     is_vic_initialized_ = (vic_->init_reference_frame_trajectory(
@@ -586,9 +587,12 @@ bool CartesianVicServo::get_joint_state(
 
   // Check timeout
   double delay = (current_time - joint_state_msg.header.stamp).nanoseconds();
+  auto clock = this->get_clock();
   if (delay > timeout * 1e9) {
-    RCLCPP_ERROR(
+    RCLCPP_WARN_THROTTLE(
       get_logger(),
+      *clock,
+      1000,
       "Timeout on joint state message!");
     return false;
   }
