@@ -2,7 +2,7 @@
 
 This is a cartesian VIC controller inspired by the package `admittance_controller` from [ros-controls/ros2_controllers](https://github.com/ros-controls/ros2_controllers/tree/master).
 
-> **Warning**
+> [!WARNING]
 >
 > This package is currently under development and possibly unsafe if used to control an actual robot!
 > For instance, a singularity avoidance strategy has still to be implemented in the default VIC.
