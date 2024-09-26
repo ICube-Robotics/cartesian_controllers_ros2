@@ -109,7 +109,7 @@ bool CartesianVicServo::init()
   joint_names_ = parameters.joints;
   RCLCPP_INFO(get_logger(), "Configuring controller with %li joints", num_joints_);
 
-  //frame_id used for the null twist
+  // frame_id used for the null twist
   base_frame_ = parameters.dynamics.base;
 
   // allocate dynamic memory
@@ -277,7 +277,7 @@ bool CartesianVicServo::start()
 
   // Start control loop
   timer_ = this->create_wall_timer(
-    std::chrono::milliseconds(int(Ts_ * 1000)),
+    std::chrono::milliseconds(static_cast<int>(Ts_ * 1000)),
     std::bind(&CartesianVicServo::CartesianVicServo::update, this));
   if(timer_) {
     RCLCPP_INFO(get_logger(), "Control loop has started!");
@@ -525,7 +525,7 @@ bool CartesianVicServo::reorder_joint_state(
   if (joint_state_msg.name.size() != num_joints_) {
     RCLCPP_ERROR(
       get_logger(),
-      "Number of joints in the joint state does not match the number of joints in the VIC controller!");
+      "Number of joints in the joint state does not match that of the VIC controller!");
     return false;
   }
 
@@ -533,15 +533,14 @@ bool CartesianVicServo::reorder_joint_state(
   joint_state_msg_reordered = joint_state_msg;
 
   // reorder joint names and data
-  for (size_t i = 0; i < num_joints_; ++i)
-  {
+  for (size_t i = 0; i < num_joints_; ++i) {
     int idx_in_msg = std::find(
-      joint_state_msg.name.begin(), joint_state_msg.name.end(), joint_names_[i]) - joint_state_msg.name.begin();
+      joint_state_msg.name.begin(), joint_state_msg.name.end(),
+        joint_names_[i]) - joint_state_msg.name.begin();
     joint_state_msg_reordered.name[i] = joint_state_msg.name[idx_in_msg];
     joint_state_msg_reordered.position[i] = joint_state_msg.position[idx_in_msg];
     joint_state_msg_reordered.velocity[i] = joint_state_msg.velocity[idx_in_msg];
-    if (joint_state_msg.effort.size() > 0) // check if there is an effort field
-    {
+    if (joint_state_msg.effort.size() > 0) {  // check if there is an effort field
       joint_state_msg_reordered.effort[i] = joint_state_msg.effort[idx_in_msg];
     }
     if (idx_in_msg != i) {
@@ -568,16 +567,16 @@ bool CartesianVicServo::get_joint_state(
   if (joint_names.size() != num_joints_) {
     RCLCPP_ERROR(
       get_logger(),
-      "Number of joints in the joint model group does not match the number of joints in the VIC controller!");
+      "Number of joints in the joint model group does not match that of the VIC controller!");
     return false;
   }
 
   sensor_msgs::msg::JointState unordered_joint_state_msg;
-  unordered_joint_state_msg.header.stamp = planning_scene_monitor_->getStateMonitor()->getCurrentStateTime();
+  unordered_joint_state_msg.header.stamp =
+    planning_scene_monitor_->getStateMonitor()->getCurrentStateTime();
   unordered_joint_state_msg.name = joint_names;
   robot_state_->copyJointGroupPositions(joint_model_group, unordered_joint_state_msg.position);
   robot_state_->copyJointGroupVelocities(joint_model_group, unordered_joint_state_msg.velocity);
-  // robot_state->copyJointGroupAccelerations(joint_model_group, unordered_joint_state_msg.accelerations);
 
   // Reorder joint state
   if (!reorder_joint_state(unordered_joint_state_msg, joint_state_msg)) {
@@ -650,7 +649,7 @@ bool CartesianVicServo::send_twist_command(
   {
     current_state = joint_cmd_rolling_window_.back();
   } else {
-    // if all joint_cmd_rolling_window_ is empty or all commands in it are outdated, use current robot state
+    // if joint_cmd_rolling_window_ is empty or all commands are outdated, use current robot state
     joint_cmd_rolling_window_.clear();
     current_state = servo_->getCurrentRobotState();
     current_state.velocities *= 0.0;

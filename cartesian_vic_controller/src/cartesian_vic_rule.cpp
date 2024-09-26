@@ -103,7 +103,6 @@ controller_interface::return_type
 CartesianVicRule::init_reference_frame_trajectory(
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state)
 {
-
   RCLCPP_INFO(logger_, "Initializing the reference frame...");
   // Load parameters
   use_streamed_interaction_parameters_ = false;

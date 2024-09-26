@@ -39,18 +39,17 @@
  *      Description : Example of controlling a robot through twist commands via the C++ API.
  */
 
+#include <tf2_ros/transform_listener.h>
+
 #include <chrono>
 
+#include <moveit/utils/logger.hpp>
 #include <moveit_servo/servo.hpp>
 #include <moveit_servo/utils/common.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-#include <tf2_ros/transform_listener.h>
-#include <moveit/utils/logger.hpp>
-#include <moveit/collision_detection_bullet/collision_env_bullet.h>
-#include <moveit/collision_detection_bullet/collision_detector_allocator_bullet.h>
 
-using namespace moveit_servo;
+using namespace moveit_servo;  // NOLINT
 
 int main(int argc, char * argv[])
 {
@@ -70,15 +69,11 @@ int main(int argc, char * argv[])
   rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>::SharedPtr trajectory_outgoing_cmd_pub =
     demo_node->create_publisher<trajectory_msgs::msg::JointTrajectory>(
     servo_params.command_out_topic,
-                                                                         rclcpp::SystemDefaultsQoS());
+    rclcpp::SystemDefaultsQoS());
 
   // Create the servo object
   const planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor =
     createPlanningSceneMonitor(demo_node, servo_params);
-
-  // Changing the collision detector to Bullet
-  // planning_scene_monitor->setActiveCollisionDetector(collision_detection::CollisionDetectorAllocatorBullet::create());
-
   Servo servo = Servo(demo_node, servo_param_listener, planning_scene_monitor);
 
   // Wait for some time, so that the planning scene is loaded in rviz.
