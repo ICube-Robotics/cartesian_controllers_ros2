@@ -55,7 +55,7 @@ CartesianVicRule::init(
 
 controller_interface::return_type
 CartesianVicRule::configure(
-  const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
+  const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface> & parameters_interface,
   const size_t num_joints)
 {
   num_joints_ = num_joints;
@@ -70,9 +70,7 @@ CartesianVicRule::configure(
         "dynamics_interface::DynamicsInterface");
       dynamics_ = std::unique_ptr<dynamics_interface::DynamicsInterface>(
         dynamics_loader_->createUnmanagedInstance(parameters_.dynamics.plugin_name));
-      if (!dynamics_->initialize(
-          node->get_node_parameters_interface(), parameters_.dynamics.tip))
-      {
+      if (!dynamics_->initialize(parameters_interface, parameters_.dynamics.tip)) {
         return controller_interface::return_type::ERROR;
       }
     } catch (pluginlib::PluginlibException & ex) {
@@ -105,6 +103,7 @@ controller_interface::return_type
 CartesianVicRule::init_reference_frame_trajectory(
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state)
 {
+  RCLCPP_INFO(logger_, "Initializing the reference frame...");
   // Load parameters
   use_streamed_interaction_parameters_ = false;
 
@@ -160,6 +159,7 @@ CartesianVicRule::init_reference_frame_trajectory(
 
   // Refresh parameters
   apply_parameters_update();
+  RCLCPP_INFO(logger_, "Reference frame has been initialized.");
 
   return controller_interface::return_type::OK;
 }
@@ -476,6 +476,7 @@ CartesianVicRule::compute_controls(
   bool success = true;   // return flag
   const double dt = period.seconds();
   // Compute controls
+  vic_state_.diagnostic_data["period"] = dt;  // log ros-control period
   success &= compute_controls(dt, vic_state_.input_data, vic_state_.command_data);
 
   // If an error is detected, set commanded velocity to zero
@@ -548,6 +549,46 @@ CartesianVicRule::compute_controls(
   return controller_interface::return_type::OK;
 }
 
+
+controller_interface::return_type
+CartesianVicRule::compute_controls(
+  const rclcpp::Duration & period,
+  geometry_msgs::msg::Twist & twist_command)
+{
+  bool success = true;   // return flag
+  const double dt = period.seconds();
+  // Compute controls
+  success &= compute_controls(dt, vic_state_.input_data, vic_state_.command_data);
+
+  // If an error is detected, set commanded velocity to zero
+  if (!success) {
+    RCLCPP_ERROR(
+      logger_,
+      "Failed to compute the controls!"
+    );
+    // Set twist command to zero
+    twist_command = geometry_msgs::msg::Twist();
+    return controller_interface::return_type::ERROR;
+  }
+  // Otherwise, return computed twist command
+  if (vic_state_.command_data.has_twist_command) {
+    twist_command.linear.x = vic_state_.command_data.twist_command[0];
+    twist_command.linear.y = vic_state_.command_data.twist_command[1];
+    twist_command.linear.z = vic_state_.command_data.twist_command[2];
+    twist_command.angular.x = vic_state_.command_data.twist_command[3];
+    twist_command.angular.y = vic_state_.command_data.twist_command[4];
+    twist_command.angular.z = vic_state_.command_data.twist_command[5];
+    return controller_interface::return_type::OK;
+  } else {
+    // Set twist command to zero
+    twist_command = geometry_msgs::msg::Twist();
+    RCLCPP_ERROR(
+      logger_,
+      "Rule plugin did not return computed twist command!");
+    return controller_interface::return_type::ERROR;
+  }
+}
+
 // Internal functions
 
 bool CartesianVicRule::update_kinematics(
@@ -555,7 +596,6 @@ bool CartesianVicRule::update_kinematics(
   const trajectory_msgs::msg::JointTrajectoryPoint & current_joint_state)
 {
   bool success = true;   // return flag
-
 
   // Update current robot joint position
   double cutoff_jnt_position = parameters_.filters.state_position_filter_cuttoff_freq;
@@ -590,6 +630,12 @@ bool CartesianVicRule::update_kinematics(
     vec_to_eigen(current_joint_state.velocities, vic_state_.input_data.joint_state_velocity);
   }
 
+  if (!dynamics_) {
+    RCLCPP_ERROR(
+      logger_,
+      "Dynamics plugin not initialized!");
+    return false;
+  }
   // Update current cartesian pose and velocity from robot joint states
   success &= dynamics_->calculate_link_transform(
     vic_state_.input_data.joint_state_position,

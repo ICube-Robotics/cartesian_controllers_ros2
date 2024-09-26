@@ -36,11 +36,11 @@ controller_interface::return_type VanillaCartesianImpedanceRule::init(
 }
 
 controller_interface::return_type VanillaCartesianImpedanceRule::configure(
-  const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
+  const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface> & parameters_interface,
   const size_t num_joints)
 {
   reset_rule__internal_storage(num_joints);
-  return CartesianVicRule::configure(node, num_joints);
+  return CartesianVicRule::configure(parameters_interface, num_joints);
 }
 
 controller_interface::return_type VanillaCartesianImpedanceRule::reset(const size_t num_joints)
@@ -165,7 +165,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   double conditioning_J = 1000.0;
   if (J_.cols() < 6) {
     RCLCPP_WARN_THROTTLE(
-      logger_, internal_clock_, 5000, "Jacobian has only %u columns, expecting at least 6!!!",
+      logger_, internal_clock_, 5000, "Jacobian has only %lu columns, expecting at least 6!!!",
         J_.cols());
     conditioning_J = J_svd.singularValues()(0) / J_svd.singularValues()(J_.cols() - 1);
   } else {
@@ -348,8 +348,8 @@ bool VanillaCartesianImpedanceRule::compute_controls(
         vic_command_data.joint_command_effort.size()); i++)
     {
       vic_command_data.joint_command_effort(i) = filters::exponentialSmoothing(
-        vic_command_data.joint_command_effort(i),
         raw_joint_command_effort_(i),
+        vic_command_data.joint_command_effort(i),
         cmd_filter_coefficient
       );
     }

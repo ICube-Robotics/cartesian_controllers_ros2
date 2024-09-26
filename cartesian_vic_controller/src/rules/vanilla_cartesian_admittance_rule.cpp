@@ -35,11 +35,11 @@ controller_interface::return_type VanillaCartesianAdmittanceRule::init(
 }
 
 controller_interface::return_type VanillaCartesianAdmittanceRule::configure(
-  const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
+  const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface> & parameters_interface,
   const size_t num_joints)
 {
   // Configure CartesianVicRule
-  auto ret = CartesianVicRule::configure(node, num_joints);
+  auto ret = CartesianVicRule::configure(parameters_interface, num_joints);
 
   // Reset internal data
   reset_rule__internal_storage(num_joints);
@@ -187,7 +187,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
   double conditioning_J = 1000.0;
   if (J_.cols() < 6) {
     RCLCPP_WARN_THROTTLE(
-      logger_, internal_clock_, 5000, "Jacobian has only %u columns, expecting at least 6!!!",
+      logger_, internal_clock_, 5000, "Jacobian has only %lu columns, expecting at least 6!!!",
         J_.cols());
     conditioning_J = J_svd.singularValues()(0) / J_svd.singularValues()(J_.cols() - 1);
   } else {

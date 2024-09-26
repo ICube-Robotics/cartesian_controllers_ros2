@@ -70,6 +70,7 @@ add_library(cartesian_vic_rules SHARED
   # Vanilla VIC rules (basic admittance / impedance control laws)
   src/rules/vanilla_cartesian_admittance_rule.cpp
   src/rules/vanilla_cartesian_impedance_rule.cpp
+  src/rules/twist_cmd_cartesian_admittance_rule.cpp
 )
 target_compile_features(cartesian_vic_rules PUBLIC cxx_std_17)
 target_include_directories(cartesian_vic_rules PUBLIC

@@ -30,6 +30,7 @@
 #include "pluginlib/class_loader.hpp"
 
 // msgs
+#include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/wrench_stamped.hpp"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "trajectory_msgs/msg/joint_trajectory_point.hpp"
@@ -62,7 +63,7 @@ public:
 
   /// Configure vic rule
   virtual controller_interface::return_type configure(
-    const std::shared_ptr<rclcpp_lifecycle::LifecycleNode> & node,
+    const std::shared_ptr<rclcpp::node_interfaces::NodeParametersInterface> & parameters_interface,
     const size_t num_joint);
 
   /// Soft reset vic rule (set cartesian ref as current pose)
@@ -118,6 +119,7 @@ public:
   * Compute joint command from the current cartesian tracking errors
   * and the desired interaction parameters (M, K, D). This function is
   * to be used when no external torque sensor is available.
+  * Not implemented by all plugins!
   *
   * \param[in] period time in seconds since last controller update
   * \param[out] joint_state_command computed joint state command
@@ -125,6 +127,19 @@ public:
   controller_interface::return_type compute_controls(
     const rclcpp::Duration & period,
     trajectory_msgs::msg::JointTrajectoryPoint & joint_state_command
+  );
+
+  /**
+  * Compute twist command from the current cartesian tracking errors
+  * and the desired interaction parameters (M, K, D).
+  * Not implemented by all plugins!
+  *
+  * \param[in] period time in seconds since last controller update
+  * \param[out] twist_command computed cartesian twist command
+  */
+  controller_interface::return_type compute_controls(
+    const rclcpp::Duration & period,
+    geometry_msgs::msg::Twist & twist_command
   );
 
   /// Get current control mode (ADMITTANCE / IMPEDANCE / INVALID)
