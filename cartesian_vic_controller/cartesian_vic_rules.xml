@@ -13,4 +13,11 @@
       Classical impedance control law.
     </description>
   </class>
+  <class name="cartesian_vic_controller/TwistCmdCartesianAdmittanceRule"
+         type="cartesian_vic_controller::TwistCmdCartesianAdmittanceRule"
+         base_class_type="cartesian_vic_controller::CartesianVicRule">
+    <description>
+      Classical admittance control law returning a twist command.
+    </description>
+  </class>
 </library>

@@ -128,6 +128,16 @@ VicState::to_msg(cartesian_control_msgs::msg::VicControllerState & vic_state_msg
     vic_state_msg.joint_command_effort.clear();
   }
 
+  // Fill twist command
+  if (command_data.has_twist_command) {
+    vic_state_msg.twist_command.resize(6);
+    for (size_t i = 0; i < 6; i++) {
+      vic_state_msg.twist_command[i] = command_data.twist_command[i];
+    }
+  } else {
+    vic_state_msg.twist_command.clear();
+  }
+
   // Fill diagnostic data
   vic_state_msg.diagnostic_data.keys.clear();
   vic_state_msg.diagnostic_data.values.clear();

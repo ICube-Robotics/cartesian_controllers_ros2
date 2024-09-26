@@ -28,6 +28,7 @@ float64[] joint_command_position  # optional
 float64[] joint_command_velocity  # optional
 float64[] joint_command_acceleration  # optional
 float64[] joint_command_effort  # optional
+float64[] twist_command  # optional
 
 # Misc.
 std_msgs/Float64MultiArray natural_inertia  # optional

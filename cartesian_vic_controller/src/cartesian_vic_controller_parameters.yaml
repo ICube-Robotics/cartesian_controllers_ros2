@@ -10,29 +10,28 @@ cartesian_vic_controller:
     description: "(optional) Specifies the joints for writing into another controllers reference. This parameter is only relevant when chaining the output of this controller to the input of another controller.",
     read_only: true
   }
-  command_interfaces:
-    {
-      type: string_array,
-      description: "Specifies which command interfaces the controller will claim.",
-      read_only: true
-    }
-
-  state_interfaces:
-    {
-      type: string_array,
-      description: "Specifies which state interfaces the controller will claim.",
-      read_only: true
-    }
+  command_interfaces: {
+    type: string_array,
+    default_value: [],
+    description: "Specifies which command interfaces the controller will claim.",
+    read_only: true
+  }
+  state_interfaces: {
+    type: string_array,
+    default_value: [],
+    description: "Specifies which state interfaces the controller will claim.",
+    read_only: true
+  }
 
   filters:
     state_position_filter_cuttoff_freq: {
       type: double,
-      default_value: 100.0,
+      default_value: -1.0,
       description: "Specifies the cutoff frequency for the state measurements (position). Disabled if frequency <= 0."
     }
     state_velocity_filter_cuttoff_freq: {
       type: double,
-      default_value: 100.0,
+      default_value: -1.0,
       description: "Specifies the cutoff frequency for the state measurements (velocity). Disabled if frequency <= 0."
     }
     state_acceleration_filter_cuttoff_freq: {
