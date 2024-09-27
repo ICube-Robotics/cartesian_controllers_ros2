@@ -360,6 +360,7 @@ bool VanillaCartesianImpedanceRule::compute_controls(
 
   // Set flags for available commands
   // ------------------------------------------------
+  vic_command_data.has_twist_command = false;
   vic_command_data.has_position_command = false;
   vic_command_data.has_velocity_command = false;
   vic_command_data.has_acceleration_command = true;
