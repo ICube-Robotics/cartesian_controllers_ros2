@@ -423,6 +423,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     vic_command_data.joint_command_velocity * dt;
 
   // Set flags for available commands
+  vic_command_data.has_twist_command = false;
   vic_command_data.has_position_command = true;
   vic_command_data.has_velocity_command = true;
   vic_command_data.has_acceleration_command = false;
