@@ -3,3 +3,8 @@ repositories:
         type: git
         url: https://github.com/tpoignonec/dynamics_interface.git
         version: main
+
+    external/ros-controls/kinematics_interface:
+        type: git
+        url: https://github.com/ros-controls/kinematics_interface.git
+        version: 1.1.0
