@@ -80,7 +80,8 @@ CartesianVicRule::configure(
       dynamics_ = std::unique_ptr<dynamics_interface::DynamicsInterface>(
         dynamics_loader_->createUnmanagedInstance(parameters_.dynamics.plugin_name));
       if (!dynamics_->initialize(
-        robot_description, parameters_interface, "dynamics")) {
+        robot_description, parameters_interface, "dynamics"))
+      {
         return controller_interface::return_type::ERROR;
       }
     } catch (pluginlib::PluginlibException & ex) {
