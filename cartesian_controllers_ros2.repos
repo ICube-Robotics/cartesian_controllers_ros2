@@ -2,7 +2,7 @@ repositories:
     external/dynamics_interface:
         type: git
         url: https://github.com/tpoignonec/dynamics_interface.git
-        version: main
+        version: tpoignonec-refractor_for_kinematics_interface_1.2.0
 
     external/ros-controls/kinematics_interface:
         type: git
