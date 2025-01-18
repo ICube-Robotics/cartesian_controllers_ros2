@@ -51,7 +51,8 @@ jobs:
             rosdep install --ignore-src --from-paths . -y -r
             colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --symlink-install
             source install/setup.bash
-            colcon test --event-handlers console_direct+
+            DEPS_PKG_NAMES=$(colcon list -n --base-paths src/external)
+            colcon test --event-handlers console_direct+ console_package_list+ --packages-skip $DEPS_PKG_NAMES
             colcon test-result
 
       - name: Upload Tests to Artifacts
