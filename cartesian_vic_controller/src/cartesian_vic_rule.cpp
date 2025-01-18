@@ -61,6 +61,15 @@ CartesianVicRule::configure(
   num_joints_ = num_joints;
   // reset vic state
   reset(num_joints);
+
+  // Load URDF
+  auto robot_param = rclcpp::Parameter();
+  if (!parameters_interface->get_parameter("robot_description", robot_param)) {
+    RCLCPP_ERROR(logger_, "parameter robot_description not set");
+    return controller_interface::return_type::ERROR;
+  }
+  auto robot_description = robot_param.as_string();
+
   // Load the dynamics (also used for IK) plugin
   if (!parameters_.dynamics.plugin_name.empty()) {
     try {
@@ -70,7 +79,9 @@ CartesianVicRule::configure(
         "dynamics_interface::DynamicsInterface");
       dynamics_ = std::unique_ptr<dynamics_interface::DynamicsInterface>(
         dynamics_loader_->createUnmanagedInstance(parameters_.dynamics.plugin_name));
-      if (!dynamics_->initialize(parameters_interface, parameters_.dynamics.tip)) {
+      if (!dynamics_->initialize(
+        robot_description, parameters_interface, "dynamics"))
+      {
         return controller_interface::return_type::ERROR;
       }
     } catch (pluginlib::PluginlibException & ex) {

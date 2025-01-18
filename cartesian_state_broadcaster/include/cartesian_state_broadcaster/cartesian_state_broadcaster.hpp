@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "realtime_tools/realtime_publisher.h"
+#include "realtime_tools/realtime_publisher.hpp"
 #include "cartesian_state_broadcaster/visibility_control.h"
 
 #include "controller_interface/controller_interface.hpp"

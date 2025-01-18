@@ -271,7 +271,7 @@ bool CartesianVicServo::start()
   }
 
   // Reset command queue
-  auto current_state = servo_->getCurrentRobotState();
+  auto current_state = servo_->getCurrentRobotState(false);
   moveit_servo::updateSlidingWindow(
     current_state, joint_cmd_rolling_window_, max_expected_latency_, this->now());
 
@@ -651,7 +651,7 @@ bool CartesianVicServo::send_twist_command(
   } else {
     // if joint_cmd_rolling_window_ is empty or all commands are outdated, use current robot state
     joint_cmd_rolling_window_.clear();
-    current_state = servo_->getCurrentRobotState();
+    current_state = servo_->getCurrentRobotState(false);
     current_state.velocities *= 0.0;
   }
 

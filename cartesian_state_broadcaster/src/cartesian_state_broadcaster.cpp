@@ -53,6 +53,16 @@ CallbackReturn CartesianStateBroadcaster::on_configure(
   auto kinematics_plugin_package =
     get_node()->get_parameter("kinematics_plugin_package").as_string();
 
+  // Load URDF
+  auto robot_param = rclcpp::Parameter();
+  if (!get_node()->get_parameter("robot_description", robot_param)) {
+    RCLCPP_ERROR(
+          rclcpp::get_logger("CartesianStateBroadcaster"),
+          "parameter robot_description not set");
+    return CallbackReturn::ERROR;
+  }
+  auto robot_description = robot_param.as_string();
+
   // Load the differential IK plugin
   if (!kinematics_plugin_name.empty()) {
     try {
@@ -62,8 +72,7 @@ CallbackReturn CartesianStateBroadcaster::on_configure(
       kinematics_ = std::unique_ptr<kinematics_interface::KinematicsInterface>(
         kinematics_loader_->createUnmanagedInstance(kinematics_plugin_name));
       if (!kinematics_->initialize(
-          get_node()->get_node_parameters_interface(),
-          end_effector_name_))
+        robot_description, get_node()->get_node_parameters_interface(), "kinematics"))
       {
         RCLCPP_ERROR(
           rclcpp::get_logger("CartesianStateBroadcaster"),
