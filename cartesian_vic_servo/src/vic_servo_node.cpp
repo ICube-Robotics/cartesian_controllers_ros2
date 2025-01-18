@@ -271,7 +271,7 @@ bool CartesianVicServo::start()
   }
 
   // Reset command queue
-  auto current_state = servo_->getCurrentRobotState();
+  auto current_state = servo_->getCurrentRobotState(false);
   moveit_servo::updateSlidingWindow(
     current_state, joint_cmd_rolling_window_, max_expected_latency_, this->now());
 
