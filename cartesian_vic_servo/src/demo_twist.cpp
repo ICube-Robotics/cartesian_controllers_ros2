@@ -101,7 +101,7 @@ int main(int argc, char * argv[])
 
   // create command queue to build trajectory message and add current robot state
   std::deque<KinematicState> joint_cmd_rolling_window;
-  KinematicState current_state = servo.getCurrentRobotState();
+  KinematicState current_state = servo.getCurrentRobotState(false);
   updateSlidingWindow(current_state, joint_cmd_rolling_window, servo_params.max_expected_latency,
     demo_node->now());
 
