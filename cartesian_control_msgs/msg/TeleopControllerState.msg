@@ -3,42 +3,32 @@ std_msgs/Header  header
 # Teleop controller input data
 std_msgs/Bool workspace_is_engaged
 
-geometry_msgs/Pose x_1
-geometry_msgs/Twist x_1_dot
-geometry_msgs/Accel x_1_ddot
-geometry_msgs/Wrench f_1
+geometry_msgs/Pose leader_pose
+geometry_msgs/Twist leader_velocity
+geometry_msgs/Accel leader_acceleration
+geometry_msgs/Wrench leader_wrench
 
-std_msgs/Float64MultiArray desired_inertia_1
-std_msgs/Float64MultiArray desired_damping_1
-std_msgs/Float64MultiArray desired_stiffness_1
-
-geometry_msgs/Pose x_2
-geometry_msgs/Twist x_2_dot
-geometry_msgs/Accel x_2_ddot
-geometry_msgs/Wrench f_2
-
-std_msgs/Float64MultiArray desired_inertia_2
-std_msgs/Float64MultiArray desired_damping_2
-std_msgs/Float64MultiArray desired_stiffness_2
+geometry_msgs/Pose follower_pose
+geometry_msgs/Twist follower_velocity
+geometry_msgs/Accel follower_acceleration
+geometry_msgs/Wrench follower_wrench
 
 # Teleop controller ref
-geometry_msgs/Pose x_1_d
-geometry_msgs/Twist x_1_dot_d
-geometry_msgs/Accel x_1_ddot_d
-geometry_msgs/Wrench f_1_d
+geometry_msgs/Pose desired_leader_pose
+geometry_msgs/Twist desired_leader_velocity
+geometry_msgs/Accel desired_leader_acceleration
+geometry_msgs/Wrench desired_leader_wrench
 
-std_msgs/Float64MultiArray rendered_inertia_1
-std_msgs/Float64MultiArray rendered_damping_1
-std_msgs/Float64MultiArray rendered_stiffness_1
+geometry_msgs/Pose desired_follower_pose
+geometry_msgs/Twist desired_follower_velocity
+geometry_msgs/Accel desired_follower_acceleration
+geometry_msgs/Wrench desired_follower_wrench
 
-geometry_msgs/Pose x_2_d
-geometry_msgs/Twist x_2_dot_d
-geometry_msgs/Accel x_2_ddot_d
-geometry_msgs/Wrench f_2_d
+cartesian_control_msgs/TeleopCompliance desired_compliance
 
-std_msgs/Float64MultiArray rendered_inertia_2
-std_msgs/Float64MultiArray rendered_damping_2
-std_msgs/Float64MultiArray rendered_stiffness_2
+# Actually rendered compliance
+cartesian_control_msgs/TeleopCompliance rendered_compliance
+
 
 # Misc.
 cartesian_control_msgs/KeyValues diagnostic_data
