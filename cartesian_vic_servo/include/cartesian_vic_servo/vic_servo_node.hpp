@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
-#include "realtime_tools/realtime_buffer.h"
+#include "realtime_tools/realtime_buffer.hpp"
 #include "realtime_tools/realtime_publisher.hpp"
 
 #include "geometry_msgs/msg/twist_stamped.hpp"
@@ -32,7 +32,7 @@
 #include <moveit_servo/servo.hpp>
 #include <moveit_servo/utils/common.hpp>
 
-#include "moveit/move_group_interface/move_group_interface.h"
+#include "moveit/move_group_interface/move_group_interface.hpp"
 #include "moveit_msgs/srv/servo_command_type.hpp"
 #include "moveit_msgs/msg/servo_status.hpp"
 #include "std_srvs/srv/set_bool.hpp"

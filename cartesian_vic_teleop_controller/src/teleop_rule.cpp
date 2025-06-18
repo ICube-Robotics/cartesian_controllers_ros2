@@ -26,8 +26,8 @@ namespace cartesian_vic_teleop_controller
 {
 
 TeleopRule::TeleopRule()
-: is_initialized_(false),
-  logger_(rclcpp::get_logger("TeleopRule"))
+: logger_(rclcpp::get_logger("TeleopRule")),
+  is_initialized_(false)
 {
     // Nothing to do, see init() in specialized rules.
 }

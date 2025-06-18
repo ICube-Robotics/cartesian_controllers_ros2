@@ -30,9 +30,9 @@ using cartesian_vic_controller::WrenchToMsg;
 
 
 PassiveVicTeleopLogic::PassiveVicTeleopLogic()
-: is_initialized_(false),
-  has_update_been_called_(false),
-  logger_(rclcpp::get_logger("cartesian_vic_teleop_logic"))
+: logger_(rclcpp::get_logger("cartesian_vic_teleop_logic")),
+  is_initialized_(false),
+  has_update_been_called_(false)
 {
   // anything?
 }

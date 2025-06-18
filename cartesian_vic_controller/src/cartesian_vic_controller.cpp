@@ -509,19 +509,40 @@ bool CartesianVicController::read_state_from_hardware(
 
   for (size_t joint_ind = 0; joint_ind < num_joints_; ++joint_ind) {
     if (has_position_state_interface_) {
-      state_current.positions[joint_ind] =
-        state_interfaces_[pos_ind * num_joints_ + joint_ind].get_value();
-      nan_position |= std::isnan(state_current.positions[joint_ind]);
+      auto pos_i =
+        state_interfaces_[pos_ind * num_joints_ + joint_ind].get_optional<double>();
+      if (!pos_i.has_value()) {
+        RCLCPP_WARN(
+          get_node()->get_logger(), "Failed to read position for joint %zu", joint_ind);
+        all_ok = false;
+        state_current.positions[joint_ind] = std::numeric_limits<double>::quiet_NaN();
+      } else {
+        state_current.positions[joint_ind] = pos_i.value();
+      }
     }
     if (has_velocity_state_interface_) {
-      state_current.velocities[joint_ind] =
-        state_interfaces_[vel_ind * num_joints_ + joint_ind].get_value();
-      nan_velocity |= std::isnan(state_current.velocities[joint_ind]);
+      auto vel_i =
+        state_interfaces_[vel_ind * num_joints_ + joint_ind].get_optional<double>();
+      if (!vel_i.has_value()) {
+        RCLCPP_WARN(
+          get_node()->get_logger(), "Failed to read velocity for joint %zu", joint_ind);
+        all_ok = false;
+        state_current.velocities[joint_ind] = std::numeric_limits<double>::quiet_NaN();
+      } else {
+        state_current.velocities[joint_ind] = vel_i.value();
+      }
     }
     if (has_acceleration_state_interface_) {
-      state_current.accelerations[joint_ind] =
-        state_interfaces_[acc_ind * num_joints_ + joint_ind].get_value();
-      nan_acceleration |= std::isnan(state_current.accelerations[joint_ind]);
+      auto acc_i =
+        state_interfaces_[acc_ind * num_joints_ + joint_ind].get_optional<double>();
+      if (!acc_i.has_value()) {
+        RCLCPP_WARN(
+          get_node()->get_logger(), "Failed to read acceleration for joint %zu", joint_ind);
+        all_ok = false;
+        state_current.accelerations[joint_ind] = std::numeric_limits<double>::quiet_NaN();
+      } else {
+        state_current.accelerations[joint_ind] = acc_i.value();
+      }
     }
   }
 
@@ -635,12 +656,19 @@ bool CartesianVicController::write_impedance_state_to_hardware(
   }
 
   for (size_t joint_ind = 0; joint_ind < num_joints_; ++joint_ind) {
-    command_interfaces_[joint_ind].set_value(
+    all_ok &= command_interfaces_[joint_ind].set_value(
       joint_state_command.effort[joint_ind]);
+  }
+  if (!all_ok) {
+    auto clock = get_node()->get_clock();
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(), *clock, 1000,
+      "Failed to write joint command to hardware interfaces!");
+    return false;
   }
   // Update last command state
   last_commanded_joint_state_ = joint_state_command;
-  return true;
+  return all_ok;
 }
 
 bool CartesianVicController::write_admittance_state_to_hardware(
@@ -681,19 +709,27 @@ bool CartesianVicController::write_admittance_state_to_hardware(
     joint_state_command.positions[4], joint_state_command.positions[5],
     joint_state_command.positions[6]);
   */
+  bool all_ok = true;
   for (size_t joint_ind = 0; joint_ind < num_joints_; ++joint_ind) {
     if (has_position_command_interface_) {
-      command_interfaces_[pos_ind * num_joints_ + joint_ind].set_value(
+      all_ok &= command_interfaces_[pos_ind * num_joints_ + joint_ind].set_value(
         joint_state_command.positions[joint_ind]);
     }
     if (has_velocity_command_interface_) {
-      command_interfaces_[vel_ind * num_joints_ + joint_ind].set_value(
+      all_ok &= command_interfaces_[vel_ind * num_joints_ + joint_ind].set_value(
         joint_state_command.velocities[joint_ind]);
     }
     if (has_acceleration_command_interface_) {
-      command_interfaces_[acc_ind * num_joints_ + joint_ind].set_value(
+      all_ok &= command_interfaces_[acc_ind * num_joints_ + joint_ind].set_value(
         joint_state_command.accelerations[joint_ind]);
     }
+  }
+  if (!all_ok) {
+    auto clock = get_node()->get_clock();
+    RCLCPP_WARN_THROTTLE(
+      get_node()->get_logger(), *clock, 1000,
+      "Failed to write joint command to hardware interfaces!");
+    return false;
   }
   last_commanded_joint_state_ = joint_state_command;
   return true;
