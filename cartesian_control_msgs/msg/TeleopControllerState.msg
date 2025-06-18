@@ -8,18 +8,10 @@ geometry_msgs/Twist leader_velocity
 geometry_msgs/Accel leader_acceleration
 geometry_msgs/Wrench leader_wrench
 
-std_msgs/Float64MultiArray desired_leader_inertia
-std_msgs/Float64MultiArray desired_leader_damping
-std_msgs/Float64MultiArray desired_leader_stiffness
-
 geometry_msgs/Pose follower_pose
 geometry_msgs/Twist follower_velocity
 geometry_msgs/Accel follower_acceleration
 geometry_msgs/Wrench follower_wrench
-
-std_msgs/Float64MultiArray desired_follower_inertia
-std_msgs/Float64MultiArray desired_follower_damping
-std_msgs/Float64MultiArray desired_follower_stiffness
 
 # Teleop controller ref
 geometry_msgs/Pose desired_leader_pose
@@ -27,18 +19,16 @@ geometry_msgs/Twist desired_leader_velocity
 geometry_msgs/Accel desired_leader_acceleration
 geometry_msgs/Wrench desired_leader_wrench
 
-std_msgs/Float64MultiArray rendered_leader_inertia
-std_msgs/Float64MultiArray rendered_leader_damping
-std_msgs/Float64MultiArray rendered_leader_stiffness
-
 geometry_msgs/Pose desired_follower_pose
 geometry_msgs/Twist desired_follower_velocity
 geometry_msgs/Accel desired_follower_acceleration
 geometry_msgs/Wrench desired_follower_wrench
 
-std_msgs/Float64MultiArray rendered_follower_inertia
-std_msgs/Float64MultiArray rendered_follower_damping
-std_msgs/Float64MultiArray rendered_follower_stiffness
+cartesian_control_msgs/TeleopCompliance desired_compliance
+
+# Actually rendered compliance
+cartesian_control_msgs/TeleopCompliance rendered_compliance
+
 
 # Misc.
 cartesian_control_msgs/KeyValues diagnostic_data

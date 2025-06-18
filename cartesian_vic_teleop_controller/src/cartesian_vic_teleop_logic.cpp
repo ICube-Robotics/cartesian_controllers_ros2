@@ -429,18 +429,18 @@ bool PassiveVicTeleopLogic::setTeleoperationCompliance(
 {
   bool all_ok = true;
   all_ok &= cartesian_vic_controller::fromMsg(
-    msg.desired_leader_inertia, teleop_data_input_.desired_leader_inertia);
+    msg.leader_inertia, teleop_data_input_.desired_leader_inertia);
   all_ok &= cartesian_vic_controller::fromMsg(
-    msg.desired_leader_stiffness, teleop_data_input_.desired_leader_stiffness);
+    msg.leader_stiffness, teleop_data_input_.desired_leader_stiffness);
   all_ok &= cartesian_vic_controller::fromMsg(
-    msg.desired_leader_damping, teleop_data_input_.desired_leader_damping);
+    msg.leader_damping, teleop_data_input_.desired_leader_damping);
 
   all_ok &= cartesian_vic_controller::fromMsg(
-    msg.desired_follower_inertia, teleop_data_input_.desired_follower_inertia);
+    msg.follower_inertia, teleop_data_input_.desired_follower_inertia);
   all_ok &= cartesian_vic_controller::fromMsg(
-    msg.desired_follower_stiffness, teleop_data_input_.desired_follower_stiffness);
+    msg.follower_stiffness, teleop_data_input_.desired_follower_stiffness);
   all_ok &= cartesian_vic_controller::fromMsg(
-    msg.desired_follower_damping, teleop_data_input_.desired_follower_damping);
+    msg.follower_damping, teleop_data_input_.desired_follower_damping);
 
   return all_ok;
 }
