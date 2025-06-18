@@ -147,8 +147,23 @@ controller_interface::return_type CartesianStateBroadcaster::update(
   const rclcpp::Duration & /* period */)
 {
   for (auto j = 0ul; j < joint_names_.size(); j++) {
-    joint_positions_[j] = state_interfaces_[2 * j].get_value();
-    joint_velocities_[j] = state_interfaces_[2 * j + 1].get_value();
+    std::optional<double> pos_i = state_interfaces_[2 * j].get_optional();
+    if (!pos_i.has_value()) {
+      RCLCPP_ERROR(
+        rclcpp::get_logger("CartesianStateBroadcaster"),
+        "Failed to get position for joint '%s'.", joint_names_[j].c_str());
+      return controller_interface::return_type::ERROR;
+    }
+    joint_positions_[j] = pos_i.value();
+
+    std::optional<double> vel_i = state_interfaces_[2 * j + 1].get_optional();
+    if (!vel_i.has_value()) {
+      RCLCPP_ERROR(
+        rclcpp::get_logger("CartesianStateBroadcaster"),
+        "Failed to get velocity for joint '%s'.", joint_names_[j].c_str());
+      return controller_interface::return_type::ERROR;
+    }
+    joint_velocities_[j] = vel_i.value();
   }
   if (!kinematics_->calculate_link_transform(joint_positions_, end_effector_name_, cart_trafo_)) {
     RCLCPP_ERROR(
