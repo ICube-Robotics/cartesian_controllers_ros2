@@ -265,7 +265,7 @@ bool CartesianVicServo::start()
     RCLCPP_INFO(get_logger(), "Waiting for robot state...");
     ++attempts;
     if(attempts > max_attemps) {
-      RCLCPP_ERROR(get_logger(), "Failed to get robot state after %d attempts!", attempts);
+      RCLCPP_ERROR(get_logger(), "Failed to get robot state after %ld attempts!", attempts);
       return false;
     }
   }
@@ -534,7 +534,7 @@ bool CartesianVicServo::reorder_joint_state(
 
   // reorder joint names and data
   for (size_t i = 0; i < num_joints_; ++i) {
-    int idx_in_msg = std::find(
+    size_t idx_in_msg = std::find(
       joint_state_msg.name.begin(), joint_state_msg.name.end(),
         joint_names_[i]) - joint_state_msg.name.begin();
     joint_state_msg_reordered.name[i] = joint_state_msg.name[idx_in_msg];
@@ -547,7 +547,7 @@ bool CartesianVicServo::reorder_joint_state(
       RCLCPP_DEBUG(
         get_logger(),
         "Reordered joint state '%s' %lu (msg) -> %lu (internal model)",
-        joint_state_msg.name[idx_in_msg], idx_in_msg, i);
+        joint_state_msg.name[idx_in_msg].c_str(), idx_in_msg, i);
     }
   }
 
