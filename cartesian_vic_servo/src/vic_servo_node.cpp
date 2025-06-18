@@ -16,7 +16,7 @@
 
 #include "rcutils/logging_macros.h"
 #include "rclcpp/logging.hpp"
-#include <realtime_tools/thread_priority.hpp>
+#include <realtime_tools/realtime_helpers.hpp>
 
 namespace cartesian_vic_servo
 {
