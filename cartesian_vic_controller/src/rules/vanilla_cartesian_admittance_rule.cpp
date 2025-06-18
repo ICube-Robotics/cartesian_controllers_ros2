@@ -71,7 +71,7 @@ bool VanillaCartesianAdmittanceRule::compute_controls(
     success = false;
   }
 
-  size_t num_joints = vic_state_.input_data.joint_state_position.size();
+  // size_t num_joints = vic_state_.input_data.joint_state_position.size();
   size_t dims = 6;  // 6 DoF
 
   // auto num_joints = vic_input_data.joint_state_position.size();
