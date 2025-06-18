@@ -32,9 +32,9 @@ namespace cartesian_vic_controller
 {
 
 CartesianVicRule::CartesianVicRule()
-: num_joints_(0),
+: logger_(rclcpp::get_logger("cartesian_vic_rule")),
+  num_joints_(0),
   vic_state_(0, ControlMode::INVALID),
-  logger_(rclcpp::get_logger("cartesian_vic_rule")),
   dynamics_loader_(nullptr)
 {
   // Nothing to do, see init().
@@ -103,8 +103,8 @@ CartesianVicRule::configure(
   J_private_ = \
     Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
 
-  // J_dot_private_ = \
-  //  Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints);
+  /* J_dot_private_ = \
+   Eigen::Matrix<double, 6, Eigen::Dynamic>::Zero(6, num_joints); */
 
   return controller_interface::return_type::OK;
 }
