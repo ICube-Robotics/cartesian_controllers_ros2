@@ -41,7 +41,7 @@
 #include "cartesian_control_msgs/msg/compliant_frame_trajectory.hpp"
 
 // include generated parameter library
-#include "cartesian_vic_controller_parameters.hpp"
+#include "cartesian_vic_controller/cartesian_vic_controller_parameters.hpp"
 
 // include data structures
 #include "cartesian_vic_controller/measurement_data.hpp"

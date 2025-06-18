@@ -28,7 +28,7 @@
 #include "cartesian_vic_controller/external_torque_sensor.hpp"
 
 // include generated parameter library
-#include "cartesian_vic_controller_parameters.hpp"
+#include "cartesian_vic_controller/cartesian_vic_controller_parameters.hpp"
 
 #include "controller_interface/chainable_controller_interface.hpp"
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
@@ -37,7 +37,7 @@
 #include "rclcpp/time.hpp"
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 #include "rclcpp_lifecycle/state.hpp"
-#include "realtime_tools/realtime_buffer.h"
+#include "realtime_tools/realtime_buffer.hpp"
 #include "realtime_tools/realtime_publisher.hpp"
 #include "semantic_components/force_torque_sensor.hpp"
 
