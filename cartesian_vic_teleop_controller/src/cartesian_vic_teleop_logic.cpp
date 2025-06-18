@@ -98,17 +98,17 @@ bool PassiveVicTeleopLogic::internal_init(
   teleop_data_input_.leader_velocity.setZero();
   teleop_data_input_.leader_acceleration.setZero();
   teleop_data_input_.leader_wrench.setZero();
-  teleop_data_input_.leader_desired_inertia = leader_natural_inertia_in_leader_base_frame_;
-  teleop_data_input_.leader_desired_stiffness = 50. * Eigen::Matrix<double, 6, 6>::Identity();
-  teleop_data_input_.leader_desired_damping = 10. * Eigen::Matrix<double, 6, 6>::Identity();
+  teleop_data_input_.desired_leader_inertia = leader_natural_inertia_in_leader_base_frame_;
+  teleop_data_input_.desired_leader_stiffness = 50. * Eigen::Matrix<double, 6, 6>::Identity();
+  teleop_data_input_.desired_leader_damping = 10. * Eigen::Matrix<double, 6, 6>::Identity();
 
   teleop_data_input_.follower_pose = follower_pose_in_follower_base_frame_;
   teleop_data_input_.follower_velocity.setZero();
   teleop_data_input_.follower_acceleration.setZero();
   teleop_data_input_.follower_wrench.setZero();
-  teleop_data_input_.follower_desired_inertia = follower_natural_inertia_in_follower_base_frame_;
-  teleop_data_input_.follower_desired_stiffness = 50. * Eigen::Matrix<double, 6, 6>::Identity();
-  teleop_data_input_.follower_desired_damping = 10 * Eigen::Matrix<double, 6, 6>::Identity();
+  teleop_data_input_.desired_follower_inertia = follower_natural_inertia_in_follower_base_frame_;
+  teleop_data_input_.desired_follower_stiffness = 50. * Eigen::Matrix<double, 6, 6>::Identity();
+  teleop_data_input_.desired_follower_damping = 10 * Eigen::Matrix<double, 6, 6>::Identity();
 
   // Reset the teleoperation output data
   set_default_safe_behavior(teleop_data_input_, teleop_data_output_);
@@ -126,9 +126,9 @@ bool PassiveVicTeleopLogic::internal_init(
   leader_reference_velocity_in_leader_base_frame_.setZero();
   leader_reference_acceleration_in_leader_base_frame_.setZero();
   leader_reference_wrench_in_leader_base_frame_.setZero();
-  leader_reference_inertia_in_leader_base_frame_ = teleop_data_output_.leader_desired_inertia;
-  leader_reference_stiffness_in_leader_base_frame_ = teleop_data_output_.leader_desired_stiffness;
-  leader_reference_damping_in_leader_base_frame_ = teleop_data_output_.leader_desired_damping;
+  leader_reference_inertia_in_leader_base_frame_ = teleop_data_output_.desired_leader_inertia;
+  leader_reference_stiffness_in_leader_base_frame_ = teleop_data_output_.desired_leader_stiffness;
+  leader_reference_damping_in_leader_base_frame_ = teleop_data_output_.desired_leader_damping;
 
   // Initialize the teleoperation rule plugin
   RCLCPP_INFO(logger_, "init(): initializing the rule plugin...");
@@ -276,31 +276,31 @@ bool PassiveVicTeleopLogic::internal_update(
   // Disengage the follower motion forcefully if the workspace is disengaged
   if (!teleop_data_input_.workspace_is_engaged) {
     // Disengage the follower when needed
-    teleop_data_output_.follower_desired_velocity.setZero();
-    teleop_data_output_.follower_desired_acceleration.setZero();
-    teleop_data_output_.follower_desired_wrench.setZero();
+    teleop_data_output_.desired_follower_velocity.setZero();
+    teleop_data_output_.desired_follower_acceleration.setZero();
+    teleop_data_output_.desired_follower_wrench.setZero();
     // TODO(anyone): Is this right? Doesn't seem so...
   }
 
   // Map the leader reference trajectory into the leader frame
   all_ok &= mapping_manager_.inverse_map_follower_tool_to_master_tool(
-    teleop_data_output_.leader_desired_pose, leader_reference_pose_in_leader_base_frame_);
+    teleop_data_output_.desired_leader_pose, leader_reference_pose_in_leader_base_frame_);
   all_ok &= mapping_manager_.map_twist_or_wrench_from_follower_to_master(
-    teleop_data_output_.leader_desired_velocity, leader_reference_velocity_in_leader_base_frame_);
+    teleop_data_output_.desired_leader_velocity, leader_reference_velocity_in_leader_base_frame_);
   all_ok &= mapping_manager_.map_twist_or_wrench_from_follower_to_master(
-    teleop_data_output_.leader_desired_acceleration,
+    teleop_data_output_.desired_leader_acceleration,
     leader_reference_acceleration_in_leader_base_frame_);
   all_ok &= mapping_manager_.map_twist_or_wrench_from_follower_to_master(
-    teleop_data_output_.leader_desired_wrench,
+    teleop_data_output_.desired_leader_wrench,
     leader_reference_wrench_in_leader_base_frame_);
   all_ok &= mapping_manager_.map_SDPD_from_follower_to_master(
-    teleop_data_output_.leader_desired_inertia,
+    teleop_data_output_.desired_leader_inertia,
     leader_reference_inertia_in_leader_base_frame_);
   all_ok &= mapping_manager_.map_SDPD_from_follower_to_master(
-    teleop_data_output_.leader_desired_stiffness,
+    teleop_data_output_.desired_leader_stiffness,
     leader_reference_stiffness_in_leader_base_frame_);
   all_ok &= mapping_manager_.map_SDPD_from_follower_to_master(
-    teleop_data_output_.leader_desired_damping,
+    teleop_data_output_.desired_leader_damping,
     leader_reference_damping_in_leader_base_frame_);
 
   if (!all_ok) {
@@ -333,19 +333,19 @@ bool PassiveVicTeleopLogic::internal_update(
   auto & follower_cartesian_traj_point = follower_vic_ref_.cartesian_trajectory_points[0];
   auto & follower_compliance = follower_vic_ref_.compliance_at_points[0];
   follower_cartesian_traj_point.time_from_start = rclcpp::Duration::from_seconds(0.0);
-  follower_cartesian_traj_point.pose = Eigen::toMsg(teleop_data_output_.follower_desired_pose);
+  follower_cartesian_traj_point.pose = Eigen::toMsg(teleop_data_output_.desired_follower_pose);
   follower_cartesian_traj_point.velocity = \
-    Eigen::toMsg(teleop_data_output_.follower_desired_velocity);
+    Eigen::toMsg(teleop_data_output_.desired_follower_velocity);
   follower_cartesian_traj_point.acceleration = \
-    AccelToMsg(teleop_data_output_.follower_desired_acceleration);
+    AccelToMsg(teleop_data_output_.desired_follower_acceleration);
   follower_cartesian_traj_point.wrench = \
-    WrenchToMsg(teleop_data_output_.follower_desired_wrench);
+    WrenchToMsg(teleop_data_output_.desired_follower_wrench);
   matrixEigenToMsg(
-    teleop_data_output_.follower_desired_inertia, follower_compliance.inertia);
+    teleop_data_output_.desired_follower_inertia, follower_compliance.inertia);
   matrixEigenToMsg(
-    teleop_data_output_.follower_desired_stiffness, follower_compliance.stiffness);
+    teleop_data_output_.desired_follower_stiffness, follower_compliance.stiffness);
   matrixEigenToMsg(
-    teleop_data_output_.follower_desired_damping, follower_compliance.damping);
+    teleop_data_output_.desired_follower_damping, follower_compliance.damping);
 
   has_update_been_called_ = all_ok;
   return all_ok;
@@ -429,18 +429,18 @@ bool PassiveVicTeleopLogic::setTeleoperationCompliance(
 {
   bool all_ok = true;
   all_ok &= cartesian_vic_controller::fromMsg(
-    msg.leader_desired_inertia, teleop_data_input_.leader_desired_inertia);
+    msg.desired_leader_inertia, teleop_data_input_.desired_leader_inertia);
   all_ok &= cartesian_vic_controller::fromMsg(
-    msg.leader_desired_stiffness, teleop_data_input_.leader_desired_stiffness);
+    msg.desired_leader_stiffness, teleop_data_input_.desired_leader_stiffness);
   all_ok &= cartesian_vic_controller::fromMsg(
-    msg.leader_desired_damping, teleop_data_input_.leader_desired_damping);
+    msg.desired_leader_damping, teleop_data_input_.desired_leader_damping);
 
   all_ok &= cartesian_vic_controller::fromMsg(
-    msg.follower_desired_inertia, teleop_data_input_.follower_desired_inertia);
+    msg.desired_follower_inertia, teleop_data_input_.desired_follower_inertia);
   all_ok &= cartesian_vic_controller::fromMsg(
-    msg.follower_desired_stiffness, teleop_data_input_.follower_desired_stiffness);
+    msg.desired_follower_stiffness, teleop_data_input_.desired_follower_stiffness);
   all_ok &= cartesian_vic_controller::fromMsg(
-    msg.follower_desired_damping, teleop_data_input_.follower_desired_damping);
+    msg.desired_follower_damping, teleop_data_input_.desired_follower_damping);
 
   return all_ok;
 }

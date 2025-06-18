@@ -32,23 +32,23 @@ using cartesian_vic_controller::WrenchToMsg;
 
 void set_default_safe_behavior(const TeleopDataInput & input_data, TeleopDataOutput & output_data)
 {
-  output_data.leader_desired_pose = input_data.follower_pose;
-  output_data.leader_desired_velocity.setZero();
-  output_data.leader_desired_acceleration.setZero();
-  output_data.leader_desired_wrench.setZero();
+  output_data.desired_leader_pose = input_data.follower_pose;
+  output_data.desired_leader_velocity.setZero();
+  output_data.desired_leader_acceleration.setZero();
+  output_data.desired_leader_wrench.setZero();
 
-  output_data.leader_desired_inertia = input_data.leader_desired_inertia;
-  output_data.leader_desired_stiffness = input_data.leader_desired_stiffness;
-  output_data.leader_desired_damping = input_data.leader_desired_damping;
+  output_data.desired_leader_inertia = input_data.desired_leader_inertia;
+  output_data.desired_leader_stiffness = input_data.desired_leader_stiffness;
+  output_data.desired_leader_damping = input_data.desired_leader_damping;
 
-  output_data.follower_desired_pose = input_data.leader_pose;
-  output_data.follower_desired_velocity.setZero();
-  output_data.follower_desired_acceleration.setZero();
-  output_data.follower_desired_wrench.setZero();
+  output_data.desired_follower_pose = input_data.leader_pose;
+  output_data.desired_follower_velocity.setZero();
+  output_data.desired_follower_acceleration.setZero();
+  output_data.desired_follower_wrench.setZero();
 
-  output_data.follower_desired_inertia = input_data.follower_desired_inertia;
-  output_data.follower_desired_stiffness = input_data.follower_desired_stiffness;
-  output_data.follower_desired_damping = input_data.follower_desired_damping;
+  output_data.desired_follower_inertia = input_data.desired_follower_inertia;
+  output_data.desired_follower_stiffness = input_data.desired_follower_stiffness;
+  output_data.desired_follower_damping = input_data.desired_follower_damping;
 }
 
 bool to_msg(
@@ -61,40 +61,40 @@ bool to_msg(
   // Fill input data
   msg.workspace_is_engaged.data = input_data.workspace_is_engaged;
 
-  msg.x_1 = Eigen::toMsg(input_data.leader_pose);
-  msg.x_1_dot = Eigen::toMsg(input_data.leader_velocity);
-  msg.x_1_ddot = AccelToMsg(input_data.leader_acceleration);
-  msg.f_1 = WrenchToMsg(input_data.leader_wrench);
+  msg.leader_pose = Eigen::toMsg(input_data.leader_pose);
+  msg.leader_velocity = Eigen::toMsg(input_data.leader_velocity);
+  msg.leader_acceleration = AccelToMsg(input_data.leader_acceleration);
+  msg.leader_wrench = WrenchToMsg(input_data.leader_wrench);
 
-  msg.x_2 = Eigen::toMsg(input_data.follower_pose);
-  msg.x_2_dot = Eigen::toMsg(input_data.follower_velocity);
-  msg.x_2_ddot = AccelToMsg(input_data.follower_acceleration);
-  msg.f_2 = WrenchToMsg(input_data.follower_wrench);
+  msg.follower_pose = Eigen::toMsg(input_data.follower_pose);
+  msg.follower_velocity = Eigen::toMsg(input_data.follower_velocity);
+  msg.follower_acceleration = AccelToMsg(input_data.follower_acceleration);
+  msg.follower_wrench = WrenchToMsg(input_data.follower_wrench);
 
-  matrixEigenToMsg(input_data.leader_desired_inertia, msg.desired_inertia_1);
-  matrixEigenToMsg(input_data.leader_desired_stiffness, msg.desired_stiffness_1);
-  matrixEigenToMsg(input_data.leader_desired_damping, msg.desired_damping_1);
-  matrixEigenToMsg(input_data.follower_desired_inertia, msg.desired_inertia_2);
-  matrixEigenToMsg(input_data.follower_desired_stiffness, msg.desired_stiffness_2);
-  matrixEigenToMsg(input_data.follower_desired_damping, msg.desired_damping_2);
+  matrixEigenToMsg(input_data.desired_leader_inertia, msg.desired_leader_inertia);
+  matrixEigenToMsg(input_data.desired_leader_stiffness, msg.desired_leader_stiffness);
+  matrixEigenToMsg(input_data.desired_leader_damping, msg.desired_leader_damping);
+  matrixEigenToMsg(input_data.desired_follower_inertia, msg.desired_follower_inertia);
+  matrixEigenToMsg(input_data.desired_follower_stiffness, msg.desired_follower_stiffness);
+  matrixEigenToMsg(input_data.desired_follower_damping, msg.desired_follower_damping);
 
   // Fill output data
-  msg.x_1_d = Eigen::toMsg(output_data.leader_desired_pose);
-  msg.x_1_dot_d = Eigen::toMsg(output_data.leader_desired_velocity);
-  msg.x_1_ddot_d = AccelToMsg(output_data.leader_desired_acceleration);
-  msg.f_1_d = WrenchToMsg(output_data.leader_desired_wrench);
+  msg.desired_leader_pose = Eigen::toMsg(output_data.desired_leader_pose);
+  msg.desired_leader_velocity = Eigen::toMsg(output_data.desired_leader_velocity);
+  msg.desired_leader_acceleration = AccelToMsg(output_data.desired_leader_acceleration);
+  msg.desired_leader_wrench = WrenchToMsg(output_data.desired_leader_wrench);
 
-  msg.x_2_d = Eigen::toMsg(output_data.follower_desired_pose);
-  msg.x_2_dot_d = Eigen::toMsg(output_data.follower_desired_velocity);
-  msg.x_2_ddot_d = AccelToMsg(output_data.follower_desired_acceleration);
-  msg.f_2_d = WrenchToMsg(output_data.follower_desired_wrench);
+  msg.desired_follower_pose = Eigen::toMsg(output_data.desired_follower_pose);
+  msg.desired_follower_velocity = Eigen::toMsg(output_data.desired_follower_velocity);
+  msg.desired_follower_acceleration = AccelToMsg(output_data.desired_follower_acceleration);
+  msg.desired_follower_wrench = WrenchToMsg(output_data.desired_follower_wrench);
 
-  matrixEigenToMsg(output_data.leader_desired_inertia, msg.rendered_inertia_1);
-  matrixEigenToMsg(output_data.leader_desired_stiffness, msg.rendered_stiffness_1);
-  matrixEigenToMsg(output_data.leader_desired_damping, msg.rendered_damping_1);
-  matrixEigenToMsg(output_data.follower_desired_inertia, msg.rendered_inertia_2);
-  matrixEigenToMsg(output_data.follower_desired_stiffness, msg.rendered_stiffness_2);
-  matrixEigenToMsg(output_data.follower_desired_damping, msg.rendered_damping_2);
+  matrixEigenToMsg(output_data.desired_leader_inertia, msg.rendered_leader_inertia);
+  matrixEigenToMsg(output_data.desired_leader_stiffness, msg.rendered_leader_stiffness);
+  matrixEigenToMsg(output_data.desired_leader_damping, msg.rendered_leader_damping);
+  matrixEigenToMsg(output_data.desired_follower_inertia, msg.rendered_follower_inertia);
+  matrixEigenToMsg(output_data.desired_follower_stiffness, msg.rendered_follower_stiffness);
+  matrixEigenToMsg(output_data.desired_follower_damping, msg.rendered_follower_damping);
 
   // Fill diagnostic data
   if (diagnostic_keys.size() != diagnostic_values.size()) {

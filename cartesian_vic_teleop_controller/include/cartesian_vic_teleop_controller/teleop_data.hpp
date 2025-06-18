@@ -40,9 +40,9 @@ struct TeleopDataInput
   Eigen::Matrix<double, 6, 1> leader_wrench;
   Eigen::Matrix<double, 6, 6> leader_natural_inertia;
 
-  Eigen::Matrix<double, 6, 6> leader_desired_inertia;
-  Eigen::Matrix<double, 6, 6> leader_desired_stiffness;
-  Eigen::Matrix<double, 6, 6> leader_desired_damping;
+  Eigen::Matrix<double, 6, 6> desired_leader_inertia;
+  Eigen::Matrix<double, 6, 6> desired_leader_stiffness;
+  Eigen::Matrix<double, 6, 6> desired_leader_damping;
 
   Eigen::Isometry3d follower_pose;
   Eigen::Matrix<double, 6, 1> follower_velocity;
@@ -50,31 +50,31 @@ struct TeleopDataInput
   Eigen::Matrix<double, 6, 1> follower_wrench;
   Eigen::Matrix<double, 6, 6> follower_natural_inertia;
 
-  Eigen::Matrix<double, 6, 6> follower_desired_inertia;
-  Eigen::Matrix<double, 6, 6> follower_desired_stiffness;
-  Eigen::Matrix<double, 6, 6> follower_desired_damping;
+  Eigen::Matrix<double, 6, 6> desired_follower_inertia;
+  Eigen::Matrix<double, 6, 6> desired_follower_stiffness;
+  Eigen::Matrix<double, 6, 6> desired_follower_damping;
 };
 
 /// Container for output teleop data !!!IMPORTANT!!! All in the follower frame!!!
 struct TeleopDataOutput
 {
-  Eigen::Isometry3d leader_desired_pose;
-  Eigen::Matrix<double, 6, 1> leader_desired_velocity;
-  Eigen::Matrix<double, 6, 1> leader_desired_acceleration;
-  Eigen::Matrix<double, 6, 1> leader_desired_wrench;
+  Eigen::Isometry3d desired_leader_pose;
+  Eigen::Matrix<double, 6, 1> desired_leader_velocity;
+  Eigen::Matrix<double, 6, 1> desired_leader_acceleration;
+  Eigen::Matrix<double, 6, 1> desired_leader_wrench;
 
-  Eigen::Matrix<double, 6, 6> leader_desired_inertia;
-  Eigen::Matrix<double, 6, 6> leader_desired_stiffness;
-  Eigen::Matrix<double, 6, 6> leader_desired_damping;
+  Eigen::Matrix<double, 6, 6> desired_leader_inertia;
+  Eigen::Matrix<double, 6, 6> desired_leader_stiffness;
+  Eigen::Matrix<double, 6, 6> desired_leader_damping;
 
-  Eigen::Isometry3d follower_desired_pose;
-  Eigen::Matrix<double, 6, 1> follower_desired_velocity;
-  Eigen::Matrix<double, 6, 1> follower_desired_acceleration;
-  Eigen::Matrix<double, 6, 1> follower_desired_wrench;
+  Eigen::Isometry3d desired_follower_pose;
+  Eigen::Matrix<double, 6, 1> desired_follower_velocity;
+  Eigen::Matrix<double, 6, 1> desired_follower_acceleration;
+  Eigen::Matrix<double, 6, 1> desired_follower_wrench;
 
-  Eigen::Matrix<double, 6, 6> follower_desired_inertia;
-  Eigen::Matrix<double, 6, 6> follower_desired_stiffness;
-  Eigen::Matrix<double, 6, 6> follower_desired_damping;
+  Eigen::Matrix<double, 6, 6> desired_follower_inertia;
+  Eigen::Matrix<double, 6, 6> desired_follower_stiffness;
+  Eigen::Matrix<double, 6, 6> desired_follower_damping;
 };
 
 /// Default copy from input to output

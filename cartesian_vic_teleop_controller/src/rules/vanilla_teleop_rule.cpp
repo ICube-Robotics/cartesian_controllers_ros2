@@ -55,26 +55,26 @@ bool VanillaTeleopRule::update(
 
   // Nominal behavior:
   // Copy the leader and follower pose, velocity, acceleration, wrench
-  teleop_data_output.leader_desired_pose = teleop_data_input.follower_pose;
-  teleop_data_output.leader_desired_velocity = teleop_data_input.follower_velocity;
-  teleop_data_output.leader_desired_acceleration = teleop_data_input.follower_acceleration;
-  teleop_data_output.leader_desired_wrench = teleop_data_input.follower_wrench;
+  teleop_data_output.desired_leader_pose = teleop_data_input.follower_pose;
+  teleop_data_output.desired_leader_velocity = teleop_data_input.follower_velocity;
+  teleop_data_output.desired_leader_acceleration = teleop_data_input.follower_acceleration;
+  teleop_data_output.desired_leader_wrench = teleop_data_input.follower_wrench;
 
-  teleop_data_output.leader_desired_inertia = teleop_data_input.leader_desired_inertia;
-  teleop_data_output.leader_desired_stiffness = teleop_data_input.leader_desired_stiffness;
-  teleop_data_output.leader_desired_damping = teleop_data_input.leader_desired_damping;
+  teleop_data_output.desired_leader_inertia = teleop_data_input.desired_leader_inertia;
+  teleop_data_output.desired_leader_stiffness = teleop_data_input.desired_leader_stiffness;
+  teleop_data_output.desired_leader_damping = teleop_data_input.desired_leader_damping;
 
-  teleop_data_output.follower_desired_pose = teleop_data_input.leader_pose;
-  teleop_data_output.follower_desired_velocity = teleop_data_input.leader_velocity;
-  teleop_data_output.follower_desired_acceleration = teleop_data_input.leader_acceleration;
-  teleop_data_output.follower_desired_wrench = teleop_data_input.leader_wrench;
+  teleop_data_output.desired_follower_pose = teleop_data_input.leader_pose;
+  teleop_data_output.desired_follower_velocity = teleop_data_input.leader_velocity;
+  teleop_data_output.desired_follower_acceleration = teleop_data_input.leader_acceleration;
+  teleop_data_output.desired_follower_wrench = teleop_data_input.leader_wrench;
 
-  teleop_data_output.follower_desired_inertia = teleop_data_input.follower_desired_inertia;
-  teleop_data_output.follower_desired_stiffness = teleop_data_input.follower_desired_stiffness;
-  teleop_data_output.follower_desired_damping = teleop_data_input.follower_desired_damping;
+  teleop_data_output.desired_follower_inertia = teleop_data_input.desired_follower_inertia;
+  teleop_data_output.desired_follower_stiffness = teleop_data_input.desired_follower_stiffness;
+  teleop_data_output.desired_follower_damping = teleop_data_input.desired_follower_damping;
 
-  teleop_data_output.follower_desired_velocity.tail(3).setZero();
-  teleop_data_output.follower_desired_acceleration.tail(3).setZero();
+  teleop_data_output.desired_follower_velocity.tail(3).setZero();
+  teleop_data_output.desired_follower_acceleration.tail(3).setZero();
 
   // Logging
   double real_Ts = period.seconds();
@@ -83,17 +83,17 @@ bool VanillaTeleopRule::update(
   // Set the desired velocity to zero if the workspace is disengaged
   if (!teleop_data_input.workspace_is_engaged) {
     // At minima...
-    teleop_data_output.leader_desired_velocity.setZero();
-    teleop_data_output.leader_desired_acceleration.setZero();
-    teleop_data_output.leader_desired_wrench.setZero();
-    teleop_data_output.follower_desired_velocity.setZero();
-    teleop_data_output.follower_desired_acceleration.setZero();
-    teleop_data_output.follower_desired_wrench.setZero();
+    teleop_data_output.desired_leader_velocity.setZero();
+    teleop_data_output.desired_leader_acceleration.setZero();
+    teleop_data_output.desired_leader_wrench.setZero();
+    teleop_data_output.desired_follower_velocity.setZero();
+    teleop_data_output.desired_follower_acceleration.setZero();
+    teleop_data_output.desired_follower_wrench.setZero();
     // TODO(anyone): Is this right? Doesn't seem so...
 
     // To increase comfort, set K = 0 and D ~ 0
-    teleop_data_output.leader_desired_stiffness.setZero();
-    teleop_data_output.leader_desired_damping = 1.0 * Eigen::Matrix<double, 6, 6>::Identity();
+    teleop_data_output.desired_leader_stiffness.setZero();
+    teleop_data_output.desired_leader_damping = 1.0 * Eigen::Matrix<double, 6, 6>::Identity();
   }
   return true;
 }
