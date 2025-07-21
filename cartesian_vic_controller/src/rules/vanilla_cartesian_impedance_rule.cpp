@@ -251,32 +251,12 @@ bool VanillaCartesianImpedanceRule::compute_controls(
   // Nullspace objective for stability
   // ------------------------------------------------
   if (vic_input_data.activate_nullspace_control) {
-    RCLCPP_DEBUG(logger_, "Cmd nullspace joint acc...");
-    nullspace_projection_ = I_joint_space_ - J_pinv_ * J_;
-    M_nullspace_.diagonal() = vic_input_data.nullspace_joint_inertia;
-    K_nullspace_.diagonal() = vic_input_data.nullspace_joint_stiffness;
-    D_nullspace_.diagonal() = vic_input_data.nullspace_joint_damping;
-    M_inv_nullspace_.diagonal() = M_nullspace_.diagonal().cwiseInverse();
-    auto error_position_nullspace = \
-      vic_input_data.nullspace_desired_joint_positions - vic_input_data.joint_state_position;
-    // Add nullspace contribution to joint accelerations
-    if (vic_input_data.has_external_torque_sensor()) {
-      RCLCPP_DEBUG(logger_, "Cmd nullspace joint acc with external torques...");
-      vic_command_data.joint_command_acceleration += nullspace_projection_ * M_inv_nullspace_ * (
-        -D_nullspace_ * vic_input_data.joint_state_velocity +
-        K_nullspace_ * error_position_nullspace +
-        external_joint_torques_
-      );
-    } else {
-      // Use natural joint space inertia
-      RCLCPP_DEBUG(
-        logger_,
-        "Cmd nullspace joint acc with natural joint inertia (no ext torque sensor)...");
-      vic_command_data.joint_command_acceleration += nullspace_projection_ * (
-        -D_nullspace_ * vic_input_data.joint_state_velocity +
-        K_nullspace_ * error_position_nullspace
-      );
-    }
+    RCLCPP_ERROR(
+      logger_,
+      "Nullspace control is not implemented in VanillaCartesianImpedanceRule!"
+    );
+    // TODO(anyone): implement nullspace control for impedance rule
+    success = false;
   } else {
     // Pure (small) damping in nullspace for stability
     RCLCPP_WARN_THROTTLE(
