@@ -16,7 +16,7 @@ jobs:
       - name: Prepare
         run: |
           mkdir -p ${{github.workspace}}/src
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           path: src/cartesian_controllers_ros2
 
